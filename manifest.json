@@ -1,0 +1,41 @@
+{
+  "name": "Dharshithan Finance Tracker Pro",
+  "short_name": "Dharshithan",
+  "description": "Enterprise Finance, Cashflow & Invoicing Software for Dharshithan Waterproofing",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "assets/favicon.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/logo.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Add Transaction",
+      "short_name": "New Entry",
+      "description": "Record income or expense",
+      "url": "./index.html?action=add",
+      "icons": [{ "src": "assets/favicon.webp", "sizes": "192x192" }]
+    },
+    {
+      "name": "View Ledger",
+      "short_name": "Ledger",
+      "description": "Browse all transactions",
+      "url": "./index.html?tab=transactions",
+      "icons": [{ "src": "assets/favicon.webp", "sizes": "192x192" }]
+    }
+  ]
+}

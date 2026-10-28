@@ -1,4 +1,4 @@
-/* Dharshithan Waterproofing - Finance Tracker Light Theme Styles */
+/* Dharshithan Waterproofing - Finance Tracker Light Theme & Android Native App UI */
 
 :root {
   --color-primary: #0284c7;
@@ -10,11 +10,16 @@
   --color-border: #e2e8f0;
 }
 
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: #f8fafc;
   color: #0f172a;
   -webkit-font-smoothing: antialiased;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 /* White Cards with crisp borders and soft shadow */
@@ -82,7 +87,114 @@ body {
   border: 1px solid #cbd5e1;
 }
 
-/* Animations */
+/* ========================================================
+   Android Native App UI & Bottom Navigation Bar
+   ======================================================== */
+
+.android-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 45;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.03);
+}
+
+.android-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  height: 100%;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.15s ease-in-out;
+}
+
+.android-nav-item.active {
+  color: #0284c7;
+  font-weight: 700;
+}
+
+.android-nav-item .nav-pill {
+  width: 44px;
+  height: 28px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.android-nav-item.active .nav-pill {
+  background: #e0f2fe;
+}
+
+/* Android Floating Action Button (FAB) */
+.android-fab {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px -2px rgba(5, 150, 105, 0.45), 0 4px 8px -2px rgba(0, 0, 0, 0.06);
+  z-index: 44;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease;
+}
+
+.android-fab:active {
+  transform: scale(0.92);
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.35);
+}
+
+/* Android Bottom Sheet Modal for Mobile */
+@media (max-width: 640px) {
+  .android-modal-container {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+  
+  .android-bottom-sheet {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    border-top-left-radius: 24px !important;
+    border-top-right-radius: 24px !important;
+    max-height: 90vh;
+    overflow-y: auto;
+    width: 100% !important;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom)) !important;
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  }
+
+  .android-sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: #cbd5e1;
+    border-radius: 9999px;
+    margin: 0 auto 12px auto;
+  }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
@@ -98,7 +210,7 @@ body {
     background-color: #ffffff !important;
     color: #000000 !important;
   }
-  .no-print, header, nav, #appToolbar, .modal-backdrop, #toastContainer, button:not(.allow-print) {
+  .no-print, header, nav, .android-bottom-nav, .android-fab, #toastContainer, button:not(.allow-print) {
     display: none !important;
   }
   .glass-card {
@@ -106,9 +218,6 @@ body {
     border: 1px solid #cccccc !important;
     box-shadow: none !important;
     color: #000000 !important;
-  }
-  .print-header {
-    display: block !important;
   }
   table {
     border-collapse: collapse;

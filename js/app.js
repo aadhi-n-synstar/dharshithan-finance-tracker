@@ -1,6 +1,6 @@
 /**
  * Dharshithan Waterproofing - Finance Tracker
- * Main Application Controller & View Orchestrator (Light Theme)
+ * Main Controller with Real-Time Google Sheets Live Sync & Android Native Mobile UI
  */
 
 class FinanceApp {
@@ -22,7 +22,7 @@ class FinanceApp {
   async init() {
     await window.financeDB.init();
 
-    // Subscribe to DB changes
+    // Subscribe to local DB changes
     window.financeDB.onChange(() => {
       this.refreshData();
     });
@@ -30,10 +30,21 @@ class FinanceApp {
     // Populate initial FY dropdown dynamically
     await this.refreshData();
 
+    // Setup Google Sheets Live Sync listeners
+    this.setupSyncListener();
+
     // Set today's date in transaction modal
     const today = new Date().toISOString().slice(0, 10);
     const dateInput = document.getElementById('modalDate');
     if (dateInput) dateInput.value = today;
+
+    // Check URL parameters (e.g. for PWA shortcuts)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('action') === 'add') {
+      setTimeout(() => this.openTransactionModal(), 300);
+    } else if (urlParams.get('tab')) {
+      this.setActiveTab(urlParams.get('tab'));
+    }
 
     // Initialize Lucide icons
     if (window.lucide) {
@@ -50,7 +61,65 @@ class FinanceApp {
       }
     });
 
-    console.log('Dharshithan Finance Tracker Initialized');
+    // If Google Sheets webhook is configured, attempt initial sync in background
+    if (window.googleSync && window.googleSync.isConfigured()) {
+      window.googleSync.processQueue();
+    }
+
+    console.log('Dharshithan Finance Tracker Initialized with Android UI & Live Sheets Sync');
+  }
+
+  setupSyncListener() {
+    if (!window.googleSync) return;
+
+    window.googleSync.onStatusChange((status, detail) => {
+      this.updateSyncUI(status, detail);
+    });
+
+    // Initial status display
+    const isConfigured = window.googleSync.isConfigured();
+    this.updateSyncUI(isConfigured ? 'connected' : 'unconfigured', isConfigured ? 'Ready to sync' : 'Configure webhook URL');
+  }
+
+  updateSyncUI(status, detail = '') {
+    const dot = document.getElementById('syncStatusDot');
+    const text = document.getElementById('syncStatusText');
+    const badge = document.getElementById('syncModalStatusBadge');
+    const modalDetail = document.getElementById('syncModalStatusDetail');
+
+    if (status === 'connected') {
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+      if (text) text.textContent = 'Sheets Live';
+      if (badge) {
+        badge.className = 'px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200';
+        badge.textContent = 'Live Connected';
+      }
+    } else if (status === 'syncing') {
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-sky-500 animate-ping';
+      if (text) text.textContent = 'Syncing...';
+      if (badge) {
+        badge.className = 'px-2 py-0.5 rounded-full font-semibold text-[10px] bg-sky-50 text-sky-700 border border-sky-200';
+        badge.textContent = 'Syncing Now...';
+      }
+    } else if (status === 'offline') {
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-500';
+      if (text) text.textContent = 'Queued';
+      if (badge) {
+        badge.className = 'px-2 py-0.5 rounded-full font-semibold text-[10px] bg-amber-50 text-amber-700 border border-amber-200';
+        badge.textContent = 'Queued (Offline)';
+      }
+    } else {
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-slate-400';
+      if (text) text.textContent = 'Setup Sync';
+      if (badge) {
+        badge.className = 'px-2 py-0.5 rounded-full font-semibold text-[10px] bg-slate-100 text-slate-600 border border-slate-300';
+        badge.textContent = 'Unconfigured';
+      }
+    }
+
+    if (modalDetail && detail) {
+      modalDetail.textContent = detail;
+    }
   }
 
   async refreshData() {
@@ -70,7 +139,7 @@ class FinanceApp {
     if (!select) return;
 
     const currentVal = select.value || this.filters.financialYear;
-    select.innerHTML = '<option value="ALL">All Financial Years</option>';
+    select.innerHTML = '<option value="ALL">All FY</option>';
     Array.from(fySet).sort().reverse().forEach(fy => {
       const opt = document.createElement('option');
       opt.value = fy;
@@ -98,26 +167,26 @@ class FinanceApp {
   setActiveTab(tabName) {
     this.activeTab = tabName;
 
-    // Desktop nav buttons
+    // Desktop nav buttons & Android bottom navigation items
     ['dashboard', 'transactions', 'parties', 'reports'].forEach(tab => {
       const btn = document.getElementById(`tab-${tab}`);
-      const mBtn = document.getElementById(`m-tab-${tab}`);
+      const navItem = document.getElementById(`nav-${tab}`);
       const view = document.getElementById(`view-${tab}`);
 
       if (tab === tabName) {
         if (btn) {
           btn.className = 'px-3 py-1.5 rounded-lg transition-all text-white bg-sky-600 font-semibold shadow-xs flex items-center space-x-1.5';
         }
-        if (mBtn) {
-          mBtn.className = 'py-2 px-3 text-sky-600 font-semibold border-b-2 border-sky-600';
+        if (navItem) {
+          navItem.classList.add('active');
         }
         if (view) view.classList.remove('hidden');
       } else {
         if (btn) {
           btn.className = 'px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 flex items-center space-x-1.5';
         }
-        if (mBtn) {
-          mBtn.className = 'py-2 px-3 text-slate-500';
+        if (navItem) {
+          navItem.classList.remove('active');
         }
         if (view) view.classList.add('hidden');
       }
@@ -128,6 +197,9 @@ class FinanceApp {
     if (window.lucide) {
       window.lucide.createIcons();
     }
+
+    // Scroll to top on view change
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   handleFilterChange() {
@@ -182,16 +254,16 @@ class FinanceApp {
     if (elExpenses) elExpenses.textContent = FinanceAnalytics.formatINR(metrics.totalExpenses);
     const elExpTxns = document.getElementById('kpi-expense-txns');
     const expTxnCnt = this.filteredTransactions.filter(t => t.type.includes('Paid') || t.type.includes('Expense')).length;
-    if (elExpTxns) elExpTxns.textContent = `${expTxnCnt} disbursements`;
+    if (elExpTxns) elExpTxns.textContent = `${expTxnCnt} payouts`;
 
     // KPI 3: Net Income in Stands
     const elNet = document.getElementById('kpi-net-income');
     if (elNet) {
       elNet.textContent = FinanceAnalytics.formatINR(metrics.netIncome);
       if (metrics.netIncome >= 0) {
-        elNet.className = 'text-2xl font-bold text-sky-700 font-mono tracking-tight';
+        elNet.className = 'text-lg md:text-2xl font-bold text-sky-700 font-mono tracking-tight';
       } else {
-        elNet.className = 'text-2xl font-bold text-rose-600 font-mono tracking-tight';
+        elNet.className = 'text-lg md:text-2xl font-bold text-rose-600 font-mono tracking-tight';
       }
     }
     const elMargin = document.getElementById('kpi-profit-margin');
@@ -205,9 +277,9 @@ class FinanceApp {
     if (elBankBal) {
       elBankBal.textContent = FinanceAnalytics.formatINR(metrics.bankSummary.currentBalance, { parenthesesNegative: true });
       if (metrics.bankSummary.currentBalance < 0) {
-        elBankBal.className = 'text-2xl font-bold font-mono tracking-tight text-amber-600';
+        elBankBal.className = 'text-lg md:text-2xl font-bold font-mono tracking-tight text-amber-600';
       } else {
-        elBankBal.className = 'text-2xl font-bold font-mono tracking-tight text-slate-900';
+        elBankBal.className = 'text-lg md:text-2xl font-bold font-mono tracking-tight text-slate-900';
       }
     }
     const elCashBal = document.getElementById('kpi-cash-balance');
@@ -229,10 +301,12 @@ class FinanceApp {
     this.renderModeList('list-income-modes', metrics.incomeByMode, metrics.totalIncome, 'emerald');
     this.renderModeList('list-expense-modes', metrics.expensesByMode, metrics.totalExpenses, 'rose');
 
-    // Recent Transactions Table in Dashboard
+    // Recent Transactions in Dashboard
+    const recent = [...this.filteredTransactions].reverse().slice(0, 5);
+    
+    // Desktop Recent Table
     const recentTbody = document.getElementById('dashboard-recent-table');
     if (recentTbody) {
-      const recent = [...this.filteredTransactions].reverse().slice(0, 5);
       if (recent.length === 0) {
         recentTbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-400">No transactions recorded for this period</td></tr>`;
       } else {
@@ -255,6 +329,16 @@ class FinanceApp {
             </tr>
           `;
         }).join('');
+      }
+    }
+
+    // Android Mobile Recent List
+    const recentMobile = document.getElementById('dashboard-recent-mobile');
+    if (recentMobile) {
+      if (recent.length === 0) {
+        recentMobile.innerHTML = `<div class="py-4 text-center text-slate-400 text-xs">No transactions recorded</div>`;
+      } else {
+        recentMobile.innerHTML = recent.map(t => this.renderMobileCardHtml(t)).join('');
       }
     }
 
@@ -304,20 +388,60 @@ class FinanceApp {
     return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold mode-badge-others">${m}</span>`;
   }
 
+  renderMobileCardHtml(t) {
+    const isIncome = t.type.includes('Received') || t.type.includes('Income');
+    const profitClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
+    const initial = (t.partyName || 'P').trim().charAt(0).toUpperCase();
+
+    return `
+      <div class="p-3 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-2">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-full ${isIncome ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'} flex items-center justify-center font-bold text-xs">
+              ${initial}
+            </div>
+            <div>
+              <h4 class="font-bold text-slate-900 text-xs leading-tight" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">${this.escapeHtml(t.partyName)}</h4>
+              <p class="text-[10px] text-slate-400 mt-0.5">${FinanceAnalytics.formatDateDisplay(t.date)} • ${t.quarter || 'Q3'}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="font-mono font-bold text-sm ${profitClass}">${isIncome ? '+' : '-'}${FinanceAnalytics.formatINR(t.amount)}</span>
+            <div class="mt-0.5">${this.getModeBadge(t.mode)}</div>
+          </div>
+        </div>
+
+        ${t.description ? `<p class="text-[11px] text-slate-600 line-clamp-1">${this.escapeHtml(t.description)}</p>` : ''}
+        
+        <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px] text-slate-500">
+          <span class="truncate max-w-[180px]">${t.refNumber ? `Ref: ${this.escapeHtml(t.refNumber)}` : `#${t.slNo}`}</span>
+          <div class="flex items-center space-x-2">
+            <button onclick="app.editTransaction('${t.id}')" class="text-sky-600 font-semibold p-1">Edit</button>
+            <button onclick="app.deleteTransaction('${t.id}')" class="text-rose-600 font-semibold p-1">Delete</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
   renderTransactionsTable() {
     const tbody = document.getElementById('transactions-table-body');
-    if (!tbody) return;
+    const mobileCards = document.getElementById('transactions-mobile-cards');
 
     if (this.filteredTransactions.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="11" class="py-12 text-center text-slate-400">
-            <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-            <p class="font-medium text-slate-600">No transactions match the selected filters</p>
-            <p class="text-xs text-slate-400 mt-1">Try resetting period or search query</p>
-          </td>
-        </tr>
-      `;
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="11" class="py-12 text-center text-slate-400">
+              <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
+              <p class="font-medium text-slate-600">No transactions match the selected filters</p>
+            </td>
+          </tr>
+        `;
+      }
+      if (mobileCards) {
+        mobileCards.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs">No transactions match filters</div>`;
+      }
       this.updateTableSummary(0, 0, 0, 0);
       return;
     }
@@ -325,46 +449,54 @@ class FinanceApp {
     let sumIncome = 0;
     let sumExpense = 0;
 
-    tbody.innerHTML = this.filteredTransactions.map(t => {
-      const isIncome = t.type.includes('Received') || t.type.includes('Income');
-      if (isIncome) sumIncome += Number(t.amount) || 0;
-      else sumExpense += Number(t.amount) || 0;
+    // Desktop Table
+    if (tbody) {
+      tbody.innerHTML = this.filteredTransactions.map(t => {
+        const isIncome = t.type.includes('Received') || t.type.includes('Income');
+        if (isIncome) sumIncome += Number(t.amount) || 0;
+        else sumExpense += Number(t.amount) || 0;
 
-      const typeBadge = isIncome
-        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">Received</span>`
-        : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">Paid</span>`;
+        const typeBadge = isIncome
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">Received</span>`
+          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">Paid</span>`;
 
-      const profitVal = Number(t.profitValue) || 0;
-      const profitClass = profitVal >= 0 ? 'text-emerald-600' : 'text-rose-600';
+        const profitVal = Number(t.profitValue) || 0;
+        const profitClass = profitVal >= 0 ? 'text-emerald-600' : 'text-rose-600';
 
-      return `
-        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-          <td class="py-2.5 px-3 font-mono text-slate-500">${t.slNo}</td>
-          <td class="py-2.5 px-3 whitespace-nowrap text-slate-600 font-mono">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
-          <td class="py-2.5 px-3">${typeBadge}</td>
-          <td class="py-2.5 px-4 font-semibold text-slate-900 cursor-pointer hover:text-sky-600" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">${this.escapeHtml(t.partyName)}</td>
-          <td class="py-2.5 px-4 max-w-xs truncate text-slate-600" title="${this.escapeHtml(t.description)}">
-            <span class="text-slate-800">${this.escapeHtml(t.description)}</span>
-            ${t.category ? `<span class="block text-[10px] text-slate-400 font-normal">${this.escapeHtml(t.category)}</span>` : ''}
-          </td>
-          <td class="py-2.5 px-3 text-right font-mono font-medium text-slate-900">${FinanceAnalytics.formatINR(t.amount)}</td>
-          <td class="py-2.5 px-3">${this.getModeBadge(t.mode)}</td>
-          <td class="py-2.5 px-4 text-slate-500 text-[11px] max-w-xs truncate" title="${this.escapeHtml(t.refNumber)}">${this.escapeHtml(t.refNumber)}</td>
-          <td class="py-2.5 px-2 text-center text-slate-500 font-mono text-[11px]">${t.quarter || '-'}</td>
-          <td class="py-2.5 px-3 text-right font-mono font-semibold ${profitClass}">${FinanceAnalytics.formatINR(t.profitValue)}</td>
-          <td class="py-2.5 px-3 text-center">
-            <div class="flex items-center justify-center space-x-1.5">
-              <button onclick="app.editTransaction('${t.id}')" title="Edit" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-sky-600 transition">
-                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-              </button>
-              <button onclick="app.deleteTransaction('${t.id}')" title="Delete" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+        return `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+            <td class="py-2.5 px-3 font-mono text-slate-500">${t.slNo}</td>
+            <td class="py-2.5 px-3 whitespace-nowrap text-slate-600 font-mono">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+            <td class="py-2.5 px-3">${typeBadge}</td>
+            <td class="py-2.5 px-4 font-semibold text-slate-900 cursor-pointer hover:text-sky-600" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">${this.escapeHtml(t.partyName)}</td>
+            <td class="py-2.5 px-4 max-w-xs truncate text-slate-600" title="${this.escapeHtml(t.description)}">
+              <span class="text-slate-800">${this.escapeHtml(t.description)}</span>
+              ${t.category ? `<span class="block text-[10px] text-slate-400 font-normal">${this.escapeHtml(t.category)}</span>` : ''}
+            </td>
+            <td class="py-2.5 px-3 text-right font-mono font-medium text-slate-900">${FinanceAnalytics.formatINR(t.amount)}</td>
+            <td class="py-2.5 px-3">${this.getModeBadge(t.mode)}</td>
+            <td class="py-2.5 px-4 text-slate-500 text-[11px] max-w-xs truncate" title="${this.escapeHtml(t.refNumber)}">${this.escapeHtml(t.refNumber)}</td>
+            <td class="py-2.5 px-2 text-center text-slate-500 font-mono text-[11px]">${t.quarter || '-'}</td>
+            <td class="py-2.5 px-3 text-right font-mono font-semibold ${profitClass}">${FinanceAnalytics.formatINR(t.profitValue)}</td>
+            <td class="py-2.5 px-3 text-center">
+              <div class="flex items-center justify-center space-x-1.5">
+                <button onclick="app.editTransaction('${t.id}')" title="Edit" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-sky-600 transition">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                </button>
+                <button onclick="app.deleteTransaction('${t.id}')" title="Delete" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Android Mobile Card Feed
+    if (mobileCards) {
+      mobileCards.innerHTML = this.filteredTransactions.map(t => this.renderMobileCardHtml(t)).join('');
+    }
 
     this.updateTableSummary(this.filteredTransactions.length, sumIncome, sumExpense, sumIncome - sumExpense);
   }
@@ -378,6 +510,16 @@ class FinanceApp {
     if (elExp) elExp.textContent = FinanceAnalytics.formatINR(expense);
     const elNet = document.getElementById('table-sum-net');
     if (elNet) elNet.textContent = FinanceAnalytics.formatINR(net);
+
+    // Mobile Summary Bar
+    const mCount = document.getElementById('m-record-count');
+    if (mCount) mCount.textContent = count;
+    const mInc = document.getElementById('m-sum-income');
+    if (mInc) mInc.textContent = FinanceAnalytics.formatINR(income);
+    const mExp = document.getElementById('m-sum-expense');
+    if (mExp) mExp.textContent = FinanceAnalytics.formatINR(expense);
+    const mNet = document.getElementById('m-sum-net');
+    if (mNet) mNet.textContent = FinanceAnalytics.formatINR(net);
   }
 
   renderParties() {
@@ -481,13 +623,13 @@ class FinanceApp {
       }).join('');
 
       return `
-        <div class="glass-card rounded-2xl p-6 space-y-4">
-          <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <div class="glass-card rounded-2xl p-4 md:p-6 space-y-4">
+          <div class="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 gap-2">
             <div>
               <h3 class="text-base font-bold text-slate-900">${fy} Financial Summary</h3>
               <p class="text-xs text-slate-500">Total Profit Value: <span class="font-mono font-bold text-sky-700">${FinanceAnalytics.formatINR(data.totalProfit)}</span></p>
             </div>
-            <div class="flex items-center space-x-4 text-xs font-mono">
+            <div class="flex items-center space-x-3 text-xs font-mono">
               <span class="text-emerald-700 font-semibold">Turnover: ${FinanceAnalytics.formatINR(data.totalIncome)}</span>
               <span class="text-rose-700 font-semibold">Expenses: ${FinanceAnalytics.formatINR(data.totalExpenses)}</span>
             </div>
@@ -495,7 +637,7 @@ class FinanceApp {
 
           <!-- Quarters Breakdown -->
           <div>
-            <h4 class="text-xs uppercase font-semibold text-slate-500 mb-2">Quarterly Breakdown (Matches Google Sheet Pivot)</h4>
+            <h4 class="text-xs uppercase font-semibold text-slate-500 mb-2">Quarterly Breakdown (Sheet1 Pivot)</h4>
             <div class="overflow-x-auto rounded-xl border border-slate-200">
               <table class="w-full text-left text-xs text-slate-800">
                 <thead class="bg-slate-100 text-slate-600 uppercase text-[10px] font-semibold border-b border-slate-200">
@@ -583,6 +725,9 @@ class FinanceApp {
     this.editingId = null;
   }
 
+  /**
+   * Save Transaction: Updates Local DB AND Syncs Live to Google Sheets immediately!
+   */
   async saveTransaction(e) {
     e.preventDefault();
 
@@ -614,32 +759,123 @@ class FinanceApp {
     };
 
     try {
+      let savedRecord = null;
       if (id) {
-        await window.financeDB.update(id, payload);
-        this.showToast('Transaction updated successfully', 'success');
+        savedRecord = await window.financeDB.update(id, payload);
+        this.showToast('Transaction updated', 'success');
+        
+        // Immediate Google Sheets Live Sync
+        if (window.googleSync) {
+          window.googleSync.update(savedRecord);
+        }
       } else {
-        await window.financeDB.add(payload);
-        this.showToast('Transaction added successfully', 'success');
+        savedRecord = await window.financeDB.add(payload);
+        this.showToast('Transaction saved', 'success');
+
+        // Immediate Google Sheets Live Sync
+        if (window.googleSync) {
+          window.googleSync.add(savedRecord);
+        }
       }
       this.closeTransactionModal();
     } catch (err) {
       console.error(err);
-      this.showToast('Error saving transaction: ' + err.message, 'error');
+      this.showToast('Error saving: ' + err.message, 'error');
     }
   }
 
+  /**
+   * Delete Transaction: Removes from Local DB AND Deletes from Google Sheets immediately!
+   */
   async deleteTransaction(id) {
     const item = this.transactions.find(t => t.id === id);
     if (!item) return;
 
-    if (confirm(`Are you sure you want to delete transaction #${item.slNo} for "${item.partyName}" (${FinanceAnalytics.formatINR(item.amount)})?`)) {
+    if (confirm(`Delete #${item.slNo} "${item.partyName}" (${FinanceAnalytics.formatINR(item.amount)})? This will also remove it from Google Sheets.`)) {
       await window.financeDB.delete(id);
       this.showToast('Transaction deleted', 'info');
+
+      // Immediate Google Sheets Live Delete
+      if (window.googleSync) {
+        window.googleSync.delete(item.slNo);
+      }
     }
   }
 
   editTransaction(id) {
     this.openTransactionModal(id);
+  }
+
+  // SYNC MODAL & REAL-TIME WEBHOOK CONTROLS
+  openSyncModal() {
+    const modal = document.getElementById('syncModal');
+    if (!modal) return;
+
+    const input = document.getElementById('syncWebhookInput');
+    if (input && window.googleSync) {
+      input.value = window.googleSync.getWebhookUrl();
+    }
+
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeSyncModal() {
+    const modal = document.getElementById('syncModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  saveWebhookUrl() {
+    const input = document.getElementById('syncWebhookInput');
+    if (!input || !window.googleSync) return;
+
+    const url = input.value.trim();
+    window.googleSync.setWebhookUrl(url);
+    this.showToast(url ? 'Google Sheets Live Sync Connected!' : 'Sync Webhook Removed', url ? 'success' : 'info');
+    this.closeSyncModal();
+  }
+
+  async pushAllToGoogleSheets() {
+    if (!window.googleSync || !window.googleSync.isConfigured()) {
+      this.showToast('Please configure Google Apps Script Web App URL first', 'error');
+      this.openSyncModal();
+      return;
+    }
+
+    try {
+      this.showToast('Syncing all entries to Google Sheets...', 'info');
+      await window.googleSync.syncAll(this.transactions);
+      this.showToast('All transactions synced to Google Sheets successfully!', 'success');
+    } catch (e) {
+      this.showToast('Failed to sync to Google Sheets: ' + e.message, 'error');
+    }
+  }
+
+  async pullFromGoogleSheets() {
+    if (!window.googleSync || !window.googleSync.isConfigured()) {
+      this.showToast('Please configure Google Apps Script Web App URL first', 'error');
+      this.openSyncModal();
+      return;
+    }
+
+    try {
+      this.showToast('Fetching latest from Google Sheets...', 'info');
+      const remoteItems = await window.googleSync.fetchFromSheet();
+      if (!remoteItems || !remoteItems.length) {
+        this.showToast('No entries found in Google Sheet', 'info');
+        return;
+      }
+
+      await window.financeDB.clearAll();
+      for (const item of remoteItems) {
+        await window.financeDB.add(item, true);
+      }
+      window.financeDB.notify();
+      this.showToast(`Fetched & updated ${remoteItems.length} transactions from Google Sheets!`, 'success');
+      this.closeSyncModal();
+    } catch (e) {
+      this.showToast('Pull failed: ' + e.message, 'error');
+    }
   }
 
   // PARTY MODAL
@@ -650,13 +886,13 @@ class FinanceApp {
     if (!party) return;
 
     document.getElementById('partyModalName').textContent = party.name;
-    document.getElementById('partyModalSubtitle').textContent = `${party.transactionCount} entries recorded | Last activity on ${FinanceAnalytics.formatDateDisplay(party.lastDate)}`;
+    document.getElementById('partyModalSubtitle').textContent = `${party.transactionCount} entries | Last: ${FinanceAnalytics.formatDateDisplay(party.lastDate)}`;
     document.getElementById('partyModalReceived').textContent = FinanceAnalytics.formatINR(party.totalReceived);
     document.getElementById('partyModalPaid').textContent = FinanceAnalytics.formatINR(party.totalPaid);
     
     const elNet = document.getElementById('partyModalNet');
     elNet.textContent = FinanceAnalytics.formatINR(party.netBalance);
-    elNet.className = party.netBalance >= 0 ? 'font-mono font-bold text-sm text-emerald-600' : 'font-mono font-bold text-sm text-rose-600';
+    elNet.className = party.netBalance >= 0 ? 'font-mono font-bold text-xs sm:text-sm text-emerald-700' : 'font-mono font-bold text-xs sm:text-sm text-rose-700';
 
     const tbody = document.getElementById('partyModalTable');
     tbody.innerHTML = party.transactions.map(t => {
@@ -671,7 +907,7 @@ class FinanceApp {
           <td class="py-2 px-3 font-sans">${badge}</td>
           <td class="py-2 px-3 font-sans">${this.getModeBadge(t.mode)}</td>
           <td class="py-2 px-3 text-slate-500 font-sans text-[11px]">${this.escapeHtml(t.refNumber || '-')}</td>
-          <td class="py-2 px-3 text-right font-semibold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">${FinanceAnalytics.formatINR(t.amount)}</td>
+          <td class="py-2 px-3 text-right font-semibold ${isIncome ? 'text-emerald-700' : 'text-rose-700'}">${FinanceAnalytics.formatINR(t.amount)}</td>
         </tr>
       `;
     }).join('');
@@ -749,11 +985,16 @@ class FinanceApp {
 
     window.financeDB.notify();
     this.closeImportModal();
-    this.showToast(`Successfully imported ${items.length} transactions!`, 'success');
+    this.showToast(`Imported ${items.length} transactions!`, 'success');
+
+    // Sync all imported items to Google Sheets
+    if (window.googleSync && window.googleSync.isConfigured()) {
+      window.googleSync.syncAll(await window.financeDB.getAll());
+    }
   }
 
   async resetToSampleData() {
-    if (confirm('Reset tracker back to the default Google Sheet records (Synstar Staffing & Raj Enterprises)? Current entries will be replaced.')) {
+    if (confirm('Reset tracker back to the default Google Sheet records (Synstar Staffing & Raj Enterprises)?')) {
       await window.financeDB.resetToSample();
       this.closeImportModal();
       this.showToast('Data reset to original spreadsheet records', 'info');
@@ -762,7 +1003,7 @@ class FinanceApp {
 
   exportCSV() {
     FinanceDataTransfer.exportToCSV(this.filteredTransactions);
-    this.showToast('CSV downloaded successfully', 'success');
+    this.showToast('CSV downloaded', 'success');
   }
 
   async copyForGoogleSheets() {
@@ -779,6 +1020,7 @@ class FinanceApp {
     this.closeTransactionModal();
     this.closePartyModal();
     this.closeImportModal();
+    this.closeSyncModal();
   }
 
   showToast(message, type = 'info') {
@@ -798,7 +1040,7 @@ class FinanceApp {
       info: 'info'
     };
 
-    toast.className = `p-3.5 rounded-xl border shadow-lg flex items-center space-x-2.5 text-xs font-medium animate-fade-in pointer-events-auto transition-all ${colors[type] || colors.info}`;
+    toast.className = `p-3 md:p-3.5 rounded-xl border shadow-lg flex items-center space-x-2.5 text-xs font-medium animate-fade-in pointer-events-auto transition-all ${colors[type] || colors.info}`;
     toast.innerHTML = `
       <i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 flex-shrink-0"></i>
       <span>${this.escapeHtml(message)}</span>
