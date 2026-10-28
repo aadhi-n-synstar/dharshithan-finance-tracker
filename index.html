@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dharshithan Waterproofing - Finance Tracker</title>
+  <link rel="icon" type="image/webp" href="assets/favicon.webp">
+  <link rel="shortcut icon" href="assets/favicon.webp">
+  
+  <!-- Inter Google Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              500: '#0284c7',
+              600: '#0369a1',
+              700: '#075985',
+              800: '#0c4a6e',
+              900: '#082f49',
+            },
+            surface: {
+              bg: '#090d16',
+              card: '#131b2e',
+              border: '#1e293b'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-[#090d16] text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-sky-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="sticky top-0 z-40 bg-[#0f172a]/90 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3.5">
+      <div class="w-11 h-11 rounded-xl bg-slate-900/90 p-1 flex items-center justify-center shadow-lg shadow-sky-500/10 border border-slate-700/60 overflow-hidden ring-1 ring-sky-500/20">
+        <img src="assets/logo.webp" alt="Dharshithan Waterproofing Logo" class="w-full h-full object-contain">
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="text-lg font-bold text-white tracking-tight">Dharshithan Waterproofing</h1>
+          <span class="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">Finance Pro</span>
+        </div>
+        <p class="text-xs text-slate-400">Enterprise Cashflow, Invoicing & Bank Reconciliation</p>
+      </div>
+    </div>
+
+    <!-- Quick Navigation Tabs & Action Controls -->
+    <div class="flex items-center space-x-3">
+      <!-- Nav Tabs -->
+      <nav class="hidden md:flex bg-slate-900/80 p-1 rounded-xl border border-slate-800 text-xs font-medium text-slate-400">
+        <button onclick="app.setActiveTab('dashboard')" id="tab-dashboard" class="px-3 py-1.5 rounded-lg transition-all text-white bg-sky-600 font-semibold shadow flex items-center space-x-1.5">
+          <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+          <span>Dashboard</span>
+        </button>
+        <button onclick="app.setActiveTab('transactions')" id="tab-transactions" class="px-3 py-1.5 rounded-lg transition-all hover:text-white hover:bg-slate-800 flex items-center space-x-1.5">
+          <i data-lucide="receipt" class="w-3.5 h-3.5"></i>
+          <span>Transactions</span>
+        </button>
+        <button onclick="app.setActiveTab('parties')" id="tab-parties" class="px-3 py-1.5 rounded-lg transition-all hover:text-white hover:bg-slate-800 flex items-center space-x-1.5">
+          <i data-lucide="users" class="w-3.5 h-3.5"></i>
+          <span>Parties / Clients</span>
+        </button>
+        <button onclick="app.setActiveTab('reports')" id="tab-reports" class="px-3 py-1.5 rounded-lg transition-all hover:text-white hover:bg-slate-800 flex items-center space-x-1.5">
+          <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
+          <span>P&L Reports</span>
+        </button>
+      </nav>
+
+      <!-- Add Transaction Primary Button -->
+      <button onclick="app.openTransactionModal()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-semibold shadow-md shadow-emerald-500/20 flex items-center space-x-1.5 transition-all transform active:scale-95">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+        <span>Add Transaction</span>
+      </button>
+
+      <!-- Sync / Google Sheet Button -->
+      <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" title="Open Source Google Sheet" class="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition-colors flex items-center justify-center">
+        <i data-lucide="external-link" class="w-4 h-4"></i>
+      </a>
+    </div>
+  </header>
+
+  <!-- Mobile Tab Bar (Visible on small screens) -->
+  <div class="md:hidden flex bg-[#0f172a] border-b border-slate-800 px-2 py-1 justify-around text-xs">
+    <button onclick="app.setActiveTab('dashboard')" id="m-tab-dashboard" class="py-2 px-3 text-sky-400 font-semibold border-b-2 border-sky-400">Dashboard</button>
+    <button onclick="app.setActiveTab('transactions')" id="m-tab-transactions" class="py-2 px-3 text-slate-400">Ledger</button>
+    <button onclick="app.setActiveTab('parties')" id="m-tab-parties" class="py-2 px-3 text-slate-400">Parties</button>
+    <button onclick="app.setActiveTab('reports')" id="m-tab-reports" class="py-2 px-3 text-slate-400">P&L</button>
+  </div>
+
+  <!-- Global Filter & Date Bar -->
+  <section class="bg-slate-900/40 border-b border-slate-800/60 px-4 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3">
+    <div class="flex items-center space-x-3 text-xs">
+      <span class="text-slate-400 flex items-center space-x-1">
+        <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-500"></i>
+        <span>Filter Period:</span>
+      </span>
+      <select id="filterFY" onchange="app.handleFilterChange()" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-sky-500 focus:outline-none">
+        <option value="ALL">All Financial Years</option>
+        <option value="F.Y. 2026-27" selected>F.Y. 2026-27</option>
+        <option value="F.Y. 2025-26">F.Y. 2025-26</option>
+      </select>
+      <select id="filterQuarter" onchange="app.handleFilterChange()" class="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-sky-500 focus:outline-none">
+        <option value="ALL">All Quarters (Q1-Q4)</option>
+        <option value="Q1">Q1 (Apr - Jun)</option>
+        <option value="Q2">Q2 (Jul - Sep)</option>
+        <option value="Q3">Q3 (Oct - Dec)</option>
+        <option value="Q4">Q4 (Jan - Mar)</option>
+      </select>
+    </div>
+
+    <!-- Quick Stats Pill Bar -->
+    <div class="flex items-center space-x-2 text-xs">
+      <button onclick="app.copyForGoogleSheets()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition flex items-center space-x-1" title="Copy table for pasting directly into Google Sheets">
+        <i data-lucide="clipboard-copy" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <span>Copy for Sheets</span>
+      </button>
+      <button onclick="app.exportCSV()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition flex items-center space-x-1" title="Export as CSV compatible with Google Sheets">
+        <i data-lucide="download" class="w-3.5 h-3.5 text-sky-400"></i>
+        <span>Export CSV</span>
+      </button>
+      <button onclick="app.openImportModal()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition flex items-center space-x-1" title="Import from CSV or Google Sheets">
+        <i data-lucide="upload" class="w-3.5 h-3.5 text-amber-400"></i>
+        <span>Import</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Main Content Body -->
+  <main class="flex-1 p-4 lg:p-8 max-w-7xl w-full mx-auto space-y-6">
+
+    <!-- VIEW 1: DASHBOARD -->
+    <div id="view-dashboard" class="space-y-6">
+
+      <!-- Top KPI Metric Cards (Matching User's Google Sheet Dashboard) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Turnover / Income -->
+        <div class="glass-card glass-card-hover rounded-2xl p-4 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Total Income / Turnover</span>
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+              <i data-lucide="trending-up" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div id="kpi-total-income" class="text-2xl font-bold text-emerald-400 font-mono tracking-tight">₹ 0.00</div>
+          <div class="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800 pt-2">
+            <span>Client billings & receipts</span>
+            <span id="kpi-income-txns" class="font-medium text-emerald-300">0 txns</span>
+          </div>
+        </div>
+
+        <!-- Total Expenses -->
+        <div class="glass-card glass-card-hover rounded-2xl p-4 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Total Expenses</span>
+            <div class="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center border border-rose-500/20">
+              <i data-lucide="trending-down" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div id="kpi-total-expenses" class="text-2xl font-bold text-rose-400 font-mono tracking-tight">₹ 0.00</div>
+          <div class="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800 pt-2">
+            <span>Vendors, labor & operations</span>
+            <span id="kpi-expense-txns" class="font-medium text-rose-300">0 txns</span>
+          </div>
+        </div>
+
+        <!-- Net Income In Stands (Net Profit) -->
+        <div class="glass-card glass-card-hover rounded-2xl p-4 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Net Income In Stands</span>
+            <div class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center border border-sky-500/20">
+              <i data-lucide="wallet" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div id="kpi-net-income" class="text-2xl font-bold text-sky-300 font-mono tracking-tight">₹ 0.00</div>
+          <div class="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800 pt-2">
+            <span>Profit Margin</span>
+            <span id="kpi-profit-margin" class="font-semibold text-sky-400">0.0%</span>
+          </div>
+        </div>
+
+        <!-- Bank Balance (Reconciliation) -->
+        <div class="glass-card glass-card-hover rounded-2xl p-4 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-400 mb-2">
+            <span class="text-xs font-semibold uppercase tracking-wider">Bank Current Balance</span>
+            <div class="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center border border-indigo-500/20">
+              <i data-lucide="landmark" class="w-4 h-4"></i>
+            </div>
+          </div>
+          <div id="kpi-bank-balance" class="text-2xl font-bold font-mono tracking-tight text-white">₹ 0.00</div>
+          <div class="mt-2 text-[11px] text-slate-400 flex items-center justify-between border-t border-slate-800 pt-2">
+            <span>Cash in Hand:</span>
+            <span id="kpi-cash-balance" class="font-mono text-emerald-400 font-semibold">₹ 0.00</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Mode Breakdown Grid (Directly mirroring user's Dashboard Sheet structure) -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Income by Payment Mode -->
+        <div class="glass-card rounded-2xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center space-x-2">
+              <div class="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
+              <h3 class="text-sm font-semibold text-slate-200">Income by Mode</h3>
+            </div>
+            <span class="text-xs text-slate-500 font-mono">Turnover Channels</span>
+          </div>
+          <div id="list-income-modes" class="space-y-2.5 text-xs">
+            <!-- Dynamic rows populated by app.js -->
+          </div>
+        </div>
+
+        <!-- Expenses by Payment Mode -->
+        <div class="glass-card rounded-2xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center space-x-2">
+              <div class="w-2.5 h-2.5 rounded-full bg-rose-400"></div>
+              <h3 class="text-sm font-semibold text-slate-200">Expenses by Mode</h3>
+            </div>
+            <span class="text-xs text-slate-500 font-mono">Disbursement Channels</span>
+          </div>
+          <div id="list-expense-modes" class="space-y-2.5 text-xs">
+            <!-- Dynamic rows populated by app.js -->
+          </div>
+        </div>
+
+        <!-- Bank & Liquidity Summary -->
+        <div class="glass-card rounded-2xl p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center space-x-2">
+              <div class="w-2.5 h-2.5 rounded-full bg-sky-400"></div>
+              <h3 class="text-sm font-semibold text-slate-200">Bank Liquidity Position</h3>
+            </div>
+            <span class="text-xs text-slate-500 font-mono">Reconciliation</span>
+          </div>
+          
+          <div class="space-y-3 text-xs pt-1">
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-400 font-medium">TOTAL BANK IN</span>
+              <span id="bank-total-in" class="font-mono text-emerald-400 font-semibold">₹ 0.00</span>
+            </div>
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
+              <span class="text-slate-400 font-medium">TOTAL BANK OUT</span>
+              <span id="bank-total-out" class="font-mono text-rose-400 font-semibold">₹ 0.00</span>
+            </div>
+            <div class="flex items-center justify-between p-3 rounded-xl bg-sky-950/30 border border-sky-800/40">
+              <span class="text-sky-200 font-semibold">CURRENT BANK BALANCE</span>
+              <span id="bank-current-bal" class="font-mono font-bold text-sm text-sky-400">₹ 0.00</span>
+            </div>
+            <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-950/20 border border-emerald-800/30">
+              <span class="text-emerald-300 font-medium">CASH IN HAND (LIQUID)</span>
+              <span id="cash-current-bal" class="font-mono font-semibold text-emerald-400">₹ 0.00</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Financial Visualizations & Charts -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Monthly Performance Trend -->
+        <div class="glass-card rounded-2xl p-5 lg:col-span-2 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-200">Revenue, Expense & Profit Trend</h3>
+              <p class="text-xs text-slate-500">Monthly fiscal trajectory for waterproofing projects</p>
+            </div>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">Live Sync</span>
+          </div>
+          <div class="h-64 relative">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Mode Distribution Doughnut -->
+        <div class="glass-card rounded-2xl p-5 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-semibold text-slate-200">Channel Mix</h3>
+              <p class="text-xs text-slate-500">Payment instrument distribution</p>
+            </div>
+          </div>
+          <div class="h-64 relative">
+            <canvas id="modeChart"></canvas>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Recent Transactions Quick Preview -->
+      <div class="glass-card rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <i data-lucide="clock" class="w-4 h-4 text-sky-400"></i>
+            <h3 class="text-sm font-semibold text-slate-200">Recent Transactions</h3>
+          </div>
+          <button onclick="app.setActiveTab('transactions')" class="text-xs text-sky-400 hover:text-sky-300 font-medium flex items-center space-x-1">
+            <span>View Full Ledger</span>
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="text-slate-400 uppercase bg-slate-900/60 border-b border-slate-800">
+              <tr>
+                <th class="py-2.5 px-3">Sl No.</th>
+                <th class="py-2.5 px-3">Date</th>
+                <th class="py-2.5 px-3">Party Name</th>
+                <th class="py-2.5 px-3">Type</th>
+                <th class="py-2.5 px-3">Mode</th>
+                <th class="py-2.5 px-3 text-right">Amount</th>
+                <th class="py-2.5 px-3 text-right">Profit Value</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-recent-table" class="divide-y divide-slate-800/60 font-mono">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- VIEW 2: TRANSACTIONS LEDGER (FULL SPREADSHEET VIEW) -->
+    <div id="view-transactions" class="space-y-4 hidden">
+      
+      <!-- Toolbar & Filters -->
+      <div class="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
+          <!-- Search box -->
+          <div class="relative flex-1 min-w-[200px]">
+            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
+            <input type="text" id="txnSearch" oninput="app.handleFilterChange()" placeholder="Search party, description, invoice no..." class="w-full bg-slate-900/90 border border-slate-700 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+          </div>
+          <!-- Type Filter -->
+          <select id="txnTypeFilter" onchange="app.handleFilterChange()" class="bg-slate-900 border border-slate-700 text-xs rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-sky-500">
+            <option value="ALL">All Types</option>
+            <option value="INCOME">Income / Received</option>
+            <option value="EXPENSE">Expense / Paid</option>
+          </select>
+          <!-- Mode Filter -->
+          <select id="txnModeFilter" onchange="app.handleFilterChange()" class="bg-slate-900 border border-slate-700 text-xs rounded-xl px-3 py-1.5 text-slate-200 focus:outline-none focus:border-sky-500">
+            <option value="ALL">All Modes</option>
+            <option value="CASH">CASH</option>
+            <option value="NETBANKING">NETBANKING</option>
+            <option value="UPI">UPI</option>
+            <option value="DEBIT CARD / CREDIT CARD">CARD</option>
+            <option value="CHEQUE">CHEQUE</option>
+            <option value="OTHERS">OTHERS</option>
+          </select>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button onclick="app.openTransactionModal()" class="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+            <span>New Entry</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Ledger Table Container -->
+      <div class="glass-card rounded-2xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="text-slate-400 uppercase bg-slate-900/90 border-b border-slate-800 text-[11px] font-semibold tracking-wider">
+              <tr>
+                <th class="py-3 px-3">Sl No.</th>
+                <th class="py-3 px-3">Date</th>
+                <th class="py-3 px-3">Type</th>
+                <th class="py-3 px-4">Party Name</th>
+                <th class="py-3 px-4">Description</th>
+                <th class="py-3 px-3 text-right">Amount (₹)</th>
+                <th class="py-3 px-3">Mode</th>
+                <th class="py-3 px-4">Ref / Remarks</th>
+                <th class="py-3 px-2 text-center">Quarter</th>
+                <th class="py-3 px-3 text-right">Profit Value</th>
+                <th class="py-3 px-3 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="transactions-table-body" class="divide-y divide-slate-800/60 font-sans">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Table Footer Summary -->
+        <div class="bg-slate-900/90 border-t border-slate-800 px-4 py-3 flex flex-wrap items-center justify-between text-xs text-slate-400">
+          <div id="table-record-count">Showing 0 entries</div>
+          <div class="flex items-center space-x-6 font-mono">
+            <div>Income: <span id="table-sum-income" class="text-emerald-400 font-semibold">₹ 0.00</span></div>
+            <div>Expense: <span id="table-sum-expense" class="text-rose-400 font-semibold">₹ 0.00</span></div>
+            <div>Net: <span id="table-sum-net" class="text-sky-300 font-bold">₹ 0.00</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- VIEW 3: PARTIES & CLIENTS DIRECTORY -->
+    <div id="view-parties" class="space-y-6 hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-white">Clients & Vendor Directory</h2>
+          <p class="text-xs text-slate-400">Track party balances, total billings, receipts and payouts</p>
+        </div>
+        <div class="w-64">
+          <input type="text" id="partySearch" oninput="app.renderParties()" placeholder="Search party..." class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+        </div>
+      </div>
+
+      <!-- Top Parties Chart -->
+      <div class="glass-card rounded-2xl p-5 space-y-3">
+        <h3 class="text-sm font-semibold text-slate-200">Top Parties Volume Breakdown</h3>
+        <div class="h-56 relative">
+          <canvas id="partyChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Parties Grid -->
+      <div id="parties-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- VIEW 4: P&L REPORTS & FISCAL ANALYSIS -->
+    <div id="view-reports" class="space-y-6 hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-white">Profit & Loss / Quarterly Reports</h2>
+          <p class="text-xs text-slate-400">Financial summary breakdown matching Sheet1 pivot structure</p>
+        </div>
+        <button onclick="window.print()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold flex items-center space-x-1.5">
+          <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+          <span>Print Statement</span>
+        </button>
+      </div>
+
+      <!-- Financial Year Summary Tables Container -->
+      <div id="fy-summary-container" class="space-y-6">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- TRANSACTION MODAL (ADD / EDIT) -->
+  <div id="txnModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="glass-card bg-[#0f172a] rounded-2xl border border-slate-700 max-w-lg w-full p-6 space-y-4 shadow-2xl animate-fade-in">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 id="modalTitle" class="text-base font-bold text-white flex items-center space-x-2">
+          <i data-lucide="plus-circle" class="w-5 h-5 text-sky-400"></i>
+          <span>Add New Transaction</span>
+        </h3>
+        <button onclick="app.closeTransactionModal()" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="txnForm" onsubmit="app.saveTransaction(event)" class="space-y-3.5 text-xs">
+        <input type="hidden" id="txnId">
+
+        <!-- Type Selector -->
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Transaction Type</label>
+          <div class="grid grid-cols-2 gap-2">
+            <label class="cursor-pointer">
+              <input type="radio" name="modalType" value="Received / Income" class="peer sr-only" checked onchange="app.handleModalTypeChange()">
+              <div class="p-2.5 rounded-xl text-center border border-slate-700 bg-slate-900 peer-checked:bg-emerald-950/40 peer-checked:border-emerald-500 peer-checked:text-emerald-400 font-semibold transition">
+                + Received / Income
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="modalType" value="Paid / Expense" class="peer sr-only" onchange="app.handleModalTypeChange()">
+              <div class="p-2.5 rounded-xl text-center border border-slate-700 bg-slate-900 peer-checked:bg-rose-950/40 peer-checked:border-rose-500 peer-checked:text-rose-400 font-semibold transition">
+                - Paid / Expense
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Date & Mode Row -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Date</label>
+            <input type="date" id="modalDate" required class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Payment Mode</label>
+            <select id="modalMode" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500">
+              <option value="CASH">CASH</option>
+              <option value="NETBANKING">NETBANKING</option>
+              <option value="UPI">UPI</option>
+              <option value="DEBIT CARD / CREDIT CARD">DEBIT / CREDIT CARD</option>
+              <option value="CHEQUE">CHEQUE</option>
+              <option value="OTHERS">OTHERS</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Party Name & Amount Row -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Party Name (Client/Vendor)</label>
+            <input type="text" id="modalParty" list="partySuggestions" required placeholder="e.g. Raj Enterprises" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+            <datalist id="partySuggestions"></datalist>
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Amount (₹)</label>
+            <div class="relative">
+              <span class="absolute left-3 top-2 text-slate-400 font-mono">₹</span>
+              <input type="number" step="0.01" min="0.01" id="modalAmount" required placeholder="0.00" class="w-full bg-slate-900 border border-slate-700 rounded-xl pl-7 pr-3 py-2 font-mono text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Category & Description -->
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Category</label>
+            <input type="text" id="modalCategory" list="categorySuggestions" placeholder="e.g. Chemical Waterproofing" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+            <datalist id="categorySuggestions">
+              <option value="Client Waterproofing Project"></option>
+              <option value="Material & Chemical Supply"></option>
+              <option value="Labor & Staffing"></option>
+              <option value="Subcontracting Services"></option>
+              <option value="Tools & Equipment"></option>
+              <option value="Transportation & Logistics"></option>
+              <option value="Office & Admin"></option>
+            </datalist>
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Ref No. / Invoice Remarks</label>
+            <input type="text" id="modalRef" placeholder="e.g. Inv No: 001 Generated" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-slate-300 font-medium mb-1">Work Description / Details</label>
+          <textarea id="modalDesc" rows="2" placeholder="e.g. Received for Client Tracking" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-sky-500"></textarea>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="flex items-center justify-end space-x-2.5 pt-2 border-t border-slate-800">
+          <button type="button" onclick="app.closeTransactionModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Cancel</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-md shadow-emerald-600/20">Save Transaction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- IMPORT MODAL (CSV / SPREADSHEET) -->
+  <div id="importModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="glass-card bg-[#0f172a] rounded-2xl border border-slate-700 max-w-lg w-full p-6 space-y-4 shadow-2xl animate-fade-in">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center space-x-2">
+          <i data-lucide="upload-cloud" class="w-5 h-5 text-sky-400"></i>
+          <span>Import from Google Sheets or CSV</span>
+        </h3>
+        <button onclick="app.closeImportModal()" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-slate-300">
+        <p class="text-slate-400">Upload a CSV file exported from your Google Sheet or paste CSV / Tab-separated rows below:</p>
+        
+        <div>
+          <label class="block font-medium mb-1">Choose CSV File</label>
+          <input type="file" id="importFileInput" accept=".csv,.txt" onchange="app.handleFileSelect(event)" class="w-full text-xs text-slate-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer">
+        </div>
+
+        <div>
+          <label class="block font-medium mb-1">Or Paste CSV / Tab Data</label>
+          <textarea id="importTextInput" rows="6" placeholder="Paste data copied from Google Sheets..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-100 placeholder-slate-600 focus:outline-none focus:border-sky-500"></textarea>
+        </div>
+
+        <div id="importPreview" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 hidden">
+          <!-- Preview details -->
+        </div>
+
+        <div class="flex items-center justify-between pt-2 border-t border-slate-800">
+          <button onclick="app.resetToSampleData()" type="button" class="text-xs text-amber-400 hover:underline">
+            Reset to Sample (Sheet Data)
+          </button>
+          <div class="flex space-x-2">
+            <button type="button" onclick="app.closeImportModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition">Cancel</button>
+            <button type="button" onclick="app.executeImport()" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold transition">Execute Import</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PARTY DETAIL MODAL -->
+  <div id="partyModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="glass-card bg-[#0f172a] rounded-2xl border border-slate-700 max-w-2xl w-full p-6 space-y-4 shadow-2xl animate-fade-in max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div>
+          <h3 id="partyModalName" class="text-base font-bold text-white">Party Statement</h3>
+          <p id="partyModalSubtitle" class="text-xs text-slate-400">Transaction history and ledger balance</p>
+        </div>
+        <button onclick="app.closePartyModal()" class="text-slate-400 hover:text-white p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Party Financial Summary Cards -->
+      <div class="grid grid-cols-3 gap-3 text-xs">
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+          <span class="text-slate-500 block mb-1">Total Received</span>
+          <span id="partyModalReceived" class="font-mono text-emerald-400 font-bold text-sm">₹ 0.00</span>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+          <span class="text-slate-500 block mb-1">Total Paid</span>
+          <span id="partyModalPaid" class="font-mono text-rose-400 font-bold text-sm">₹ 0.00</span>
+        </div>
+        <div class="p-3 rounded-xl bg-slate-900 border border-slate-800">
+          <span class="text-slate-500 block mb-1">Net Position</span>
+          <span id="partyModalNet" class="font-mono font-bold text-sm">₹ 0.00</span>
+        </div>
+      </div>
+
+      <!-- Party Transactions Table -->
+      <div class="flex-1 overflow-y-auto">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="text-slate-400 uppercase bg-slate-900/80 sticky top-0 border-b border-slate-800">
+            <tr>
+              <th class="py-2 px-3">Date</th>
+              <th class="py-2 px-3">Type</th>
+              <th class="py-2 px-3">Mode</th>
+              <th class="py-2 px-3">Ref No.</th>
+              <th class="py-2 px-3 text-right">Amount</th>
+            </tr>
+          </thead>
+          <tbody id="partyModalTable" class="divide-y divide-slate-800/60 font-mono">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pt-3 border-t border-slate-800 flex justify-end">
+        <button onclick="app.closePartyModal()" class="px-4 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-200">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- Scripts -->
+  <script src="js/db.js"></script>
+  <script src="js/analytics.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="js/export-import.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
