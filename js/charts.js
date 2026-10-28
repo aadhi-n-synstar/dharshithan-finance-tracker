@@ -1,6 +1,6 @@
 /**
  * Dharshithan Waterproofing - Finance Tracker
- * Interactive Financial Charts
+ * Interactive Financial Charts (Light Theme)
  */
 
 class FinanceCharts {
@@ -57,8 +57,8 @@ class FinanceCharts {
           {
             label: 'Income / Turnover (₹)',
             data: incomeData,
-            backgroundColor: 'rgba(16, 185, 129, 0.8)',
-            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.85)',
+            borderColor: '#059669',
             borderWidth: 1.5,
             borderRadius: 6,
             order: 2
@@ -66,8 +66,8 @@ class FinanceCharts {
           {
             label: 'Expenses (₹)',
             data: expenseData,
-            backgroundColor: 'rgba(239, 68, 68, 0.8)',
-            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.85)',
+            borderColor: '#dc2626',
             borderWidth: 1.5,
             borderRadius: 6,
             order: 2
@@ -76,14 +76,14 @@ class FinanceCharts {
             label: 'Net Profit (₹)',
             data: profitData,
             type: 'line',
-            borderColor: '#38bdf8',
-            backgroundColor: 'rgba(56, 189, 248, 0.15)',
-            borderWidth: 3,
+            borderColor: '#0284c7',
+            backgroundColor: 'rgba(2, 132, 199, 0.12)',
+            borderWidth: 2.5,
             fill: true,
             tension: 0.3,
             pointRadius: 4,
             pointHoverRadius: 6,
-            pointBackgroundColor: '#38bdf8',
+            pointBackgroundColor: '#0284c7',
             order: 1
           }
         ]
@@ -97,10 +97,13 @@ class FinanceCharts {
             labels: {
               boxWidth: 14,
               font: { family: "'Inter', sans-serif", size: 12, weight: '500' },
-              color: '#94a3b8'
+              color: '#334155'
             }
           },
           tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 8,
             callbacks: {
               label: (item) => `${item.dataset.label}: ${FinanceAnalytics.formatINR(item.raw)}`
             }
@@ -108,13 +111,13 @@ class FinanceCharts {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-            ticks: { color: '#94a3b8', font: { family: "'Inter', sans-serif" } }
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
+            ticks: { color: '#64748b', font: { family: "'Inter', sans-serif" } }
           },
           y: {
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
             ticks: {
-              color: '#94a3b8',
+              color: '#64748b',
               font: { family: "'Inter', sans-serif" },
               callback: (val) => '₹' + Number(val).toLocaleString('en-IN')
             }
@@ -144,7 +147,7 @@ class FinanceCharts {
       '#8b5cf6', // UPI - Purple
       '#f59e0b', // Card - Amber
       '#06b6d4', // Cheque - Cyan
-      '#64748b'  // Others - Slate
+      '#94a3b8'  // Others - Slate
     ];
 
     this.modeChart = new Chart(ctx, {
@@ -153,8 +156,8 @@ class FinanceCharts {
         labels: modeLabels,
         datasets: [{
           data: totalVolume > 0 ? values : [1],
-          backgroundColor: totalVolume > 0 ? colors : ['#334155'],
-          borderColor: '#0f172a',
+          backgroundColor: totalVolume > 0 ? colors : ['#e2e8f0'],
+          borderColor: '#ffffff',
           borderWidth: 2,
           hoverOffset: 6
         }]
@@ -168,10 +171,13 @@ class FinanceCharts {
             labels: {
               boxWidth: 12,
               font: { family: "'Inter', sans-serif", size: 11 },
-              color: '#94a3b8'
+              color: '#475569'
             }
           },
           tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 8,
             callbacks: {
               label: (item) => {
                 if (totalVolume === 0) return 'No transaction volume';
@@ -226,10 +232,13 @@ class FinanceCharts {
             labels: {
               boxWidth: 12,
               font: { family: "'Inter', sans-serif", size: 11 },
-              color: '#94a3b8'
+              color: '#475569'
             }
           },
           tooltip: {
+            backgroundColor: '#0f172a',
+            padding: 10,
+            cornerRadius: 8,
             callbacks: {
               label: (item) => `${item.dataset.label}: ${FinanceAnalytics.formatINR(item.raw)}`
             }
@@ -237,16 +246,16 @@ class FinanceCharts {
         },
         scales: {
           x: {
-            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            grid: { color: 'rgba(0, 0, 0, 0.05)' },
             ticks: {
-              color: '#94a3b8',
+              color: '#64748b',
               font: { family: "'Inter', sans-serif", size: 10 },
               callback: (val) => '₹' + Number(val).toLocaleString('en-IN')
             }
           },
           y: {
             grid: { display: false },
-            ticks: { color: '#cbd5e1', font: { family: "'Inter', sans-serif", size: 11 } }
+            ticks: { color: '#1e293b', font: { family: "'Inter', sans-serif", size: 11, weight: '500' } }
           }
         }
       }
@@ -257,9 +266,9 @@ class FinanceCharts {
     const trendElem = document.getElementById('trendChart');
     if (trendElem && trendElem.parentElement) {
       trendElem.parentElement.innerHTML = `
-        <div class="h-full flex flex-col items-center justify-center text-slate-400 text-sm">
-          <p class="font-medium text-slate-300">Financial Performance Overview</p>
-          <p class="text-xs text-slate-500 mt-1">Live data ready. Chart.js loads automatically online.</p>
+        <div class="h-full flex flex-col items-center justify-center text-slate-500 text-sm">
+          <p class="font-medium text-slate-700">Financial Performance Overview</p>
+          <p class="text-xs text-slate-400 mt-1">Live data ready. Chart.js loads automatically online.</p>
         </div>
       `;
     }

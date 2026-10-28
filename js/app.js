@@ -1,6 +1,6 @@
 /**
  * Dharshithan Waterproofing - Finance Tracker
- * Main Application Controller & View Orchestrator
+ * Main Application Controller & View Orchestrator (Light Theme)
  */
 
 class FinanceApp {
@@ -106,18 +106,18 @@ class FinanceApp {
 
       if (tab === tabName) {
         if (btn) {
-          btn.className = 'px-3 py-1.5 rounded-lg transition-all text-white bg-sky-600 font-semibold shadow flex items-center space-x-1.5';
+          btn.className = 'px-3 py-1.5 rounded-lg transition-all text-white bg-sky-600 font-semibold shadow-xs flex items-center space-x-1.5';
         }
         if (mBtn) {
-          mBtn.className = 'py-2 px-3 text-sky-400 font-semibold border-b-2 border-sky-400';
+          mBtn.className = 'py-2 px-3 text-sky-600 font-semibold border-b-2 border-sky-600';
         }
         if (view) view.classList.remove('hidden');
       } else {
         if (btn) {
-          btn.className = 'px-3 py-1.5 rounded-lg transition-all hover:text-white hover:bg-slate-800 flex items-center space-x-1.5 text-slate-400';
+          btn.className = 'px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 flex items-center space-x-1.5';
         }
         if (mBtn) {
-          mBtn.className = 'py-2 px-3 text-slate-400';
+          mBtn.className = 'py-2 px-3 text-slate-500';
         }
         if (view) view.classList.add('hidden');
       }
@@ -182,16 +182,16 @@ class FinanceApp {
     if (elExpenses) elExpenses.textContent = FinanceAnalytics.formatINR(metrics.totalExpenses);
     const elExpTxns = document.getElementById('kpi-expense-txns');
     const expTxnCnt = this.filteredTransactions.filter(t => t.type.includes('Paid') || t.type.includes('Expense')).length;
-    if (elExpTxns) elExpTxns.textContent = `${expTxnCnt} payouts`;
+    if (elExpTxns) elExpTxns.textContent = `${expTxnCnt} disbursements`;
 
     // KPI 3: Net Income in Stands
     const elNet = document.getElementById('kpi-net-income');
     if (elNet) {
       elNet.textContent = FinanceAnalytics.formatINR(metrics.netIncome);
       if (metrics.netIncome >= 0) {
-        elNet.className = 'text-2xl font-bold text-sky-300 font-mono tracking-tight';
+        elNet.className = 'text-2xl font-bold text-sky-700 font-mono tracking-tight';
       } else {
-        elNet.className = 'text-2xl font-bold text-rose-400 font-mono tracking-tight';
+        elNet.className = 'text-2xl font-bold text-rose-600 font-mono tracking-tight';
       }
     }
     const elMargin = document.getElementById('kpi-profit-margin');
@@ -205,9 +205,9 @@ class FinanceApp {
     if (elBankBal) {
       elBankBal.textContent = FinanceAnalytics.formatINR(metrics.bankSummary.currentBalance, { parenthesesNegative: true });
       if (metrics.bankSummary.currentBalance < 0) {
-        elBankBal.className = 'text-2xl font-bold font-mono tracking-tight text-amber-400';
+        elBankBal.className = 'text-2xl font-bold font-mono tracking-tight text-amber-600';
       } else {
-        elBankBal.className = 'text-2xl font-bold font-mono tracking-tight text-white';
+        elBankBal.className = 'text-2xl font-bold font-mono tracking-tight text-slate-900';
       }
     }
     const elCashBal = document.getElementById('kpi-cash-balance');
@@ -234,24 +234,24 @@ class FinanceApp {
     if (recentTbody) {
       const recent = [...this.filteredTransactions].reverse().slice(0, 5);
       if (recent.length === 0) {
-        recentTbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-500">No transactions recorded for this period</td></tr>`;
+        recentTbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-400">No transactions recorded for this period</td></tr>`;
       } else {
         recentTbody.innerHTML = recent.map(t => {
           const isIncome = t.type.includes('Received') || t.type.includes('Income');
           const typeBadge = isIncome 
-            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Income</span>`
-            : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">Expense</span>`;
+            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Income</span>`
+            : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Expense</span>`;
           
-          const profitClass = (t.profitValue || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400';
+          const profitClass = (t.profitValue || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600';
           return `
-            <tr class="hover:bg-slate-800/40 transition">
-              <td class="py-2 px-3 text-slate-400">#${t.slNo}</td>
-              <td class="py-2 px-3 text-slate-300 font-sans">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
-              <td class="py-2 px-3 font-sans font-medium text-white">${this.escapeHtml(t.partyName)}</td>
-              <td class="py-2 px-3 font-sans">${typeBadge}</td>
-              <td class="py-2 px-3 font-sans">${this.getModeBadge(t.mode)}</td>
-              <td class="py-2 px-3 text-right text-slate-200">${FinanceAnalytics.formatINR(t.amount)}</td>
-              <td class="py-2 px-3 text-right ${profitClass} font-semibold">${FinanceAnalytics.formatINR(t.profitValue)}</td>
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+              <td class="py-2.5 px-3 text-slate-500">#${t.slNo}</td>
+              <td class="py-2.5 px-3 text-slate-600 font-sans">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+              <td class="py-2.5 px-3 font-sans font-medium text-slate-900">${this.escapeHtml(t.partyName)}</td>
+              <td class="py-2.5 px-3 font-sans">${typeBadge}</td>
+              <td class="py-2.5 px-3 font-sans">${this.getModeBadge(t.mode)}</td>
+              <td class="py-2.5 px-3 text-right text-slate-800">${FinanceAnalytics.formatINR(t.amount)}</td>
+              <td class="py-2.5 px-3 text-right ${profitClass} font-semibold">${FinanceAnalytics.formatINR(t.profitValue)}</td>
             </tr>
           `;
         }).join('');
@@ -267,20 +267,25 @@ class FinanceApp {
     if (!container) return;
 
     const modes = ['CASH', 'NETBANKING', 'UPI', 'DEBIT CARD / CREDIT CARD', 'CHEQUE', 'OTHERS'];
+    const barColors = {
+      emerald: 'bg-emerald-500',
+      rose: 'bg-rose-500'
+    };
+
     const html = modes.map(m => {
       const amount = modeMap[m] || 0;
       const pct = total > 0 ? ((amount / total) * 100).toFixed(1) : 0;
       return `
         <div class="space-y-1">
           <div class="flex items-center justify-between">
-            <span class="text-slate-400 font-medium">${m}</span>
+            <span class="text-slate-600 font-medium">${m}</span>
             <div class="flex items-center space-x-2 font-mono">
-              <span class="text-slate-200">${FinanceAnalytics.formatINR(amount)}</span>
-              <span class="text-slate-500 text-[10px]">(${pct}%)</span>
+              <span class="text-slate-900 font-semibold">${FinanceAnalytics.formatINR(amount)}</span>
+              <span class="text-slate-400 text-[10px]">(${pct}%)</span>
             </div>
           </div>
-          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
-            <div class="h-full bg-${themeColor}-500 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+          <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div class="h-full ${barColors[themeColor] || 'bg-sky-500'} rounded-full transition-all duration-500" style="width: ${pct}%"></div>
           </div>
         </div>
       `;
@@ -306,10 +311,10 @@ class FinanceApp {
     if (this.filteredTransactions.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="11" class="py-12 text-center text-slate-500">
+          <td colspan="11" class="py-12 text-center text-slate-400">
             <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-            <p class="font-medium text-slate-400">No transactions match the selected filters</p>
-            <p class="text-xs text-slate-600 mt-1">Try resetting period or search query</p>
+            <p class="font-medium text-slate-600">No transactions match the selected filters</p>
+            <p class="text-xs text-slate-400 mt-1">Try resetting period or search query</p>
           </td>
         </tr>
       `;
@@ -326,33 +331,33 @@ class FinanceApp {
       else sumExpense += Number(t.amount) || 0;
 
       const typeBadge = isIncome
-        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">Received</span>`
-        : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20 whitespace-nowrap">Paid</span>`;
+        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">Received</span>`
+        : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">Paid</span>`;
 
       const profitVal = Number(t.profitValue) || 0;
-      const profitClass = profitVal >= 0 ? 'text-emerald-400' : 'text-rose-400';
+      const profitClass = profitVal >= 0 ? 'text-emerald-600' : 'text-rose-600';
 
       return `
-        <tr class="hover:bg-slate-800/40 transition">
-          <td class="py-2.5 px-3 font-mono text-slate-400">${t.slNo}</td>
-          <td class="py-2.5 px-3 whitespace-nowrap text-slate-300 font-mono">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+          <td class="py-2.5 px-3 font-mono text-slate-500">${t.slNo}</td>
+          <td class="py-2.5 px-3 whitespace-nowrap text-slate-600 font-mono">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
           <td class="py-2.5 px-3">${typeBadge}</td>
-          <td class="py-2.5 px-4 font-semibold text-white cursor-pointer hover:text-sky-400" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">${this.escapeHtml(t.partyName)}</td>
-          <td class="py-2.5 px-4 max-w-xs truncate text-slate-400" title="${this.escapeHtml(t.description)}">
-            <span class="text-slate-300">${this.escapeHtml(t.description)}</span>
-            ${t.category ? `<span class="block text-[10px] text-slate-500">${this.escapeHtml(t.category)}</span>` : ''}
+          <td class="py-2.5 px-4 font-semibold text-slate-900 cursor-pointer hover:text-sky-600" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">${this.escapeHtml(t.partyName)}</td>
+          <td class="py-2.5 px-4 max-w-xs truncate text-slate-600" title="${this.escapeHtml(t.description)}">
+            <span class="text-slate-800">${this.escapeHtml(t.description)}</span>
+            ${t.category ? `<span class="block text-[10px] text-slate-400 font-normal">${this.escapeHtml(t.category)}</span>` : ''}
           </td>
-          <td class="py-2.5 px-3 text-right font-mono font-medium text-slate-100">${FinanceAnalytics.formatINR(t.amount)}</td>
+          <td class="py-2.5 px-3 text-right font-mono font-medium text-slate-900">${FinanceAnalytics.formatINR(t.amount)}</td>
           <td class="py-2.5 px-3">${this.getModeBadge(t.mode)}</td>
-          <td class="py-2.5 px-4 text-slate-400 text-[11px] max-w-xs truncate" title="${this.escapeHtml(t.refNumber)}">${this.escapeHtml(t.refNumber)}</td>
-          <td class="py-2.5 px-2 text-center text-slate-400 font-mono text-[11px]">${t.quarter || '-'}</td>
+          <td class="py-2.5 px-4 text-slate-500 text-[11px] max-w-xs truncate" title="${this.escapeHtml(t.refNumber)}">${this.escapeHtml(t.refNumber)}</td>
+          <td class="py-2.5 px-2 text-center text-slate-500 font-mono text-[11px]">${t.quarter || '-'}</td>
           <td class="py-2.5 px-3 text-right font-mono font-semibold ${profitClass}">${FinanceAnalytics.formatINR(t.profitValue)}</td>
           <td class="py-2.5 px-3 text-center">
             <div class="flex items-center justify-center space-x-1.5">
-              <button onclick="app.editTransaction('${t.id}')" title="Edit" class="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-sky-400 transition">
+              <button onclick="app.editTransaction('${t.id}')" title="Edit" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-sky-600 transition">
                 <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
               </button>
-              <button onclick="app.deleteTransaction('${t.id}')" title="Delete" class="p-1 rounded hover:bg-slate-700 text-slate-400 hover:text-rose-400 transition">
+              <button onclick="app.deleteTransaction('${t.id}')" title="Delete" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
               </button>
             </div>
@@ -388,39 +393,39 @@ class FinanceApp {
     }
 
     if (parties.length === 0) {
-      grid.innerHTML = `<div class="col-span-3 py-12 text-center text-slate-500">No parties found matching criteria.</div>`;
+      grid.innerHTML = `<div class="col-span-3 py-12 text-center text-slate-400">No parties found matching criteria.</div>`;
       return;
     }
 
     grid.innerHTML = parties.map(p => {
-      const netClass = p.netBalance >= 0 ? 'text-emerald-400' : 'text-rose-400';
+      const netClass = p.netBalance >= 0 ? 'text-emerald-600' : 'text-rose-600';
       const statusBadge = p.netBalance >= 0
-        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Client / Surplus</span>`
-        : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">Vendor / Payable</span>`;
+        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Client / Surplus</span>`
+        : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Vendor / Payable</span>`;
 
       return `
         <div class="glass-card glass-card-hover rounded-2xl p-4 space-y-3 cursor-pointer" onclick="app.openPartyModal('${this.escapeHtml(p.name)}')">
           <div class="flex items-start justify-between">
             <div>
-              <h4 class="font-bold text-white text-sm hover:text-sky-400 transition">${this.escapeHtml(p.name)}</h4>
-              <p class="text-[11px] text-slate-400 mt-0.5">${p.transactionCount} transactions | Last: ${FinanceAnalytics.formatDateDisplay(p.lastDate)}</p>
+              <h4 class="font-bold text-slate-900 text-sm hover:text-sky-600 transition">${this.escapeHtml(p.name)}</h4>
+              <p class="text-[11px] text-slate-500 mt-0.5">${p.transactionCount} transactions | Last: ${FinanceAnalytics.formatDateDisplay(p.lastDate)}</p>
             </div>
             ${statusBadge}
           </div>
 
-          <div class="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-800">
+          <div class="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
             <div>
-              <span class="text-slate-500 block text-[10px]">Total Received</span>
-              <span class="font-mono text-emerald-400 font-semibold">${FinanceAnalytics.formatINR(p.totalReceived)}</span>
+              <span class="text-slate-400 block text-[10px]">Total Received</span>
+              <span class="font-mono text-emerald-600 font-semibold">${FinanceAnalytics.formatINR(p.totalReceived)}</span>
             </div>
             <div>
-              <span class="text-slate-500 block text-[10px]">Total Paid</span>
-              <span class="font-mono text-rose-400 font-semibold">${FinanceAnalytics.formatINR(p.totalPaid)}</span>
+              <span class="text-slate-400 block text-[10px]">Total Paid</span>
+              <span class="font-mono text-rose-600 font-semibold">${FinanceAnalytics.formatINR(p.totalPaid)}</span>
             </div>
           </div>
 
-          <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between text-xs">
-            <span class="text-slate-400 font-medium">Net Standing:</span>
+          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
+            <span class="text-slate-600 font-medium">Net Standing:</span>
             <span class="font-mono font-bold ${netClass}">${FinanceAnalytics.formatINR(p.netBalance)}</span>
           </div>
         </div>
@@ -439,7 +444,7 @@ class FinanceApp {
     const fyKeys = Object.keys(fySummaries).sort().reverse();
 
     if (fyKeys.length === 0) {
-      container.innerHTML = `<div class="p-8 text-center text-slate-500">No financial data to generate reports.</div>`;
+      container.innerHTML = `<div class="p-8 text-center text-slate-400">No financial data to generate reports.</div>`;
       return;
     }
 
@@ -449,51 +454,51 @@ class FinanceApp {
 
       const quarterRows = quarters.map(q => {
         const qData = data.quarters[q];
-        const profitClass = qData.profit >= 0 ? 'text-emerald-400' : 'text-rose-400';
+        const profitClass = qData.profit >= 0 ? 'text-emerald-600' : 'text-rose-600';
         return `
-          <tr class="hover:bg-slate-800/40">
-            <td class="py-2.5 px-4 font-semibold text-slate-200">${q}</td>
-            <td class="py-2.5 px-4 font-mono text-emerald-400">${FinanceAnalytics.formatINR(qData.income)}</td>
-            <td class="py-2.5 px-4 font-mono text-rose-400">${FinanceAnalytics.formatINR(qData.expense)}</td>
+          <tr class="hover:bg-slate-50 border-b border-slate-100">
+            <td class="py-2.5 px-4 font-semibold text-slate-800">${q}</td>
+            <td class="py-2.5 px-4 font-mono text-emerald-600">${FinanceAnalytics.formatINR(qData.income)}</td>
+            <td class="py-2.5 px-4 font-mono text-rose-600">${FinanceAnalytics.formatINR(qData.expense)}</td>
             <td class="py-2.5 px-4 font-mono font-bold ${profitClass}">${FinanceAnalytics.formatINR(qData.profit)}</td>
-            <td class="py-2.5 px-4 text-slate-400">${qData.count} entries</td>
+            <td class="py-2.5 px-4 text-slate-500">${qData.count} entries</td>
           </tr>
         `;
       }).join('');
 
       const monthRows = Object.keys(data.monthly).sort().map(m => {
         const mData = data.monthly[m];
-        const profitClass = mData.profit >= 0 ? 'text-emerald-400' : 'text-rose-400';
+        const profitClass = mData.profit >= 0 ? 'text-emerald-600' : 'text-rose-600';
         return `
-          <tr class="hover:bg-slate-800/40">
-            <td class="py-2 px-4 font-medium text-slate-300 font-mono">${m}</td>
-            <td class="py-2 px-4 font-mono text-emerald-400">${FinanceAnalytics.formatINR(mData.income)}</td>
-            <td class="py-2 px-4 font-mono text-rose-400">${FinanceAnalytics.formatINR(mData.expense)}</td>
+          <tr class="hover:bg-slate-50 border-b border-slate-100">
+            <td class="py-2 px-4 font-medium text-slate-800 font-mono">${m}</td>
+            <td class="py-2 px-4 font-mono text-emerald-600">${FinanceAnalytics.formatINR(mData.income)}</td>
+            <td class="py-2 px-4 font-mono text-rose-600">${FinanceAnalytics.formatINR(mData.expense)}</td>
             <td class="py-2 px-4 font-mono font-bold ${profitClass}">${FinanceAnalytics.formatINR(mData.profit)}</td>
-            <td class="py-2 px-4 text-slate-400 text-xs">${mData.count} txns</td>
+            <td class="py-2 px-4 text-slate-500 text-xs">${mData.count} txns</td>
           </tr>
         `;
       }).join('');
 
       return `
         <div class="glass-card rounded-2xl p-6 space-y-4">
-          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <div class="flex items-center justify-between border-b border-slate-200 pb-3">
             <div>
-              <h3 class="text-base font-bold text-white">${fy} Financial Summary</h3>
-              <p class="text-xs text-slate-400">Total Profit Value: <span class="font-mono font-bold text-sky-400">${FinanceAnalytics.formatINR(data.totalProfit)}</span></p>
+              <h3 class="text-base font-bold text-slate-900">${fy} Financial Summary</h3>
+              <p class="text-xs text-slate-500">Total Profit Value: <span class="font-mono font-bold text-sky-700">${FinanceAnalytics.formatINR(data.totalProfit)}</span></p>
             </div>
             <div class="flex items-center space-x-4 text-xs font-mono">
-              <span class="text-emerald-400">Turnover: ${FinanceAnalytics.formatINR(data.totalIncome)}</span>
-              <span class="text-rose-400">Expenses: ${FinanceAnalytics.formatINR(data.totalExpenses)}</span>
+              <span class="text-emerald-700 font-semibold">Turnover: ${FinanceAnalytics.formatINR(data.totalIncome)}</span>
+              <span class="text-rose-700 font-semibold">Expenses: ${FinanceAnalytics.formatINR(data.totalExpenses)}</span>
             </div>
           </div>
 
           <!-- Quarters Breakdown -->
           <div>
-            <h4 class="text-xs uppercase font-semibold text-slate-400 mb-2">Quarterly Breakdown (Matches Google Sheet Pivot)</h4>
-            <div class="overflow-x-auto rounded-xl border border-slate-800">
-              <table class="w-full text-left text-xs text-slate-300">
-                <thead class="bg-slate-900 text-slate-400 uppercase text-[10px]">
+            <h4 class="text-xs uppercase font-semibold text-slate-500 mb-2">Quarterly Breakdown (Matches Google Sheet Pivot)</h4>
+            <div class="overflow-x-auto rounded-xl border border-slate-200">
+              <table class="w-full text-left text-xs text-slate-800">
+                <thead class="bg-slate-100 text-slate-600 uppercase text-[10px] font-semibold border-b border-slate-200">
                   <tr>
                     <th class="py-2.5 px-4">Quarter</th>
                     <th class="py-2.5 px-4">Turnover (Income)</th>
@@ -502,7 +507,7 @@ class FinanceApp {
                     <th class="py-2.5 px-4">Transactions</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-800/60 font-mono">
+                <tbody class="divide-y divide-slate-100 font-mono">
                   ${quarterRows}
                 </tbody>
               </table>
@@ -511,10 +516,10 @@ class FinanceApp {
 
           <!-- Monthly Breakdown -->
           <div>
-            <h4 class="text-xs uppercase font-semibold text-slate-400 mb-2">Monthly Trajectory</h4>
-            <div class="overflow-x-auto rounded-xl border border-slate-800 max-h-56 overflow-y-auto">
-              <table class="w-full text-left text-xs text-slate-300">
-                <thead class="bg-slate-900 sticky top-0 text-slate-400 uppercase text-[10px]">
+            <h4 class="text-xs uppercase font-semibold text-slate-500 mb-2">Monthly Trajectory</h4>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-56 overflow-y-auto">
+              <table class="w-full text-left text-xs text-slate-800">
+                <thead class="bg-slate-100 sticky top-0 text-slate-600 uppercase text-[10px] font-semibold border-b border-slate-200">
                   <tr>
                     <th class="py-2 px-4">Month</th>
                     <th class="py-2 px-4">Turnover</th>
@@ -523,7 +528,7 @@ class FinanceApp {
                     <th class="py-2 px-4">Volume</th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-800/60 font-mono">
+                <tbody class="divide-y divide-slate-100 font-mono">
                   ${monthRows}
                 </tbody>
               </table>
@@ -547,7 +552,7 @@ class FinanceApp {
       const item = this.transactions.find(t => t.id === editId);
       if (!item) return;
 
-      title.innerHTML = `<i data-lucide="edit-3" class="w-5 h-5 text-sky-400"></i><span>Edit Transaction #${item.slNo}</span>`;
+      title.innerHTML = `<i data-lucide="edit-3" class="w-5 h-5 text-sky-600"></i><span>Edit Transaction #${item.slNo}</span>`;
       document.getElementById('txnId').value = item.id;
       document.getElementById('modalDate').value = item.date;
       document.getElementById('modalParty').value = item.partyName;
@@ -561,7 +566,7 @@ class FinanceApp {
       const radio = document.querySelector(`input[name="modalType"][value="${isIncome ? 'Received / Income' : 'Paid / Expense'}"]`);
       if (radio) radio.checked = true;
     } else {
-      title.innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-emerald-400"></i><span>Add New Transaction</span>`;
+      title.innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-emerald-600"></i><span>Add New Transaction</span>`;
       document.getElementById('txnId').value = '';
       document.getElementById('modalDate').value = new Date().toISOString().slice(0, 10);
       document.getElementById('modalMode').value = 'CASH';
@@ -651,22 +656,22 @@ class FinanceApp {
     
     const elNet = document.getElementById('partyModalNet');
     elNet.textContent = FinanceAnalytics.formatINR(party.netBalance);
-    elNet.className = party.netBalance >= 0 ? 'font-mono font-bold text-sm text-emerald-400' : 'font-mono font-bold text-sm text-rose-400';
+    elNet.className = party.netBalance >= 0 ? 'font-mono font-bold text-sm text-emerald-600' : 'font-mono font-bold text-sm text-rose-600';
 
     const tbody = document.getElementById('partyModalTable');
     tbody.innerHTML = party.transactions.map(t => {
       const isIncome = t.type.includes('Received') || t.type.includes('Income');
       const badge = isIncome
-        ? `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400">Received</span>`
-        : `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-500/10 text-rose-400">Paid</span>`;
+        ? `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Received</span>`
+        : `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Paid</span>`;
 
       return `
-        <tr class="hover:bg-slate-800/40">
-          <td class="py-2 px-3 text-slate-300 font-sans">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+        <tr class="hover:bg-slate-50 border-b border-slate-100">
+          <td class="py-2 px-3 text-slate-600 font-sans">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
           <td class="py-2 px-3 font-sans">${badge}</td>
           <td class="py-2 px-3 font-sans">${this.getModeBadge(t.mode)}</td>
-          <td class="py-2 px-3 text-slate-400 font-sans text-[11px]">${this.escapeHtml(t.refNumber || '-')}</td>
-          <td class="py-2 px-3 text-right font-semibold ${isIncome ? 'text-emerald-400' : 'text-rose-400'}">${FinanceAnalytics.formatINR(t.amount)}</td>
+          <td class="py-2 px-3 text-slate-500 font-sans text-[11px]">${this.escapeHtml(t.refNumber || '-')}</td>
+          <td class="py-2 px-3 text-right font-semibold ${isIncome ? 'text-emerald-600' : 'text-rose-600'}">${FinanceAnalytics.formatINR(t.amount)}</td>
         </tr>
       `;
     }).join('');
@@ -713,15 +718,15 @@ class FinanceApp {
     if (items.length > 0) {
       previewBox.classList.remove('hidden');
       previewBox.innerHTML = `
-        <span class="text-emerald-400 font-bold block mb-1">Found ${items.length} valid transactions to import:</span>
-        <ul class="list-disc pl-4 space-y-0.5 text-[11px]">
+        <span class="text-emerald-700 font-bold block mb-1">Found ${items.length} valid transactions to import:</span>
+        <ul class="list-disc pl-4 space-y-0.5 text-[11px] text-slate-700">
           ${items.slice(0, 3).map(x => `<li>${FinanceAnalytics.formatDateDisplay(x.date)}: ${x.partyName} (${FinanceAnalytics.formatINR(x.amount)}) [${x.type}]</li>`).join('')}
-          ${items.length > 3 ? `<li class="text-slate-500 font-italic">...and ${items.length - 3} more</li>` : ''}
+          ${items.length > 3 ? `<li class="text-slate-400 font-italic">...and ${items.length - 3} more</li>` : ''}
         </ul>
       `;
     } else {
       previewBox.classList.remove('hidden');
-      previewBox.innerHTML = `<span class="text-amber-400">Could not parse tabular rows from text. Check headers or paste directly.</span>`;
+      previewBox.innerHTML = `<span class="text-amber-700">Could not parse tabular rows from text. Check headers or paste directly.</span>`;
     }
   }
 
@@ -782,9 +787,9 @@ class FinanceApp {
 
     const toast = document.createElement('div');
     const colors = {
-      success: 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40',
-      error: 'bg-rose-950/90 text-rose-300 border-rose-500/40',
-      info: 'bg-slate-900/95 text-sky-300 border-sky-500/40'
+      success: 'bg-white text-emerald-800 border-emerald-300 shadow-md',
+      error: 'bg-white text-rose-800 border-rose-300 shadow-md',
+      info: 'bg-white text-sky-800 border-sky-300 shadow-md'
     };
 
     const icons = {
@@ -793,7 +798,7 @@ class FinanceApp {
       info: 'info'
     };
 
-    toast.className = `p-3.5 rounded-xl border shadow-xl flex items-center space-x-2.5 text-xs font-medium animate-fade-in pointer-events-auto transition-all ${colors[type] || colors.info}`;
+    toast.className = `p-3.5 rounded-xl border shadow-lg flex items-center space-x-2.5 text-xs font-medium animate-fade-in pointer-events-auto transition-all ${colors[type] || colors.info}`;
     toast.innerHTML = `
       <i data-lucide="${icons[type] || 'info'}" class="w-4 h-4 flex-shrink-0"></i>
       <span>${this.escapeHtml(message)}</span>
