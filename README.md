@@ -1,7 +1,14 @@
 # Dharshithan Waterproofing - Finance Tracker Pro
 
+<p align="center">
+  <img src="assets/logo.webp" alt="Dharshithan Waterproofing Logo" width="120" style="border-radius: 16px;" />
+  <br>
+  <strong>High-End Finance & Cashflow Tracking Software</strong><br>
+  <em>Designed for Dharshithan Waterproofing & Complete Solutions</em>
+</p>
+
 A high-end, responsive, enterprise-grade financial management software designed specifically for **Dharshithan Waterproofing**, modeled directly on the company's master Google Spreadsheet:
-> [Google Spreadsheet Source](https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing)
+> [Master Google Spreadsheet Source](https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing)
 
 ---
 
@@ -46,22 +53,47 @@ A high-end, responsive, enterprise-grade financial management software designed 
 
 ---
 
-## 🚀 Quick Start (Regular Use)
+## 🚀 How to Push to GitHub
 
-### Windows Users
-Simply double-click `start-app.bat` or open `index.html` in Google Chrome, Microsoft Edge, or any modern web browser.
+Git has already been initialized in this folder with all files committed on the `main` branch.
 
-### Daily Workflow
-1. **Record Daily Receipts & Expenses**:
-   - Click the green **"Add Transaction"** button (or press `Ctrl + N`).
-   - Fill in Date, Party Name, Amount (₹), Payment Mode, and Ref/Invoice details.
-   - Quarter and Fiscal Year are auto-computed.
-2. **Review Cash vs Bank**:
-   - Check the **Bank Liquidity Position** widget on the dashboard to see if funds are in the bank or held as physical cash.
-3. **Monthly / Quarterly Reporting**:
-   - Go to the **P&L Reports** tab and click **"Print Statement"** for client or management reviews.
-4. **Sync with Master Google Sheet**:
-   - Click **"Copy for Sheets"** in the top bar, switch to your Google Sheet tab, and press `Ctrl + V` on row 2 of `Sheet1`.
+### Option 1: Using the 1-Click Script
+1. Create a new empty repository on [GitHub](https://github.com/new) (e.g., named `dharshithan-finance-tracker`).
+2. Double-click `push-to-github.bat` in this folder.
+3. Paste your GitHub repo URL (e.g. `https://github.com/<your-username>/dharshithan-finance-tracker.git`) and press Enter!
+
+### Option 2: Using the Command Line
+```powershell
+# Set your remote origin (replace with your repo URL)
+git remote add origin https://github.com/<your-username>/dharshithan-finance-tracker.git
+git branch -M main
+git push -u origin main
+```
+
+---
+
+## ⚡ How to Deploy to Vercel (Instant Live Website)
+
+Once your code is pushed to GitHub, you can run this as a live web application in seconds:
+
+1. **Sign in to Vercel**:
+   Go to [vercel.com](https://vercel.com) and log in (or sign up using your GitHub account).
+2. **Add New Project**:
+   Click **"Add New..."** → **"Project"**.
+3. **Import from GitHub**:
+   Select your repository `dharshithan-finance-tracker` from the list and click **"Import"**.
+4. **Deploy**:
+   - Framework Preset: **Other** (detected automatically)
+   - Root Directory: `./` (default)
+   - Configuration is already pre-set in `vercel.json`!
+   - Click **"Deploy"**!
+5. **Access Your Live App**:
+   In ~10–15 seconds, Vercel will give you a live production URL:  
+   `https://dharshithan-finance-tracker.vercel.app`
+
+You and your team can now access and use the finance tracker anytime from:
+- Any desktop or laptop browser
+- Any smartphone (Android/iPhone) with full responsive touch support!
 
 ---
 
@@ -70,12 +102,15 @@ Simply double-click `start-app.bat` or open `index.html` in Google Chrome, Micro
 ```
 Dharshithan Finance Tracker/
 ├── index.html            # Main single-page application interface
-├── start-app.bat         # 1-click Windows launcher
+├── vercel.json           # Vercel deployment configuration & caching rules
+├── start-app.bat         # 1-click Windows launcher (opens locally)
+├── push-to-github.bat    # 1-click GitHub push assistant
 ├── README.md             # Documentation and developer guide
 ├── assets/
-│   └── favicon.svg       # Custom branded logo
+│   ├── logo.webp         # Official Dharshithan Waterproofing logo
+│   └── favicon.webp      # Official branded browser favicon
 ├── css/
-│   └── styles.css        # Enterprise styling, custom scrollbars, print stylesheet
+│   └── styles.css        # Enterprise styling, custom badges, print stylesheet
 └── js/
     ├── app.js            # Main application controller, view switching, modal logic
     ├── db.js             # IndexedDB & LocalStorage persistent storage engine
@@ -83,15 +118,3 @@ Dharshithan Finance Tracker/
     ├── charts.js         # Interactive Chart.js visualizations
     └── export-import.js  # CSV/TSV Google Sheets exporter and importer
 ```
-
----
-
-## 🛠️ Developer & Future Expansion Guide
-
-### Packaging as a Desktop App
-If you wish to wrap this into an installable desktop `.exe` in the future:
-- **Tauri**: Fast and lightweight (~5MB executable using Windows WebView2).
-- **Electron**: Standard cross-platform wrapper.
-
-### Connecting Live Google Sheets API
-If real-time bidirectional syncing directly via Google Cloud Service Accounts or OAuth2 is desired, `js/export-import.js` is structured so an authenticated REST fetch to `https://sheets.googleapis.com/v4/spreadsheets/...` can be dropped right in.
