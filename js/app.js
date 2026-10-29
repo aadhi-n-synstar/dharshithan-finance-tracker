@@ -41,6 +41,29 @@ class FinanceApp {
     // Setup Google Sheets Live Sync listeners
     this.setupSyncListener();
 
+    // Populate initial FY dropdown dynamically
+    await this.refreshData();
+
+    // Automatically pull latest data from Google Sheets immediately on launch
+    if (window.googleSync && window.googleSync.isConfigured()) {
+      await this.pullFromGoogleSheets({ silent: true });
+    }
+
+    // Auto-sync polling every 30 seconds
+    setInterval(() => {
+      this.pullFromGoogleSheets({ silent: true });
+    }, 30000);
+
+    // Refresh when user returns to window/tab
+    window.addEventListener('focus', () => {
+      this.pullFromGoogleSheets({ silent: true });
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.pullFromGoogleSheets({ silent: true });
+      }
+    });
+
     // Set today's date in transaction modal
     const today = new Date().toISOString().slice(0, 10);
     const dateInput = document.getElementById('modalDate');
@@ -68,9 +91,7 @@ class FinanceApp {
         this.closeAllModals();
       } else if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        if (window.roleManager && window.roleManager.can('canAdd')) {
-          this.openTransactionModal();
-        }
+        this.openMasterGoogleSheet();
       }
     });
 
@@ -509,10 +530,10 @@ class FinanceApp {
         
         <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px] text-slate-500">
           <span class="truncate max-w-[180px]">${t.refNumber ? `Ref: ${this.escapeHtml(t.refNumber)}` : `#${t.slNo}`}</span>
-          <div class="flex items-center space-x-2">
-            ${canEdit ? `<button onclick="app.editTransaction('${t.id}')" class="text-sky-600 font-semibold p-1">Edit</button>` : ''}
-            ${canDelete ? `<button onclick="app.deleteTransaction('${t.id}')" class="text-rose-600 font-semibold p-1">Delete</button>` : ''}
-          </div>
+          <button onclick="app.viewTransactionDetails('${t.id}')" class="text-sky-700 font-semibold px-2 py-0.5 rounded-lg bg-sky-50 border border-sky-200 flex items-center space-x-1">
+            <i data-lucide="eye" class="w-3 h-3"></i>
+            <span>View Details</span>
+          </button>
         </div>
       </div>
     `;
@@ -543,9 +564,6 @@ class FinanceApp {
     let sumIncome = 0;
     let sumExpense = 0;
 
-    const canEdit = window.roleManager ? window.roleManager.can('canEdit') : true;
-    const canDelete = window.roleManager ? window.roleManager.can('canDelete') : true;
-
     if (tbody) {
       tbody.innerHTML = this.filteredTransactions.map(t => {
         const isIncome = t.type.includes('Received') || t.type.includes('Income');
@@ -575,19 +593,10 @@ class FinanceApp {
             <td class="py-2.5 px-2 text-center text-slate-500 font-mono text-[11px]">${t.quarter || '-'}</td>
             <td class="py-2.5 px-3 text-right font-mono font-semibold ${profitClass}">${FinanceAnalytics.formatINR(t.profitValue)}</td>
             <td class="py-2.5 px-3 text-center">
-              <div class="flex items-center justify-center space-x-1.5">
-                ${canEdit ? `
-                  <button onclick="app.editTransaction('${t.id}')" title="Edit" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-sky-600 transition">
-                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                  </button>
-                ` : ''}
-                ${canDelete ? `
-                  <button onclick="app.deleteTransaction('${t.id}')" title="Delete" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition">
-                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                  </button>
-                ` : ''}
-                ${!canEdit && !canDelete ? `<span class="text-[10px] text-slate-400">View</span>` : ''}
-              </div>
+              <button onclick="app.viewTransactionDetails('${t.id}')" title="View Transaction Details" class="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 text-[11px] font-semibold flex items-center justify-center space-x-1 border border-sky-200 mx-auto transition">
+                <i data-lucide="eye" class="w-3.5 h-3.5 text-sky-600"></i>
+                <span>View</span>
+              </button>
             </td>
           </tr>
         `;
@@ -799,45 +808,8 @@ class FinanceApp {
 
   // MODAL HANDLERS
   openTransactionModal(editId = null) {
-    if (window.roleManager && !window.roleManager.can('canAdd') && !editId) {
-      this.showToast('Your role does not have permission to add new transactions.', 'error');
-      return;
-    }
-
-    this.editingId = editId;
-    const modal = document.getElementById('txnModal');
-    const title = document.getElementById('modalTitle');
-    const form = document.getElementById('txnForm');
-
-    form.reset();
-
-    if (editId) {
-      const item = this.transactions.find(t => t.id === editId);
-      if (!item) return;
-
-      title.innerHTML = `<i data-lucide="edit-3" class="w-5 h-5 text-sky-600"></i><span>Edit Transaction #${item.slNo}</span>`;
-      document.getElementById('txnId').value = item.id;
-      document.getElementById('modalDate').value = item.date;
-      document.getElementById('modalParty').value = item.partyName;
-      document.getElementById('modalAmount').value = item.amount;
-      document.getElementById('modalMode').value = item.mode || 'CASH';
-      document.getElementById('modalCategory').value = item.category || '';
-      document.getElementById('modalRef').value = item.refNumber || '';
-      document.getElementById('modalDesc').value = item.description || '';
-
-      const isIncome = item.type.includes('Received') || item.type.includes('Income');
-      const radio = document.querySelector(`input[name="modalType"][value="${isIncome ? 'Received / Income' : 'Paid / Expense'}"]`);
-      if (radio) radio.checked = true;
-    } else {
-      title.innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-emerald-600"></i><span>Add New Transaction</span>`;
-      document.getElementById('txnId').value = '';
-      document.getElementById('modalDate').value = new Date().toISOString().slice(0, 10);
-      document.getElementById('modalMode').value = 'CASH';
-    }
-
-    modal.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-    document.getElementById('modalParty').focus();
+    this.showToast('Entries are strictly maintained in Google Sheets. Opening master spreadsheet...', 'info');
+    this.openMasterGoogleSheet();
   }
 
   closeTransactionModal() {
@@ -1038,31 +1010,129 @@ class FinanceApp {
     }
   }
 
-  async pullFromGoogleSheets() {
+  async pullFromGoogleSheets(options = {}) {
+    const isSilent = options.silent === true;
     if (!window.googleSync || !window.googleSync.isConfigured()) {
-      this.showToast('Please configure Google Apps Script Web App URL first', 'error');
-      this.openSyncModal();
+      if (!isSilent) {
+        this.showToast('Please configure Google Apps Script Web App URL first', 'error');
+        this.openSyncModal();
+      }
       return;
     }
 
+    const icons = [
+      document.getElementById('headerSyncIcon'),
+      document.getElementById('fabSyncIcon'),
+      document.getElementById('navSyncIcon')
+    ];
+    icons.forEach(i => { if (i) i.classList.add('animate-spin'); });
+
     try {
-      this.showToast('Fetching latest from Google Sheets...', 'info');
+      if (!isSilent) this.showToast('Fetching latest from Google Sheets...', 'info');
       const remoteItems = await window.googleSync.fetchFromSheet();
       if (!remoteItems || !remoteItems.length) {
-        this.showToast('No entries found in Google Sheet', 'info');
+        if (!isSilent) this.showToast('No entries found in Google Sheet', 'info');
         return;
       }
 
       await window.financeDB.clearAll();
       for (const item of remoteItems) {
+        if (!item.financialYear || !item.quarter) {
+          const meta = FinanceDB.getFinancialMetadata(item.date);
+          item.financialYear = item.financialYear || meta.financialYear;
+          item.quarter = item.quarter || meta.quarter;
+        }
         await window.financeDB.add(item, true);
       }
       window.financeDB.notify();
-      this.showToast(`Fetched & updated ${remoteItems.length} transactions strictly from Google Sheets!`, 'success');
-      this.closeSyncModal();
+      this.updateLastSyncTimeDisplay();
+      if (!isSilent) {
+        this.showToast(`Fetched & updated ${remoteItems.length} transactions from Google Sheets!`, 'success');
+        this.closeSyncModal();
+      }
     } catch (e) {
-      this.showToast('Pull failed: ' + e.message, 'error');
+      console.warn('Pull failed:', e);
+      if (!isSilent) this.showToast('Pull failed: ' + e.message, 'error');
+    } finally {
+      setTimeout(() => {
+        icons.forEach(i => { if (i) i.classList.remove('animate-spin'); });
+      }, 500);
     }
+  }
+
+  updateLastSyncTimeDisplay() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const count = this.transactions ? this.transactions.length : 0;
+    
+    const bannerEl = document.getElementById('lastSyncBannerText');
+    if (bannerEl) bannerEl.textContent = `Synced at ${timeStr} • ${count} entries live`;
+
+    const statusText = document.getElementById('syncStatusText');
+    if (statusText) statusText.textContent = `Synced ${timeStr}`;
+  }
+
+  openMasterGoogleSheet() {
+    window.open('https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing', '_blank');
+  }
+
+  viewTransactionDetails(id) {
+    const item = this.transactions.find(t => t.id === id);
+    if (!item) return;
+
+    const modal = document.getElementById('txnDetailModal');
+    if (!modal) return;
+
+    const isIncome = item.type.includes('Received') || item.type.includes('Income');
+    const badgeEl = document.getElementById('detailTypeBadge');
+    if (badgeEl) {
+      badgeEl.className = isIncome 
+        ? 'w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs' 
+        : 'w-8 h-8 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center font-bold text-xs';
+      badgeEl.textContent = isIncome ? 'IN' : 'OUT';
+    }
+
+    const partyEl = document.getElementById('detailPartyName');
+    if (partyEl) partyEl.textContent = item.partyName;
+
+    const subEl = document.getElementById('detailSlNoDate');
+    if (subEl) subEl.textContent = `Entry #${item.slNo} • ${FinanceAnalytics.formatDateDisplay(item.date)} • ${item.quarter || 'Q3'}`;
+
+    const amtEl = document.getElementById('detailAmount');
+    if (amtEl) amtEl.textContent = FinanceAnalytics.formatINR(item.amount);
+
+    const profitEl = document.getElementById('detailProfit');
+    if (profitEl) {
+      const pVal = Number(item.profitValue) || 0;
+      profitEl.textContent = FinanceAnalytics.formatINR(pVal);
+      profitEl.className = pVal >= 0 ? 'font-mono font-bold text-lg text-emerald-600' : 'font-mono font-bold text-lg text-rose-600';
+    }
+
+    const modeEl = document.getElementById('detailMode');
+    if (modeEl) modeEl.innerHTML = this.getModeBadge(item.mode);
+
+    const refEl = document.getElementById('detailRefNumber');
+    if (refEl) refEl.textContent = item.refNumber || '-';
+
+    const qfyEl = document.getElementById('detailQuarterFY');
+    if (qfyEl) qfyEl.textContent = `${item.quarter || 'Q3'} • ${item.financialYear || 'F.Y. 2026-27'}`;
+
+    const catEl = document.getElementById('detailCategory');
+    if (catEl) catEl.textContent = item.category || (isIncome ? 'Revenue' : 'Operating Expense');
+
+    const descEl = document.getElementById('detailDescription');
+    if (descEl) descEl.textContent = item.description || 'No description entered.';
+
+    const rowEl = document.getElementById('detailSheetRow');
+    if (rowEl) rowEl.textContent = `#${(Number(item.slNo) || 1) + 1}`;
+
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeTransactionDetailModal() {
+    const modal = document.getElementById('txnDetailModal');
+    if (modal) modal.classList.add('hidden');
   }
 
   // PARTY MODAL
@@ -1124,6 +1194,7 @@ class FinanceApp {
   }
 
   closeAllModals() {
+    this.closeTransactionDetailModal();
     this.closeTransactionModal();
     this.closePartyModal();
     this.closeSyncModal();

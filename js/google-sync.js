@@ -1,15 +1,31 @@
 /**
  * Dharshithan Waterproofing - Finance Tracker
  * Real-Time Google Sheets Live Sync Engine
+ * Strictly synchronized with master Google Spreadsheet:
+ * Sheet: https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing
+ * Web App: https://script.google.com/macros/s/AKfycbyqdg6OETWiEEc2r_aWvXPJ68CkMbGoPVwcbCCG1yYmSWyrFmRAfIDW2aVPufsiDFn7YQ/exec
  */
+
+const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyqdg6OETWiEEc2r_aWvXPJ68CkMbGoPVwcbCCG1yYmSWyrFmRAfIDW2aVPufsiDFn7YQ/exec';
+const MASTER_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing';
 
 class GoogleSheetsSync {
   constructor() {
     this.storageKey = 'dharshithan_gsheet_webhook';
     this.queueKey = 'dharshithan_sync_queue';
-    this.syncUrl = localStorage.getItem(this.storageKey) || '';
+    this.sheetUrl = MASTER_SHEET_URL;
+    
+    // Always pre-populate the verified Web App URL
+    const stored = localStorage.getItem(this.storageKey);
+    this.syncUrl = stored ? stored.trim() : DEFAULT_WEBHOOK_URL;
+    if (!stored) {
+      localStorage.setItem(this.storageKey, this.syncUrl);
+    }
+
     this.isSyncing = false;
     this.statusListeners = [];
+    this.lastSyncTimestamp = null;
+    this.lastRowCount = 0;
 
     // Auto-retry when connection comes back online
     window.addEventListener('online', () => {
@@ -18,17 +34,17 @@ class GoogleSheetsSync {
   }
 
   getWebhookUrl() {
-    return this.syncUrl;
+    return this.syncUrl || DEFAULT_WEBHOOK_URL;
+  }
+
+  getSheetUrl() {
+    return this.sheetUrl;
   }
 
   setWebhookUrl(url) {
-    this.syncUrl = (url || '').trim();
-    if (this.syncUrl) {
-      localStorage.setItem(this.storageKey, this.syncUrl);
-    } else {
-      localStorage.removeItem(this.storageKey);
-    }
-    this.notifyStatus(this.syncUrl ? 'configured' : 'unconfigured');
+    this.syncUrl = (url || DEFAULT_WEBHOOK_URL).trim();
+    localStorage.setItem(this.storageKey, this.syncUrl);
+    this.notifyStatus(this.isConfigured() ? 'connected' : 'unconfigured');
   }
 
   isConfigured() {
@@ -175,20 +191,31 @@ class GoogleSheetsSync {
   }
 
   /**
-   * Pull latest rows from Google Sheet
+   * Pull latest rows directly from Google Sheets Web App
    */
   async fetchFromSheet() {
     if (!this.isConfigured()) return null;
-    this.notifyStatus('syncing', 'Fetching latest from Google Sheet...');
+    this.notifyStatus('syncing', 'Fetching live from Google Sheet...');
     try {
-      const res = await fetch(this.syncUrl + '?t=' + Date.now());
+      const sep = this.syncUrl.includes('?') ? '&' : '?';
+      const endpoint = `${this.syncUrl}${sep}action=getAll&t=${Date.now()}`;
+      
+      const res = await fetch(endpoint, {
+        method: 'GET',
+        redirect: 'follow',
+        headers: { 'Accept': 'application/json' }
+      });
+
       const data = await res.json();
       if (data && data.success && Array.isArray(data.transactions)) {
-        this.notifyStatus('connected', `Fetched ${data.transactions.length} rows`);
+        this.lastSyncTimestamp = new Date();
+        this.lastRowCount = data.transactions.length;
+        this.notifyStatus('connected', `Synced ${data.transactions.length} entries`);
         return data.transactions;
       }
       return null;
     } catch (err) {
+      console.error('Failed to fetch from Google Sheet Web App:', err);
       this.notifyStatus('error', 'Failed to fetch from Google Sheet');
       return null;
     }

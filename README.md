@@ -34,15 +34,18 @@ Seamlessly scale from Google Sheets to a production cloud database:
 - **1-Click SQL Migration**: Export all live transactions as PostgreSQL-ready `INSERT` statements with a single click in the Database Hub.
 - **Provider Switching**: Toggle effortlessly between **Google Sheets Master** mode and **PostgreSQL (Supabase/Neon/Vercel)** with connection health verification.
 
-### 4. 🔄 Immediate 2-Way Google Sheets Sync
-- **Strict Real-Time Reflection**: Any entry added, edited, or deleted inside the application is immediately synced with the master Google Sheet.
-- **Offline Resilient Queue**: If internet drops on-site, changes are queued locally in IndexedDB and automatically synced as soon as internet connectivity returns.
-- **Bidirectional Pull & Push**: Synchronize existing spreadsheet rows or push full local state to remote sheets on demand.
+### 4. 🔄 Real-Time Google Sheets Live Connection (Read-Only Mode)
+- **Master Data Source**: Entries are strictly maintained in the master Google Spreadsheet ([View Sheet](https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing)).
+- **Pre-Configured Web App**: Pre-connected to Google Apps Script Web App endpoint:
+  `https://script.google.com/macros/s/AKfycbyqdg6OETWiEEc2r_aWvXPJ68CkMbGoPVwcbCCG1yYmSWyrFmRAfIDW2aVPufsiDFn7YQ/exec`
+- **Auto-Sync on Launch & Background Polling**: Automatically pulls and synchronizes latest rows on initial load, every 30 seconds, and whenever the browser tab regains focus.
+- **Deep Voucher Details Viewer**: Clicking any transaction displays a comprehensive read-only detail card with exact amount, P&L profit impact, mode, reference numbers, and spreadsheet row location.
+- **Direct 1-Click Spreadsheet Access**: Quick header, ledger, and detail buttons to open the Google Sheet whenever new entries or edits need to be recorded.
 
 ### 5. 📱 Native Android App Experience (PWA)
 - **Installable PWA**: Runs full-screen as an app on any Android device via Google Chrome.
 - **Android Bottom Navigation Bar**: Quick navigation for Home, Ledger, Parties, P&L Reports, and Sync.
-- **Android Floating Action Button (FAB)**: Rapid entry button anchored at bottom-right for instant voucher recording on-site.
+- **Android Floating Action Button (FAB)**: Instant `🔄` Sync from Google Sheets button anchored at bottom-right for rapid on-site data refresh.
 - **Touch-Optimized Cards & Bottom Sheets**: Modern Material Design 3 inspired touch controls with crisp White/Light aesthetics.
 
 ---

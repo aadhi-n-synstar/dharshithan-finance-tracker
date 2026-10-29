@@ -115,18 +115,39 @@
         </button>
       </nav>
 
-      <!-- Add Transaction Button (Desktop Header) -->
-      <button onclick="app.openTransactionModal()" id="headerAddTxnBtn" class="hidden sm:flex px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs items-center space-x-1.5 transition-all transform active:scale-95">
-        <i data-lucide="plus-circle" class="w-4 h-4"></i>
-        <span>Add Transaction</span>
+      <!-- Live Sync / Refresh Button -->
+      <button onclick="app.pullFromGoogleSheets()" id="headerSyncBtn" class="flex px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-semibold shadow-2xs items-center space-x-1.5 transition-all transform active:scale-95" title="Fetch latest entries from Google Sheets">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="headerSyncIcon"></i>
+        <span class="hidden sm:inline">Sync Sheets</span>
       </button>
 
-      <!-- External Google Sheet Link -->
-      <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" title="Open Master Google Spreadsheet" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200 transition-colors flex items-center justify-center">
-        <i data-lucide="external-link" class="w-4 h-4"></i>
+      <!-- Open Master Google Sheet -->
+      <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" title="Entries are strictly maintained in Google Sheets. Open Spreadsheet to Add or Edit entries." class="flex px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs items-center space-x-1.5 transition-all transform active:scale-95">
+        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
+        <span class="hidden sm:inline">Master Sheet</span>
+        <i data-lucide="external-link" class="w-3 h-3 opacity-80"></i>
       </a>
     </div>
   </header>
+
+  <!-- Live Google Sheets Sync Status Bar -->
+  <div class="bg-emerald-50/90 border-b border-emerald-200/80 px-3.5 lg:px-8 py-1.5 flex flex-wrap items-center justify-between text-xs text-emerald-900 shadow-2xs">
+    <div class="flex items-center space-x-2">
+      <span class="flex h-2 w-2 relative">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+      </span>
+      <span class="font-bold text-emerald-900">Google Sheets Live Connected</span>
+      <span class="text-emerald-700 text-[11px] hidden md:inline">• Read-Only Executive Analytics Viewer (Entries are strictly maintained in Google Sheets)</span>
+    </div>
+    <div class="flex items-center space-x-3 text-[11px]">
+      <span id="lastSyncBannerText" class="text-emerald-800 font-mono">Synced from Google Sheets</span>
+      <button onclick="app.pullFromGoogleSheets()" class="font-bold text-emerald-800 hover:text-emerald-950 underline flex items-center space-x-1 cursor-pointer">
+        <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+        <span>Refresh Now</span>
+      </button>
+    </div>
+  </div>
 
   <!-- Global Filter & Period Bar -->
   <section class="bg-white border-b border-slate-200 px-3.5 lg:px-8 py-2 md:py-2.5 flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
@@ -494,10 +515,17 @@
           </select>
         </div>
 
-        <button onclick="app.openTransactionModal()" id="ledgerNewEntryBtn" class="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs">
-          <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-          <span>New Entry</span>
-        </button>
+        <div class="flex items-center space-x-2">
+          <button onclick="app.pullFromGoogleSheets()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold flex items-center space-x-1.5 shadow-2xs transition">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-sky-600"></i>
+            <span>Refresh</span>
+          </button>
+          <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition">
+            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+            <span>Edit / Add in Google Sheets</span>
+            <i data-lucide="external-link" class="w-3 h-3 opacity-80"></i>
+          </a>
+        </div>
       </div>
 
       <!-- Android Mobile Transaction Card Stream (<768px) -->
@@ -519,7 +547,7 @@
                 <th class="py-3 px-4">Ref / Remarks</th>
                 <th class="py-3 px-2 text-center">Quarter</th>
                 <th class="py-3 px-3 text-right">Profit Value</th>
-                <th class="py-3 px-3 text-center">Actions</th>
+                <th class="py-3 px-3 text-center">Details</th>
               </tr>
             </thead>
             <tbody id="transactions-table-body" class="divide-y divide-slate-100 font-sans"></tbody>
@@ -587,9 +615,9 @@
 
   </main>
 
-  <!-- ANDROID FLOATING ACTION BUTTON (FAB) -->
-  <button onclick="app.openTransactionModal()" id="androidFabBtn" class="android-fab md:hidden" aria-label="Add Transaction">
-    <i data-lucide="plus" class="w-7 h-7 stroke-[2.5]"></i>
+  <!-- ANDROID FLOATING ACTION BUTTON (Instant Sync from Google Sheets) -->
+  <button onclick="app.pullFromGoogleSheets()" id="androidFabBtn" class="android-fab md:hidden" aria-label="Sync from Google Sheets" title="Sync from Google Sheets">
+    <i data-lucide="refresh-cw" class="w-6 h-6 stroke-[2.5]" id="fabSyncIcon"></i>
   </button>
 
   <!-- ANDROID BOTTOM NAVIGATION BAR (<768px) -->
@@ -610,13 +638,91 @@
       <div class="nav-pill"><i data-lucide="pie-chart" class="w-5 h-5"></i></div>
       <span>P&L</span>
     </button>
-    <button onclick="app.openRoleModal()" id="nav-role" class="android-nav-item">
-      <div class="nav-pill"><i data-lucide="shield" class="w-5 h-5"></i></div>
-      <span>Role</span>
+    <button onclick="app.pullFromGoogleSheets()" id="nav-sync" class="android-nav-item">
+      <div class="nav-pill"><i data-lucide="refresh-cw" class="w-5 h-5" id="navSyncIcon"></i></div>
+      <span>Sync</span>
     </button>
   </nav>
 
-  <!-- TRANSACTION MODAL (Android Bottom Sheet on mobile) -->
+  <!-- TRANSACTION DETAIL MODAL (Read-Only Detail Viewer) -->
+  <div id="txnDetailModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 android-modal-container hidden">
+    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet">
+      <div class="android-sheet-handle sm:hidden"></div>
+
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center space-x-2.5">
+          <div id="detailTypeBadge" class="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-emerald-100 text-emerald-800">IN</div>
+          <div>
+            <h3 id="detailPartyName" class="text-base font-bold text-slate-900 leading-tight">Party Name</h3>
+            <p id="detailSlNoDate" class="text-xs text-slate-500">Sl No #1 • 01-Nov-2026</p>
+          </div>
+        </div>
+        <button onclick="app.closeTransactionDetailModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Amount and Profit impact -->
+      <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
+        <div>
+          <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Transaction Amount</p>
+          <p id="detailAmount" class="font-mono font-bold text-xl text-slate-900">₹0.00</p>
+        </div>
+        <div class="text-right">
+          <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Profit Value Impact</p>
+          <p id="detailProfit" class="font-mono font-bold text-lg text-emerald-600">+₹0.00</p>
+        </div>
+      </div>
+
+      <!-- Details Grid -->
+      <div class="grid grid-cols-2 gap-2.5 text-xs">
+        <div class="p-2.5 rounded-xl bg-white border border-slate-200">
+          <span class="text-slate-400 text-[10px] block font-medium uppercase">Payment Mode</span>
+          <span id="detailMode" class="font-semibold text-slate-800">CASH</span>
+        </div>
+        <div class="p-2.5 rounded-xl bg-white border border-slate-200">
+          <span class="text-slate-400 text-[10px] block font-medium uppercase">Reference / Bill #</span>
+          <span id="detailRefNumber" class="font-mono font-semibold text-slate-800">-</span>
+        </div>
+        <div class="p-2.5 rounded-xl bg-white border border-slate-200">
+          <span class="text-slate-400 text-[10px] block font-medium uppercase">Quarter / FY</span>
+          <span id="detailQuarterFY" class="font-semibold text-slate-800">Q3 • F.Y. 2026-27</span>
+        </div>
+        <div class="p-2.5 rounded-xl bg-white border border-slate-200">
+          <span class="text-slate-400 text-[10px] block font-medium uppercase">Category</span>
+          <span id="detailCategory" class="font-semibold text-slate-800">Operational</span>
+        </div>
+      </div>
+
+      <!-- Description / Purpose -->
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
+        <span class="text-slate-400 text-[10px] block font-medium uppercase mb-0.5">Description / Remarks</span>
+        <p id="detailDescription" class="text-xs text-slate-700 font-medium whitespace-pre-wrap">No description</p>
+      </div>
+
+      <!-- Google Sheets Master Notice -->
+      <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start space-x-2.5 text-xs text-emerald-900">
+        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5"></i>
+        <div class="flex-1">
+          <span class="font-bold">Strictly Maintained in Google Sheets</span>
+          <p class="text-[11px] text-emerald-700 mt-0.5">Entries are strictly maintained in Google Sheets. To edit or delete this entry, update row <span id="detailSheetRow" class="font-mono font-bold">#</span> in your master spreadsheet.</p>
+        </div>
+      </div>
+
+      <!-- Action buttons -->
+      <div class="flex items-center space-x-2 pt-1">
+        <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition">
+          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+          <span>Open Master Google Sheet</span>
+        </a>
+        <button onclick="app.closeTransactionDetailModal()" class="py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSACTION MODAL (Notice: Data entry is handled in Google Sheets) -->
   <div id="txnModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 android-modal-container hidden">
     <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet">
       <div class="android-sheet-handle sm:hidden"></div>
