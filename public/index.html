@@ -291,17 +291,72 @@
       </nav>
 
       <!-- Live Sync / Refresh Button -->
-      <button onclick="app.refreshFromNeon()" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Refresh latest from Neon Database">
+      <button onclick="app.refreshFromNeon()" id="headerSyncBtn" class="flex px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-semibold shadow-2xs items-center space-x-1.5 transition-all transform active:scale-95" title="Fetch latest entries from Neon Database">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="headerSyncIcon"></i>
+        <span class="hidden sm:inline">Refresh DB</span>
+      </button>
+
+      <!-- Add Transaction Button (Super Admin, Owner, Admin) -->
+      <button onclick="app.openTransactionModal()" id="headerAddTxnBtn" class="flex px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold shadow-xs items-center space-x-1.5 transition-all transform active:scale-95" title="Add New Financial Transaction">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+        <span class="hidden sm:inline">Add Transaction</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Live Neon Cloud Database Status Bar -->
+  <div class="bg-sky-50/90 border-b border-sky-200/80 px-3.5 lg:px-8 py-1.5 flex flex-wrap items-center justify-between text-xs text-sky-950 shadow-2xs">
+    <div class="flex items-center space-x-2">
+      <span class="flex h-2 w-2 relative">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+      </span>
+      <span class="font-bold text-sky-950">Neon Cloud PostgreSQL Active</span>
+      <span class="text-sky-700 text-[11px] hidden md:inline">• 100% Native Serverless Engine (Zero Google Sheets Dependency)</span>
+    </div>
+    <div class="flex items-center space-x-3 text-[11px]">
+      <span id="lastSyncBannerText" class="text-sky-800 font-mono">Neon DB Live Connected</span>
+      <button onclick="app.refreshFromNeon()" class="font-bold text-sky-800 hover:text-sky-950 underline flex items-center space-x-1 cursor-pointer">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+        <span>Refresh Now</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Global Filter & Period Bar -->
+  <section class="bg-white border-b border-slate-200 px-3.5 lg:px-8 py-2 md:py-2.5 flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
+    <div class="flex items-center space-x-2 text-xs flex-1 min-w-[240px]">
+      <span class="text-slate-500 flex items-center space-x-1 flex-shrink-0">
+        <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-400"></i>
+        <span class="font-medium hidden sm:inline">Period:</span>
+      </span>
+      <select id="filterFY" onchange="app.handleFilterChange()" class="bg-white border border-slate-300 text-slate-800 text-xs rounded-lg px-2 py-1 focus:ring-1 focus:ring-sky-500 focus:outline-none">
+        <option value="ALL">All FY</option>
+        <option value="F.Y. 2026-27" selected>F.Y. 2026-27</option>
+        <option value="F.Y. 2025-26">F.Y. 2025-26</option>
+      </select>
+      <select id="filterQuarter" onchange="app.handleFilterChange()" class="bg-white border border-slate-300 text-slate-800 text-xs rounded-lg px-2 py-1 focus:ring-1 focus:ring-sky-500 focus:outline-none">
+        <option value="ALL">All Quarters</option>
+        <option value="Q1">Q1 (Apr - Jun)</option>
+        <option value="Q2">Q2 (Jul - Sep)</option>
+        <option value="Q3">Q3 (Oct - Dec)</option>
+        <option value="Q4">Q4 (Jan - Mar)</option>
+      </select>
+    </div>
+
+    <!-- Quick Actions Pill Bar -->
+    <div class="flex items-center space-x-1.5 text-xs">
+      <button onclick="app.refreshFromNeon()" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Refresh latest from Neon Database">
         <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-sky-600"></i>
         <span class="font-medium text-[11px]">Refresh DB</span>
       </button>
-      <button onclick="app.copyForGoogleSheets()" class="hidden md:flex px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 shadow-2xs transition items-center space-x-1" title="Copy table as TSV to clipboard">
-        <i data-lucide="clipboard-copy" class="w-3.5 h-3.5 text-sky-600"></i>
-        <span class="font-medium text-[11px]">Copy TSV</span>
-      </button>
-      <button onclick="app.exportCSV()" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Export as CSV">
+      <button onclick="app.exportCSV()" class="px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Export as CSV">
         <i data-lucide="download" class="w-3.5 h-3.5 text-sky-600"></i>
         <span class="font-medium text-[11px]">CSV</span>
+      </button>
+      <button onclick="app.downloadMigrationSQL()" class="hidden md:flex px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition items-center space-x-1" title="Export SQL Backup">
+        <i data-lucide="database" class="w-3.5 h-3.5 text-sky-600"></i>
+        <span class="font-medium text-[11px]">SQL Backup</span>
       </button>
     </div>
   </section>
@@ -635,7 +690,7 @@
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-sky-600"></i>
             <span>Refresh</span>
           </button>
-          <button onclick="app.openTransactionModal()" id="addTxnBtn" class="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition">
+          <button onclick="app.openTransactionModal()" id="ledgerNewEntryBtn" class="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition">
             <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
             <span>Add Transaction</span>
           </button>

@@ -1,5 +1,5 @@
 // Dharshithan Finance Tracker - Service Worker
-const CACHE_NAME = 'dharshithan-cache-v2';
+const CACHE_NAME = 'dharshithan-cache-v3';
 const ASSETS = [
   './',
   './index.html',

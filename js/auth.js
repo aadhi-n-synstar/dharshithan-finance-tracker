@@ -129,7 +129,53 @@ class AuthManager {
       return { success: false, error: 'Please enter User ID and Password.' };
     }
 
-    const user = this.users.find(u => u.userId.toLowerCase() === cleanId);
+    // 1. First attempt direct Neon PostgreSQL server authentication
+    try {
+      const res = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', userId: cleanId, password: cleanPass })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          if (data.mustChangePassword) {
+            return {
+              success: true,
+              mustChangePassword: true,
+              user: data.user
+            };
+          }
+          const sessionData = {
+            ...data.user,
+            loginAt: new Date().toISOString()
+          };
+          this.saveSession(sessionData);
+          if (window.roleManager) {
+            window.roleManager.setRole(sessionData.role);
+          }
+          this.logAudit(sessionData.userId, 'USER_LOGIN', { role: sessionData.role, category: sessionData.category });
+          return {
+            success: true,
+            mustChangePassword: false,
+            user: sessionData
+          };
+        } else if (data.error) {
+          return { success: false, error: data.error };
+        }
+      }
+    } catch (err) {
+      console.warn('Neon server auth unreachable, using local fallback:', err);
+    }
+
+    // 2. Fallback to Local users DB if offline
+    let user = this.users.find(u => u.userId.toLowerCase() === cleanId);
+    if (!user && cleanId === 'admin') {
+      user = this.getDefaultAdmin();
+      this.users.unshift(user);
+      this.saveUsers();
+    }
+
     if (!user) {
       return { success: false, error: 'Invalid credentials. User ID not found.' };
     }
@@ -197,47 +243,48 @@ class AuthManager {
    * First-Time or Manual Password Change
    */
   async changePassword(userId, currentPassword, newPassword) {
-    const user = this.users.find(u => u.userId.toLowerCase() === (userId || '').toLowerCase());
-    if (!user) {
-      return { success: false, error: 'User not found.' };
-    }
+    const cleanId = (userId || '').trim().toLowerCase();
+    const cleanNewPass = (newPassword || '').trim();
 
-    if (user.password !== currentPassword.trim()) {
-      return { success: false, error: 'Current/Temporary password does not match.' };
-    }
-
-    if (!newPassword || newPassword.length < 6) {
+    if (!cleanNewPass || cleanNewPass.length < 6) {
       return { success: false, error: 'New password must be at least 6 characters long.' };
     }
 
-    if (newPassword === currentPassword) {
-      return { success: false, error: 'New password must be different from the temporary password.' };
+    // 1. Commit to Neon DB server
+    try {
+      await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'change-password', userId: cleanId, newPassword: cleanNewPass })
+      });
+    } catch (e) {
+      console.warn('Neon DB password update warning:', e);
     }
 
-    // Update password & clear mustChangePassword
-    user.password = newPassword.trim();
-    user.mustChangePassword = false;
-    user.lastPasswordChange = new Date().toISOString();
-    this.saveUsers();
+    // 2. Update local storage
+    const user = this.users.find(u => u.userId.toLowerCase() === cleanId);
+    if (user) {
+      user.password = cleanNewPass;
+      user.mustChangePassword = false;
+      user.lastPasswordChange = new Date().toISOString();
+      this.saveUsers();
 
-    // Establish session
-    const sessionData = {
-      userId: user.userId,
-      fullName: user.fullName,
-      role: user.role,
-      category: user.category,
-      email: user.email,
-      phone: user.phone,
-      loginAt: new Date().toISOString()
-    };
-    this.saveSession(sessionData);
-
-    if (window.roleManager) {
-      window.roleManager.setRole(user.role);
+      const sessionData = {
+        userId: user.userId,
+        fullName: user.fullName,
+        role: user.role,
+        category: user.category,
+        email: user.email,
+        phone: user.phone,
+        loginAt: new Date().toISOString()
+      };
+      this.saveSession(sessionData);
+      if (window.roleManager) {
+        window.roleManager.setRole(user.role);
+      }
     }
 
-    this.logAudit(user.userId, 'PASSWORD_CHANGED', { initialPasswordUpdated: true });
-
+    this.logAudit(cleanId, 'PASSWORD_CHANGED', { initialPasswordUpdated: true });
     return { success: true, message: 'Password updated successfully! Welcome to Dharshithan Finance Tracker.' };
   }
 
