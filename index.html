@@ -59,6 +59,211 @@
 </head>
 <body class="bg-[#f8fafc] text-slate-900 min-h-screen flex flex-col font-sans antialiased selection:bg-sky-500 selection:text-white pb-20 md:pb-6">
 
+  <!-- LOGIN OVERLAY / AUTH GATEWAY -->
+  <div id="loginOverlay" class="fixed inset-0 z-50 bg-[#f8fafc] overflow-y-auto flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-xl relative my-auto">
+      
+      <!-- Branding Header -->
+      <div class="text-center space-y-2">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-white p-1.5 shadow-md border border-slate-200 overflow-hidden flex items-center justify-center">
+          <img src="assets/logo.webp" alt="Dharshithan Waterproofing Logo" class="w-full h-full object-contain">
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-slate-900 tracking-tight">Dharshithan Finance Tracker</h2>
+          <p class="text-xs text-slate-500 font-medium">Enterprise Role-Based Financial Governance</p>
+        </div>
+      </div>
+
+      <!-- Login Form -->
+      <form id="loginForm" onsubmit="app.handleLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">User ID</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+            <input type="text" id="loginUserId" required autocomplete="username" placeholder="e.g. admin" class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-sky-500 transition">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-xs font-semibold text-slate-700">Password</label>
+            <button type="button" onclick="app.openForgotPasswordModal()" class="text-[11px] text-sky-600 hover:text-sky-700 font-semibold underline">Forgot Password?</button>
+          </div>
+          <div class="relative">
+            <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
+            <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="••••••••" class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-10 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-sky-500 transition">
+            <button type="button" onclick="app.toggleLoginPasswordVisibility()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5">
+              <i data-lucide="eye" id="loginPassEyeIcon" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" id="loginSubmitBtn" class="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition shadow-md flex items-center justify-center space-x-2">
+          <i data-lucide="log-in" class="w-4 h-4"></i>
+          <span>Sign In</span>
+        </button>
+      </form>
+
+      <!-- Super Admin Credentials Banner -->
+      <div class="p-3 rounded-2xl bg-purple-50 border border-purple-200 space-y-1.5">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-purple-900 flex items-center space-x-1">
+            <span>👑 Super Admin Credentials:</span>
+          </span>
+          <button onclick="app.fillCredentials('admin', 'admin@2026')" class="text-[10px] font-bold text-purple-700 hover:text-purple-900 bg-white px-2 py-0.5 rounded-lg border border-purple-200 shadow-2xs">
+            1-Click Autofill
+          </button>
+        </div>
+        <div class="font-mono text-[11px] text-purple-800 flex items-center justify-between">
+          <span>User ID: <strong class="text-purple-950 font-bold">admin</strong></span>
+          <span>Password: <strong class="text-purple-950 font-bold">admin@2026</strong></span>
+        </div>
+      </div>
+
+      <!-- Quick Role Personas Selector (For Testing All 6 Roles) -->
+      <div class="space-y-2 pt-2 border-t border-slate-100">
+        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block text-center">Test Other Role Personas</span>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button onclick="app.fillCredentials('owner', 'owner@2026')" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-left transition flex items-center space-x-2">
+            <span class="text-sm">👔</span>
+            <div>
+              <div class="font-bold text-slate-800 text-[11px]">Owner</div>
+              <div class="text-[9px] text-slate-400">owner / owner@2026</div>
+            </div>
+          </button>
+          <button onclick="app.fillCredentials('admin_finance', 'finance@2026')" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-left transition flex items-center space-x-2">
+            <span class="text-sm">🛡️</span>
+            <div>
+              <div class="font-bold text-slate-800 text-[11px]">Finance Admin</div>
+              <div class="text-[9px] text-slate-400">admin_finance</div>
+            </div>
+          </button>
+          <button onclick="app.fillCredentials('dev_lead', 'dev@2026')" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-left transition flex items-center space-x-2">
+            <span class="text-sm">💻</span>
+            <div>
+              <div class="font-bold text-slate-800 text-[11px]">Lead Developer</div>
+              <div class="text-[9px] text-slate-400">dev_lead</div>
+            </div>
+          </button>
+          <button onclick="app.fillCredentials('employee_david', 'david@2026')" class="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-left transition flex items-center space-x-2" title="Test First-Time Login Password Change!">
+            <span class="text-sm">👷</span>
+            <div>
+              <div class="font-bold text-amber-900 text-[11px]">Employee (1st Login)</div>
+              <div class="text-[9px] text-amber-700 font-semibold">Force Pass Change</div>
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIRST-TIME LOGIN PASSWORD CHANGE MODAL -->
+  <div id="firstLoginModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="glass-card bg-white rounded-3xl border border-slate-200 max-w-md w-full p-6 sm:p-7 space-y-4 shadow-2xl">
+      <div class="flex items-center space-x-3 text-amber-600">
+        <div class="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center">
+          <i data-lucide="shield-alert" class="w-5 h-5 text-amber-700"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Change Temporary Password</h3>
+          <p class="text-xs text-slate-500">First-time login security requirement</p>
+        </div>
+      </div>
+
+      <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+        <p>Hello <strong id="firstLoginTargetName">User</strong>! Your account was initialized with a temporary password. You must set a new secure personal password to activate your account.</p>
+      </div>
+
+      <form id="firstLoginForm" onsubmit="app.handleFirstLoginPasswordChange(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Current / Temporary Password</label>
+          <input type="password" id="firstLoginCurrentPass" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-sky-500">
+        </div>
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">New Secure Password</label>
+          <input type="password" id="firstLoginNewPass" minlength="6" required placeholder="At least 6 characters" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-sky-500">
+        </div>
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Confirm New Password</label>
+          <input type="password" id="firstLoginConfirmPass" minlength="6" required placeholder="Re-enter new password" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-sky-500">
+        </div>
+
+        <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-2 mt-4">
+          <i data-lucide="check-circle" class="w-4 h-4"></i>
+          <span>Activate Account & Continue</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- FORGOT PASSWORD & OTP MODAL -->
+  <div id="forgotPasswordModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="glass-card bg-white rounded-3xl border border-slate-200 max-w-md w-full p-6 sm:p-7 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-sky-100 flex items-center justify-center text-sky-700">
+            <i data-lucide="key-round" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Reset Password</h3>
+            <p class="text-xs text-slate-500">Verify via OTP sent to registered Mail ID</p>
+          </div>
+        </div>
+        <button onclick="app.closeForgotPasswordModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Step 1: Request OTP -->
+      <div id="forgotStep1" class="space-y-3 text-xs">
+        <p class="text-slate-600">Enter your User ID or registered Mail ID to receive a 6-digit OTP verification code.</p>
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">User ID or Mail ID</label>
+          <input type="text" id="forgotInputUserOrEmail" placeholder="admin or admin@dharshithan.com" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-sky-500">
+        </div>
+        <button onclick="app.handleRequestResetOTP()" class="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
+          <i data-lucide="send" class="w-3.5 h-3.5"></i>
+          <span>Send Verification OTP</span>
+        </button>
+      </div>
+
+      <!-- Step 2: Verify OTP & Enter New Password -->
+      <div id="forgotStep2" class="space-y-3.5 text-xs hidden">
+        <div class="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1">
+          <span class="font-bold text-emerald-900 flex items-center space-x-1">
+            <i data-lucide="mail-check" class="w-4 h-4 text-emerald-600"></i>
+            <span>Verification OTP Dispatched!</span>
+          </span>
+          <p class="text-[11px] text-emerald-800">OTP code sent to: <strong id="forgotDispatchedEmail"></strong></p>
+          <div class="flex items-center justify-between pt-1 font-mono text-[11px]">
+            <span>Test OTP: <strong id="forgotTestingOTP" class="text-emerald-950 font-bold bg-white px-2 py-0.5 rounded border border-emerald-300"></strong></span>
+            <button onclick="app.autofillOTP()" class="text-[10px] text-emerald-700 underline font-semibold">Autofill OTP</button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Enter 6-Digit OTP Code</label>
+          <input type="text" id="forgotOTPCode" maxlength="6" placeholder="123456" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-center text-lg font-mono tracking-widest text-slate-900 focus:outline-none focus:border-sky-500">
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Set New Password</label>
+          <input type="password" id="forgotNewPass" minlength="6" placeholder="At least 6 characters" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-sky-500">
+        </div>
+
+        <div class="flex space-x-2 pt-1">
+          <button onclick="app.handleVerifyOTPAndReset()" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Verify & Update Password</span>
+          </button>
+          <button onclick="app.closeForgotPasswordModal()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Top App Bar (Android / Desktop Header) -->
   <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3.5 lg:px-8 py-2.5 md:py-3.5 flex items-center justify-between shadow-xs">
     <div class="flex items-center space-x-2.5 md:space-x-3.5">
@@ -90,9 +295,19 @@
         <i data-lucide="refresh-cw" class="w-3 h-3 text-emerald-600"></i>
       </button>
 
+      <!-- User Management & RBAC Directory Button (Super Admin, Developer, Admin) -->
+      <button onclick="app.openUserManagementModal()" id="userMgmtBtn" class="p-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition flex items-center justify-center shadow-2xs" title="User Management & RBAC Directory (Super Admin, Developer, Admin)">
+        <i data-lucide="user-cog" class="w-4 h-4 text-purple-600"></i>
+      </button>
+
       <!-- Database Hub Button (Prime Database) -->
       <button onclick="app.openDatabaseHubModal()" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition flex items-center justify-center shadow-2xs" title="Enterprise Database Hub & Cloud Migration (Supabase / Neon / Vercel Postgres)">
         <i data-lucide="database" class="w-4 h-4 text-sky-600"></i>
+      </button>
+
+      <!-- Sign Out / Logout Button -->
+      <button onclick="app.handleLogout()" id="headerLogoutBtn" class="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition flex items-center justify-center shadow-2xs" title="Sign Out">
+        <i data-lucide="log-out" class="w-4 h-4"></i>
       </button>
 
       <!-- Desktop Nav Tabs -->
@@ -858,6 +1073,167 @@
     </div>
   </div>
 
+  <!-- USER MANAGEMENT & RBAC DIRECTORY MODAL (Super Admin, Developer & Admin Control) -->
+  <div id="userMgmtModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
+    <div class="glass-card bg-white rounded-3xl border border-slate-200 max-w-4xl w-full p-5 sm:p-7 space-y-4 shadow-2xl android-bottom-sheet max-h-[92vh] flex flex-col">
+      <div class="android-sheet-handle sm:hidden"></div>
+
+      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-700">
+            <i data-lucide="users-cog" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base md:text-lg font-bold text-slate-900">User Management & RBAC Directory</h3>
+            <p class="text-xs text-slate-500">Controlled under Super Admin, Developer & Admin permissions</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="app.openNewUserModal()" class="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-xs flex items-center space-x-1.5 transition">
+            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+            <span>Create New User</span>
+          </button>
+          <button onclick="app.downloadUserSQL()" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center space-x-1 transition" title="Export PostgreSQL Seed SQL">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">Export SQL</span>
+          </button>
+          <button onclick="app.closeUserManagementModal()" class="text-slate-400 hover:text-slate-600 p-1">
+            <i data-lucide="x" class="w-5 h-5"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Metrics -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+        <div class="p-2.5 rounded-2xl bg-purple-50/70 border border-purple-200">
+          <span class="text-[10px] text-purple-700 font-semibold uppercase block">Total Users</span>
+          <span id="mgmtStatTotalUsers" class="font-bold text-base text-purple-950 font-mono">6</span>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-sky-50/70 border border-sky-200">
+          <span class="text-[10px] text-sky-700 font-semibold uppercase block">Categories</span>
+          <span id="mgmtStatCategories" class="font-bold text-base text-sky-950 font-mono">5</span>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-amber-50/70 border border-amber-200">
+          <span class="text-[10px] text-amber-700 font-semibold uppercase block">Pending 1st Login</span>
+          <span id="mgmtStatPendingChanges" class="font-bold text-base text-amber-950 font-mono">1</span>
+        </div>
+        <div class="p-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-200">
+          <span class="text-[10px] text-emerald-700 font-semibold uppercase block">Active Sessions</span>
+          <span id="mgmtStatActive" class="font-bold text-base text-emerald-950 font-mono">Active</span>
+        </div>
+      </div>
+
+      <!-- User List Table -->
+      <div class="flex-1 overflow-y-auto border border-slate-200 rounded-2xl">
+        <table class="w-full text-left text-xs text-slate-800">
+          <thead class="text-slate-600 uppercase bg-slate-100 border-b border-slate-200 text-[11px] font-semibold sticky top-0">
+            <tr>
+              <th class="py-2.5 px-3">User ID & Name</th>
+              <th class="py-2.5 px-3">Category</th>
+              <th class="py-2.5 px-3">Role</th>
+              <th class="py-2.5 px-3">Mail ID & Phone</th>
+              <th class="py-2.5 px-3">Password Status</th>
+              <th class="py-2.5 px-3 text-center">RBAC Actions</th>
+            </tr>
+          </thead>
+          <tbody id="userMgmtTableBody" class="divide-y divide-slate-100 font-sans"></tbody>
+        </table>
+      </div>
+
+      <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+        <span id="userMgmtSummaryText">Showing registered system users</span>
+        <button onclick="app.closeUserManagementModal()" class="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATE NEW USER MODAL -->
+  <div id="newUserModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="glass-card bg-white rounded-3xl border border-slate-200 max-w-lg w-full p-6 sm:p-7 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+          <i data-lucide="user-plus" class="w-5 h-5 text-purple-600"></i>
+          <span>Create New User & Assign RBAC</span>
+        </h3>
+        <button onclick="app.closeNewUserModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="newUserForm" onsubmit="app.handleCreateUser(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">User ID <span class="text-rose-500">*</span></label>
+            <input type="text" id="newUserId" required placeholder="e.g. david_site" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Full Name <span class="text-rose-500">*</span></label>
+            <input type="text" id="newUserFullName" required placeholder="e.g. David Selvam" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Category (Assigned by Admin)</label>
+            <select id="newUserCategory" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+              <option value="Executive Management">Executive Management</option>
+              <option value="Accounts & Audit">Accounts & Audit</option>
+              <option value="Site Operations" selected>Site Operations</option>
+              <option value="Field Technicians">Field Technicians</option>
+              <option value="Technology & Integrations">Technology & Integrations</option>
+              <option value="Board & Investors">Board & Investors</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Role <span class="text-rose-500">*</span></label>
+            <select id="newUserRole" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+              <option value="employee" selected>👷 Employee (Field Entry & View)</option>
+              <option value="admin">🛡️ Admin (Financial Operations)</option>
+              <option value="developer">💻 Developer (APIs & Maintenance)</option>
+              <option value="owner">👔 Owner (Executive Oversight)</option>
+              <option value="stakeholder">📈 Stakeholder (Read-Only)</option>
+              <option value="super_admin">👑 Super Admin (Full Control)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Mail ID (For OTP Verification) <span class="text-rose-500">*</span></label>
+            <input type="email" id="newUserEmail" required placeholder="user@dharshithan.com" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Phone Number</label>
+            <input type="tel" id="newUserPhone" placeholder="+91 98765 00000" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block font-medium text-slate-700">Initial Temporary Password</label>
+            <button type="button" onclick="app.generateRandomTempPassword()" class="text-[10px] text-purple-600 hover:text-purple-700 font-semibold underline">Auto-Generate</button>
+          </div>
+          <input type="text" id="newUserTempPassword" value="Dhar@2026" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-sky-500">
+        </div>
+
+        <div class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-start space-x-2">
+          <i data-lucide="info" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
+          <span><strong>First-Time Password Change Policy:</strong> The user will be required to change this temporary password upon their first login before accessing the application.</span>
+        </div>
+
+        <div class="flex space-x-2 pt-2">
+          <button type="submit" class="flex-1 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
+            <i data-lucide="user-check" class="w-4 h-4"></i>
+            <span>Create User</span>
+          </button>
+          <button type="button" onclick="app.closeNewUserModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ENTERPRISE DATABASE HUB & MIGRATION MODAL (FUTURE PRIME CLOUD DB) -->
   <div id="dbHubModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
     <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] overflow-y-auto">
@@ -1043,6 +1419,7 @@
 
   <!-- Scripts -->
   <script src="js/roles.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/database-hub.js"></script>
   <script src="js/db.js"></script>
   <script src="js/analytics.js"></script>

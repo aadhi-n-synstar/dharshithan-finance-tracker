@@ -22,6 +22,16 @@ class FinanceApp {
   async init() {
     await window.financeDB.init();
 
+    // Initialize Auth state
+    this.checkAuthUI();
+    if (window.authManager) {
+      window.authManager.onAuthChange(() => {
+        this.checkAuthUI();
+        this.applyRolePermissions();
+        this.renderCurrentView();
+      });
+    }
+
     // Subscribe to DB changes
     window.financeDB.onChange(() => {
       this.refreshData();
@@ -1200,6 +1210,398 @@ class FinanceApp {
     this.closeSyncModal();
     this.closeRoleModal();
     this.closeDatabaseHubModal();
+    this.closeForgotPasswordModal();
+    this.closeUserManagementModal();
+    this.closeNewUserModal();
+  }
+
+  // =========================================================================
+  // AUTHENTICATION & SESSION MANAGEMENT
+  // =========================================================================
+
+  checkAuthUI() {
+    const isAuth = window.authManager && window.authManager.isAuthenticated();
+    const loginOverlay = document.getElementById('loginOverlay');
+    if (loginOverlay) {
+      if (isAuth) {
+        loginOverlay.classList.add('hidden');
+      } else {
+        loginOverlay.classList.remove('hidden');
+      }
+    }
+
+    const user = window.authManager ? window.authManager.getCurrentUser() : null;
+    if (user) {
+      const pillText = document.getElementById('rolePillText');
+      if (pillText) {
+        const roleObj = window.roleManager ? window.roleManager.getRole() : null;
+        pillText.textContent = `${user.userId} (${roleObj ? roleObj.name : user.role})`;
+      }
+
+      // Check User Management button visibility (Super Admin, Developer, Admin)
+      const userMgmtBtn = document.getElementById('userMgmtBtn');
+      if (userMgmtBtn) {
+        const canManage = window.authManager.canManageUsers();
+        if (canManage) {
+          userMgmtBtn.classList.remove('hidden');
+        } else {
+          userMgmtBtn.classList.add('hidden');
+        }
+      }
+    }
+  }
+
+  async handleLogin(e) {
+    if (e) e.preventDefault();
+    const userIdInput = document.getElementById('loginUserId');
+    const passwordInput = document.getElementById('loginPassword');
+    const submitBtn = document.getElementById('loginSubmitBtn');
+
+    if (!userIdInput || !passwordInput) return;
+    const userId = userIdInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Authenticating...</span>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    try {
+      const res = await window.authManager.login(userId, password);
+      if (res.mustChangePassword) {
+        // First-time login forced password change
+        this.openFirstLoginModal(userId, password);
+      } else if (res.success) {
+        this.checkAuthUI();
+        this.showToast(`Welcome back, ${res.user.fullName}!`, 'success');
+        this.renderCurrentView();
+      } else {
+        this.showToast(res.error || 'Login failed', 'error');
+      }
+    } catch (err) {
+      this.showToast('Authentication error: ' + err.message, 'error');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i><span>Sign In</span>`;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    }
+  }
+
+  fillCredentials(userId, password) {
+    const uInput = document.getElementById('loginUserId');
+    const pInput = document.getElementById('loginPassword');
+    if (uInput) uInput.value = userId;
+    if (pInput) pInput.value = password;
+    this.showToast(`Credentials filled for "${userId}"! Click Sign In to proceed.`, 'info');
+  }
+
+  toggleLoginPasswordVisibility() {
+    const pInput = document.getElementById('loginPassword');
+    const icon = document.getElementById('loginPassEyeIcon');
+    if (!pInput) return;
+    const isPass = pInput.type === 'password';
+    pInput.type = isPass ? 'text' : 'password';
+    if (icon) {
+      icon.setAttribute('data-lucide', isPass ? 'eye-off' : 'eye');
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+
+  openFirstLoginModal(userId, currentPassword) {
+    const modal = document.getElementById('firstLoginModal');
+    const nameEl = document.getElementById('firstLoginTargetName');
+    const curPassInput = document.getElementById('firstLoginCurrentPass');
+    const newPassInput = document.getElementById('firstLoginNewPass');
+    const confirmPassInput = document.getElementById('firstLoginConfirmPass');
+
+    this.pendingFirstLoginUserId = userId;
+    if (nameEl) nameEl.textContent = userId;
+    if (curPassInput) curPassInput.value = currentPassword;
+    if (newPassInput) newPassInput.value = '';
+    if (confirmPassInput) confirmPassInput.value = '';
+
+    if (modal) modal.classList.remove('hidden');
+    if (newPassInput) newPassInput.focus();
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeFirstLoginModal() {
+    const modal = document.getElementById('firstLoginModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  async handleFirstLoginPasswordChange(e) {
+    if (e) e.preventDefault();
+    const curPass = document.getElementById('firstLoginCurrentPass').value;
+    const newPass = document.getElementById('firstLoginNewPass').value;
+    const confirmPass = document.getElementById('firstLoginConfirmPass').value;
+
+    if (newPass !== confirmPass) {
+      this.showToast('New password and confirmation do not match.', 'error');
+      return;
+    }
+
+    const res = await window.authManager.changePassword(this.pendingFirstLoginUserId, curPass, newPass);
+    if (res.success) {
+      this.closeFirstLoginModal();
+      this.checkAuthUI();
+      this.showToast(res.message, 'success');
+      this.renderCurrentView();
+    } else {
+      this.showToast(res.error || 'Failed to update password', 'error');
+    }
+  }
+
+  handleLogout() {
+    if (confirm('Are you sure you want to sign out?')) {
+      window.authManager.logout();
+      this.checkAuthUI();
+      this.showToast('You have been signed out successfully.', 'info');
+    }
+  }
+
+  // =========================================================================
+  // FORGOT PASSWORD & OTP VERIFICATION
+  // =========================================================================
+
+  openForgotPasswordModal() {
+    const modal = document.getElementById('forgotPasswordModal');
+    const step1 = document.getElementById('forgotStep1');
+    const step2 = document.getElementById('forgotStep2');
+    const input = document.getElementById('forgotInputUserOrEmail');
+
+    if (step1) step1.classList.remove('hidden');
+    if (step2) step2.classList.add('hidden');
+    if (input) input.value = '';
+
+    if (modal) modal.classList.remove('hidden');
+    if (input) input.focus();
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeForgotPasswordModal() {
+    const modal = document.getElementById('forgotPasswordModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  handleRequestResetOTP() {
+    const input = document.getElementById('forgotInputUserOrEmail');
+    if (!input) return;
+    const val = input.value.trim();
+
+    const res = window.authManager.requestOTP(val);
+    if (res.success) {
+      this.pendingResetUserId = res.userId;
+      this.generatedTestOTP = res.code;
+
+      document.getElementById('forgotDispatchedEmail').textContent = res.email;
+      document.getElementById('forgotTestingOTP').textContent = res.code;
+
+      document.getElementById('forgotStep1').classList.add('hidden');
+      document.getElementById('forgotStep2').classList.remove('hidden');
+      document.getElementById('forgotOTPCode').focus();
+      if (window.lucide) window.lucide.createIcons();
+
+      this.showToast(`6-Digit OTP code sent to ${res.email}! (Test Code: ${res.code})`, 'success');
+    } else {
+      this.showToast(res.error || 'Failed to request OTP', 'error');
+    }
+  }
+
+  autofillOTP() {
+    const input = document.getElementById('forgotOTPCode');
+    if (input && this.generatedTestOTP) {
+      input.value = this.generatedTestOTP;
+      document.getElementById('forgotNewPass')?.focus();
+    }
+  }
+
+  handleVerifyOTPAndReset() {
+    const otp = document.getElementById('forgotOTPCode').value.trim();
+    const newPass = document.getElementById('forgotNewPass').value.trim();
+
+    const res = window.authManager.verifyOTPAndReset(this.pendingResetUserId, otp, newPass);
+    if (res.success) {
+      this.closeForgotPasswordModal();
+      this.fillCredentials(this.pendingResetUserId, newPass);
+      this.showToast(res.message, 'success');
+    } else {
+      this.showToast(res.error || 'Failed to verify OTP', 'error');
+    }
+  }
+
+  // =========================================================================
+  // USER MANAGEMENT & RBAC DIRECTORY
+  // =========================================================================
+
+  openUserManagementModal() {
+    if (!window.authManager || !window.authManager.canManageUsers()) {
+      this.showToast('Access restricted to Super Admin, Developer & Admin.', 'error');
+      return;
+    }
+
+    this.renderUserManagementTable();
+    const modal = document.getElementById('userMgmtModal');
+    if (modal) modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeUserManagementModal() {
+    const modal = document.getElementById('userMgmtModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  renderUserManagementTable() {
+    const tbody = document.getElementById('userMgmtTableBody');
+    if (!tbody || !window.authManager) return;
+
+    const users = window.authManager.getAllUsers();
+    
+    // Update summary counts
+    const totalEl = document.getElementById('mgmtStatTotalUsers');
+    if (totalEl) totalEl.textContent = users.length;
+
+    const cats = new Set(users.map(u => u.category));
+    const catEl = document.getElementById('mgmtStatCategories');
+    if (catEl) catEl.textContent = cats.size;
+
+    const pendingCount = users.filter(u => u.mustChangePassword).length;
+    const pendEl = document.getElementById('mgmtStatPendingChanges');
+    if (pendEl) pendEl.textContent = pendingCount;
+
+    tbody.innerHTML = users.map(u => {
+      const roleObj = window.roleManager ? window.roleManager.getAllRoles().find(r => r.id === u.role) : null;
+      const roleBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${roleObj ? roleObj.badgeClass : 'bg-slate-100 text-slate-700'}">${roleObj ? roleObj.name : u.role}</span>`;
+
+      const passStatus = u.mustChangePassword 
+        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Temporary (Must Change)</span>`
+        : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Active & Verified</span>`;
+
+      return `
+        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+          <td class="py-2.5 px-3">
+            <div class="font-bold text-slate-900">${this.escapeHtml(u.fullName)}</div>
+            <div class="font-mono text-[11px] text-slate-500">ID: <strong class="text-slate-800">${this.escapeHtml(u.userId)}</strong></div>
+          </td>
+          <td class="py-2.5 px-3">
+            <span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-medium text-[11px] border border-slate-200">
+              ${this.escapeHtml(u.category)}
+            </span>
+          </td>
+          <td class="py-2.5 px-3">${roleBadge}</td>
+          <td class="py-2.5 px-3">
+            <div class="text-slate-700">${this.escapeHtml(u.email)}</div>
+            <div class="text-[11px] text-slate-400 font-mono">${this.escapeHtml(u.phone || '-')}</div>
+          </td>
+          <td class="py-2.5 px-3">${passStatus}</td>
+          <td class="py-2.5 px-3 text-center">
+            <div class="flex items-center justify-center space-x-1.5">
+              <button onclick="app.issueUserPasswordReset('${u.userId}')" title="Send Reset OTP / Instructions to Mail" class="p-1.5 rounded-lg bg-slate-100 hover:bg-sky-100 text-slate-600 hover:text-sky-700 transition">
+                <i data-lucide="mail" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="app.adminResetUserPassword('${u.userId}')" title="Direct Password Reset (Forces Change on Next Login)" class="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition">
+                <i data-lucide="key" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  openNewUserModal() {
+    const modal = document.getElementById('newUserModal');
+    const form = document.getElementById('newUserForm');
+    if (form) form.reset();
+
+    const passInput = document.getElementById('newUserTempPassword');
+    if (passInput) passInput.value = window.authManager.generateSecureTempPassword();
+
+    if (modal) modal.classList.remove('hidden');
+    document.getElementById('newUserId')?.focus();
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeNewUserModal() {
+    const modal = document.getElementById('newUserModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  generateRandomTempPassword() {
+    const passInput = document.getElementById('newUserTempPassword');
+    if (passInput && window.authManager) {
+      passInput.value = window.authManager.generateSecureTempPassword();
+    }
+  }
+
+  handleCreateUser(e) {
+    if (e) e.preventDefault();
+    const userId = document.getElementById('newUserId').value.trim();
+    const fullName = document.getElementById('newUserFullName').value.trim();
+    const category = document.getElementById('newUserCategory').value;
+    const role = document.getElementById('newUserRole').value;
+    const email = document.getElementById('newUserEmail').value.trim();
+    const phone = document.getElementById('newUserPhone').value.trim();
+    const tempPassword = document.getElementById('newUserTempPassword').value.trim();
+
+    const res = window.authManager.createUser({
+      userId,
+      fullName,
+      category,
+      role,
+      email,
+      phone,
+      password: tempPassword
+    });
+
+    if (res.success) {
+      this.closeNewUserModal();
+      this.renderUserManagementTable();
+      this.showToast(`User ${userId} created with temporary password "${tempPassword}". Forced change on first login enabled!`, 'success');
+    } else {
+      this.showToast(res.error || 'Failed to create user', 'error');
+    }
+  }
+
+  issueUserPasswordReset(userId) {
+    const res = window.authManager.issuePasswordReset(userId);
+    if (res.success) {
+      this.showToast(`Password reset OTP (${res.otpCode}) dispatched to ${res.email}!`, 'success');
+    } else {
+      this.showToast(res.error || 'Failed to issue reset', 'error');
+    }
+  }
+
+  adminResetUserPassword(userId) {
+    const newTemp = prompt(`Enter new temporary password for "${userId}":`, window.authManager.generateSecureTempPassword());
+    if (newTemp && newTemp.trim()) {
+      const res = window.authManager.adminResetPassword(userId, newTemp.trim());
+      if (res.success) {
+        this.renderUserManagementTable();
+        this.showToast(res.message, 'success');
+      } else {
+        this.showToast(res.error || 'Failed to reset password', 'error');
+      }
+    }
+  }
+
+  downloadUserSQL() {
+    const sql = window.authManager.generatePostgresUserSQL();
+    const blob = new Blob([sql], { type: 'text/sql;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'dharshithan_users_seed.sql');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    this.showToast('Downloaded dharshithan_users_seed.sql for PostgreSQL database!', 'success');
   }
 
   showToast(message, type = 'info') {

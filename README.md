@@ -19,14 +19,33 @@ The system accurately computes and displays all executive KPI cards and operatio
 - **Bank Position Panel**: Inflows, Outflows, Net Movement, Opening Balance, Current Bank Balance, and Auto-Reconciliation health badge (`Reconciled` / `Deficit`).
 - **Cash Position & Float Panel**: Physical Cash Receipts, Cash Expenses, Net Cash Movement, Opening Float (editable directly on screen), Available Physical Cash, and Cash Health alert (`Healthy` or `Replenish Cash`).
 
-### 2. 👥 Multi-Role Access Control (RBAC)
-Enterprise user governance with quick-switch role simulation and permission gating:
-- **👑 Super Admin**: Full control (Add, Edit, Delete, Float Adjustment, DB Migration & Backups, Full Audit Access).
-- **👔 Owner**: Strategic & operational control (Add, Edit, Delete, Float Adjustment, Reports & Export, DB Setup).
-- **🛡️ Admin**: Daily management (Add, Edit, Delete, Adjust Opening Balances, View Reports).
-- **💻 Developer**: System maintenance, API endpoints, migration testing, schema DDL generation.
-- **👷 Employee**: Field & site entry mode (Add transactions, view records — Edit/Delete/Config locked).
-- **📈 Stakeholder**: Read-only oversight (View KPIs, charts, and export summary reports — modification locked).
+### 2. 🔐 Enterprise Authentication, RBAC & User Governance
+Full multi-user authentication system with permission gating and credentials control:
+- **Default Super Admin**:
+  - **User ID**: `admin`
+  - **Password**: `admin@2026`
+  - **Role**: `👑 Super Admin`
+  - **Category**: `Executive Management`
+  - **Mail ID**: `admin@dharshithan.com` (OTP enabled)
+  - **Phone**: `+91 98765 43210`
+- **Role Hierarchy & Access Matrix**:
+  - **👑 Super Admin**: Full system control (Add, Edit, Delete, Float Adjustment, DB Migration, User Management, Full Audit Access).
+  - **👔 Owner**: Strategic & operational executive control (Add, Edit, Delete, Float Adjustment, Reports, DB Setup, User oversight).
+  - **🛡️ Admin**: Operational finance management (Add, Edit, Delete, Adjust Balances, View Reports, Issue Password Resets).
+  - **💻 Developer**: System maintenance, API endpoints, migration testing, schema DDL inspection, DB credentials & user management.
+  - **👷 Employee**: Field & site entry mode (Add transactions, view records — Edit/Delete and configuration locked).
+  - **📈 Stakeholder**: Read-only executive oversight (View KPIs, charts, and export summary reports — modification locked).
+- **Mandatory First-Time Password Change**:
+  - Any new user created by Super Admin/Admin with a temporary password is automatically flagged with `mustChangePassword: true`.
+  - Upon first login, they are required to choose and set a new personal secure password before accessing application data.
+- **Forgot Password with OTP Verification**:
+  - Users can reset forgotten passwords by entering their User ID or registered Mail ID.
+  - The system generates and verifies a 6-digit OTP code (with 10-minute expiry) before permitting password reset.
+- **User Management & RBAC Directory (`userMgmtModal`)**:
+  - Controlled under Super Admin, Developer, and Admin IDs.
+  - Create new users with Category, Role, Email, Phone, and auto-generated temporary password.
+  - Issue password reset links or OTPs directly to user's registered email.
+  - Export full user table as PostgreSQL SQL `INSERT` statements matching `schema.sql`.
 
 ### 3. ☁️ Enterprise Cloud Database Hub (Vercel / Supabase / Neon PostgreSQL Ready)
 Seamlessly scale from Google Sheets to a production cloud database:

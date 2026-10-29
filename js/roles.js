@@ -54,7 +54,7 @@ const ROLES = {
       canViewReports: true,
       canManageDatabase: false,
       canAdjustFloat: true,
-      canManageUsers: false,
+      canManageUsers: true, // Super Admin, Developer, and Admin have User Management control
       canExportData: true
     }
   },
@@ -72,7 +72,7 @@ const ROLES = {
       canViewReports: true,
       canManageDatabase: true,
       canAdjustFloat: false,
-      canManageUsers: false,
+      canManageUsers: true, // Super Admin, Developer, and Admin have User Management control
       canExportData: true
     }
   },

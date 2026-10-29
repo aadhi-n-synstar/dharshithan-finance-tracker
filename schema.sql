@@ -1,38 +1,62 @@
 -- ======================================================================
 -- Dharshithan Waterproofing - Enterprise PostgreSQL Database Schema
 -- Ready for Free Vercel-supported PostgreSQL (Supabase / Neon / Vercel Postgres)
+-- Multi-Role RBAC & User Governance with Password First-Change Policy
 -- ======================================================================
 
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- 1. User Roles & Authentication
-CREATE TYPE user_role AS ENUM (
-  'super_admin',
-  'owner',
-  'admin',
-  'developer',
-  'employee',
-  'stakeholder'
-);
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM (
+    'super_admin',
+    'owner',
+    'admin',
+    'developer',
+    'employee',
+    'stakeholder'
+  );
+EXCEPTION
+  WHEN duplicate_object THEN null;
+END $$;
 
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR(50) UNIQUE NOT NULL,
   full_name VARCHAR(255) NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
+  category VARCHAR(100) NOT NULL DEFAULT 'Site Operations',
   role user_role NOT NULL DEFAULT 'employee',
   phone VARCHAR(20),
+  password_hash VARCHAR(255) NOT NULL,
+  must_change_password BOOLEAN DEFAULT TRUE,
+  email_verified BOOLEAN DEFAULT TRUE,
+  reset_otp VARCHAR(10),
+  reset_otp_expires TIMESTAMPTZ,
+  last_password_change TIMESTAMPTZ,
   is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_category ON users(category);
+
 -- Seed initial roles & default users
-INSERT INTO users (full_name, email, role) VALUES
-  ('Super Administrator', 'superadmin@dharshithan.com', 'super_admin'),
-  ('Company Owner', 'owner@dharshithan.com', 'owner'),
-  ('Finance Admin', 'admin@dharshithan.com', 'admin'),
-  ('Lead Developer', 'developer@dharshithan.com', 'developer'),
-  ('Site Employee', 'employee@dharshithan.com', 'employee'),
-  ('Business Stakeholder', 'stakeholder@dharshithan.com', 'stakeholder')
-ON CONFLICT (email) DO NOTHING;
+-- Super Admin default: admin / admin@2026
+INSERT INTO users (user_id, full_name, email, category, role, phone, password_hash, must_change_password) VALUES
+  ('admin', 'Super Administrator', 'admin@dharshithan.com', 'Executive Management', 'super_admin', '+91 98765 43210', crypt('admin@2026', gen_salt('bf')), FALSE),
+  ('owner', 'Company Owner', 'owner@dharshithan.com', 'Executive Management', 'owner', '+91 98765 43211', crypt('owner@2026', gen_salt('bf')), FALSE),
+  ('admin_finance', 'Finance Admin', 'finance@dharshithan.com', 'Accounts & Audit', 'admin', '+91 98765 43212', crypt('finance@2026', gen_salt('bf')), FALSE),
+  ('dev_lead', 'Lead Developer', 'developer@dharshithan.com', 'Technology & Integrations', 'developer', '+91 98765 43213', crypt('dev@2026', gen_salt('bf')), FALSE),
+  ('employee_david', 'David (Site Supervisor)', 'david@dharshithan.com', 'Site Operations', 'employee', '+91 98765 43214', crypt('david@2026', gen_salt('bf')), TRUE),
+  ('investor', 'Business Stakeholder', 'stakeholder@dharshithan.com', 'Board & Investors', 'stakeholder', '+91 98765 43215', crypt('investor@2026', gen_salt('bf')), FALSE)
+ON CONFLICT (email) DO UPDATE SET
+  category = EXCLUDED.category,
+  role = EXCLUDED.role,
+  must_change_password = EXCLUDED.must_change_password;
 
 -- 2. Transactions Table (Direct match with Dharshithan Google Sheet)
 CREATE TABLE IF NOT EXISTS transactions (
@@ -75,9 +99,9 @@ ON CONFLICT (id) DO NOTHING;
 -- 4. Audit Trail Log (Enterprise Governance)
 CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id),
+  user_id VARCHAR(50),
   user_email VARCHAR(255),
-  action VARCHAR(100) NOT NULL, -- 'CREATE_TXN', 'UPDATE_TXN', 'DELETE_TXN', 'ROLE_CHANGE', 'SYNC_GSHEETS'
+  action VARCHAR(100) NOT NULL, -- 'USER_LOGIN', 'PASSWORD_CHANGED', 'OTP_REQUESTED', 'USER_CREATED', 'ROLE_CHANGE', 'SYNC_GSHEETS'
   record_id VARCHAR(255),
   details JSONB,
   ip_address VARCHAR(45),
@@ -85,12 +109,25 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 
 -- 5. Row Level Security (RLS) Policies
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 
--- Stakeholders and Employees have read access
+-- Super Admin, Developer, and Admin can view and manage users
+CREATE POLICY "Allow user management to privileged roles" ON users
+  FOR ALL USING (
+    current_setting('app.current_user_role', true) IN ('super_admin', 'developer', 'admin', 'owner')
+  );
+
+-- Users can view their own profile
+CREATE POLICY "Allow users to view own profile" ON users
+  FOR SELECT USING (
+    user_id = current_setting('app.current_user_id', true)
+  );
+
+-- Stakeholders and Employees have read access to transactions
 CREATE POLICY "Allow read to authenticated roles" ON transactions
   FOR SELECT USING (TRUE);
 
--- Only Super Admin, Owner, and Admin can mutate transactions
+-- Super Admin, Owner, and Admin can mutate transactions
 CREATE POLICY "Allow write to admin roles" ON transactions
   FOR ALL USING (TRUE);
