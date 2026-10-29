@@ -75,10 +75,16 @@ const server = http.createServer(async (req, res) => {
       return healthHandler(req, res);
     }
 
-    // Static Files
-    let filePath = path.join(__dirname, pathname === '/' ? 'index.html' : pathname);
+    // Static Files (check public/ first, fallback to root)
+    let filePath = path.join(__dirname, 'public', pathname === '/' ? 'index.html' : pathname);
     if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
-      filePath = path.join(__dirname, 'index.html');
+      filePath = path.join(__dirname, pathname === '/' ? 'index.html' : pathname);
+      if (!fs.existsSync(filePath) || fs.statSync(filePath).isDirectory()) {
+        filePath = path.join(__dirname, 'public', 'index.html');
+        if (!fs.existsSync(filePath)) {
+          filePath = path.join(__dirname, 'index.html');
+        }
+      }
     }
 
     const ext = path.extname(filePath).toLowerCase();

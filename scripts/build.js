@@ -55,6 +55,35 @@ async function build() {
     console.log(`   ℹ Database connection test skipped during build: ${err.message}`);
   }
 
+  // 4. Generate & Sync Output Directory ('public') for Vercel
+  console.log('4. Generating Production Output Directory ("public")...');
+  const rootDir = path.join(__dirname, '..');
+  const publicDir = path.join(rootDir, 'public');
+
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+
+  // Copy root static files
+  const rootStaticFiles = ['index.html', 'manifest.json', 'sw.js'];
+  for (const file of rootStaticFiles) {
+    const src = path.join(rootDir, file);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(publicDir, file));
+    }
+  }
+
+  // Copy static directories (css, js, assets)
+  const staticDirs = ['css', 'js', 'assets'];
+  for (const dir of staticDirs) {
+    const srcDir = path.join(rootDir, dir);
+    const destDir = path.join(publicDir, dir);
+    if (fs.existsSync(srcDir)) {
+      fs.cpSync(srcDir, destDir, { recursive: true });
+    }
+  }
+  console.log('   ✓ Copied index.html, css/, js/, assets/ into "public" output directory.');
+
   console.log('\n========================================');
   console.log('BUILD SUCCESSFUL! App ready for Vercel & Neon.');
   console.log('========================================');
