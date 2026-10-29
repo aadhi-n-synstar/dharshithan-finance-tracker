@@ -248,11 +248,18 @@
         <i data-lucide="chevron-down" class="w-3 h-3 text-purple-600"></i>
       </button>
 
-      <!-- Google Sheets Live Sync Pill Button -->
-      <button onclick="app.openSyncModal()" id="sheetSyncPill" class="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition shadow-2xs" title="Google Sheets Real-Time Sync Status">
-        <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span id="syncStatusText" class="hidden sm:inline">Sheets Live</span>
-        <i data-lucide="refresh-cw" class="w-3 h-3 text-emerald-600"></i>
+      <!-- Neon Cloud Database Live Sync Pill Button -->
+      <button onclick="app.openDatabaseHubModal()" id="neonSyncPill" class="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition shadow-2xs" title="Neon Cloud PostgreSQL Database (100% Active Master Source)">
+        <span id="neonStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="neonStatusText" class="hidden sm:inline">Neon Cloud Live</span>
+        <i data-lucide="database" class="w-3 h-3 text-sky-600"></i>
+      </button>
+
+      <!-- Google Sheets Live Sync Pill Button (Standby) -->
+      <button onclick="app.openSyncModal()" id="sheetSyncPill" class="flex items-center space-x-1.5 px-2 py-1.5 rounded-full text-[11px] font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition shadow-2xs" title="Google Sheets Integration (Optional Standby)">
+        <span id="syncStatusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <span class="hidden md:inline">Sheets Sync</span>
+        <i data-lucide="file-spreadsheet" class="w-3 h-3 text-emerald-600"></i>
       </button>
 
       <!-- User Management & RBAC Directory Button (Super Admin, Developer, Admin) -->
@@ -1297,22 +1304,22 @@
       <div class="space-y-3.5 text-xs text-slate-700">
         <!-- Provider Selection Cards -->
         <div class="grid grid-cols-2 gap-2.5">
-          <div onclick="app.selectDbProvider('google_sheets')" id="providerCardSheets" class="cursor-pointer p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50/50 relative hover:border-emerald-600 transition">
-            <span id="badgeSheetsActive" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white">ACTIVE</span>
+          <div onclick="app.selectDbProvider('postgres')" id="providerCardPostgres" class="cursor-pointer p-3 rounded-xl border-2 border-sky-500 bg-sky-50/70 relative hover:border-sky-600 transition shadow-xs">
+            <span id="badgePostgresActive" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-600 text-white">ACTIVE MASTER</span>
+            <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
+              <i data-lucide="database" class="w-4 h-4 text-sky-600"></i>
+              <span>Neon Cloud DB</span>
+            </h4>
+            <p class="text-[10px] text-slate-500 mt-1">100% Full-Fledged Neon Lakebase Postgres with Multi-User RBAC & Realtime.</p>
+          </div>
+
+          <div onclick="app.selectDbProvider('google_sheets')" id="providerCardSheets" class="cursor-pointer p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative hover:border-emerald-400 transition">
+            <span id="badgeSheetsActive" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-700">STANDBY</span>
             <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
               <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
               <span>Google Sheets</span>
             </h4>
-            <p class="text-[10px] text-slate-500 mt-1">Strict Master Source. Live formula updates on Dashboard Worksheet.</p>
-          </div>
-
-          <div onclick="app.selectDbProvider('postgres')" id="providerCardPostgres" class="cursor-pointer p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative hover:border-sky-400 transition">
-            <span id="badgePostgresActive" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-800">FREE TIER</span>
-            <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
-              <i data-lucide="server" class="w-4 h-4 text-sky-600"></i>
-              <span>Supabase / Neon</span>
-            </h4>
-            <p class="text-[10px] text-slate-500 mt-1">Free 500MB PostgreSQL with Vercel integration & multi-user RBAC.</p>
+            <p class="text-[10px] text-slate-500 mt-1">Optional secondary backup source for viewing formula sheets.</p>
           </div>
         </div>
 

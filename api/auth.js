@@ -1,0 +1,174 @@
+const { neon } = require('@neondatabase/serverless');
+
+function getDb() {
+  const url = process.env.DATABASE_URL;
+  if (!url) throw new Error('DATABASE_URL environment variable is missing');
+  return neon(url);
+}
+
+module.exports = async function handler(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  try {
+    const sql = getDb();
+    const action = req.query.action || (req.body && req.body.action) || 'login';
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+
+    // LOGIN
+    if (action === 'login') {
+      const { userId, password } = body;
+      if (!userId || !password) {
+        return res.status(400).json({ success: false, error: 'User ID and Password are required' });
+      }
+
+      const cleanId = userId.toLowerCase().trim();
+
+      const userRows = await sql`
+        SELECT 
+          id, user_id as "userId", full_name as "fullName", email,
+          category, role, phone, must_change_password as "mustChangePassword",
+          is_active as "isActive",
+          (password_hash = crypt(${password}, password_hash)) as "passwordMatches"
+        FROM users 
+        WHERE LOWER(user_id) = ${cleanId} OR LOWER(email) = ${cleanId}
+        LIMIT 1
+      `;
+
+      if (!userRows || userRows.length === 0) {
+        return res.status(401).json({ success: false, error: 'Invalid credentials. User ID not found.' });
+      }
+
+      const user = userRows[0];
+      if (!user.isActive) {
+        return res.status(403).json({ success: false, error: 'Account has been deactivated. Please contact Super Admin.' });
+      }
+
+      if (!user.passwordMatches) {
+        return res.status(401).json({ success: false, error: 'Incorrect password. Please verify and try again.' });
+      }
+
+      if (user.mustChangePassword) {
+        return res.status(200).json({
+          success: true,
+          mustChangePassword: true,
+          user: {
+            userId: user.userId,
+            fullName: user.fullName,
+            role: user.role,
+            category: user.category,
+            email: user.email
+          }
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        mustChangePassword: false,
+        user: {
+          userId: user.userId,
+          fullName: user.fullName,
+          role: user.role,
+          category: user.category,
+          email: user.email,
+          phone: user.phone
+        }
+      });
+    }
+
+    // CHANGE PASSWORD
+    if (action === 'change-password') {
+      const { userId, currentPassword, newPassword } = body;
+      const cleanId = (userId || '').toLowerCase().trim();
+
+      const matchRows = await sql`
+        SELECT (password_hash = crypt(${currentPassword}, password_hash)) as "matches"
+        FROM users WHERE LOWER(user_id) = ${cleanId}
+      `;
+
+      if (!matchRows || matchRows.length === 0 || !matchRows[0].matches) {
+        return res.status(400).json({ success: false, error: 'Current/Temporary password does not match.' });
+      }
+
+      await sql`
+        UPDATE users SET
+          password_hash = crypt(${newPassword}, gen_salt('bf')),
+          must_change_password = FALSE,
+          last_password_change = NOW()
+        WHERE LOWER(user_id) = ${cleanId}
+      `;
+
+      return res.status(200).json({ success: true, message: 'Password updated successfully in Neon DB!' });
+    }
+
+    // REQUEST OTP
+    if (action === 'request-otp') {
+      const { query } = body;
+      const clean = (query || '').toLowerCase().trim();
+
+      const rows = await sql`
+        SELECT user_id as "userId", email FROM users 
+        WHERE LOWER(user_id) = ${clean} OR LOWER(email) = ${clean}
+      `;
+
+      if (!rows || rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'User ID or Email not found.' });
+      }
+
+      const user = rows[0];
+      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      await sql`
+        UPDATE users SET
+          reset_otp = ${otpCode},
+          reset_otp_expires = NOW() + INTERVAL '10 minutes'
+        WHERE user_id = ${user.userId}
+      `;
+
+      return res.status(200).json({
+        success: true,
+        userId: user.userId,
+        email: user.email,
+        code: otpCode,
+        message: `OTP generated for ${user.email}`
+      });
+    }
+
+    // VERIFY OTP
+    if (action === 'verify-otp') {
+      const { userId, otpCode, newPassword } = body;
+      const cleanId = (userId || '').toLowerCase().trim();
+
+      const rows = await sql`
+        SELECT 
+          user_id,
+          (reset_otp = ${otpCode.trim()} AND reset_otp_expires > NOW()) as "valid"
+        FROM users WHERE LOWER(user_id) = ${cleanId}
+      `;
+
+      if (!rows || rows.length === 0 || !rows[0].valid) {
+        return res.status(400).json({ success: false, error: 'Invalid or expired OTP code.' });
+      }
+
+      await sql`
+        UPDATE users SET
+          password_hash = crypt(${newPassword}, gen_salt('bf')),
+          reset_otp = NULL,
+          reset_otp_expires = NULL,
+          must_change_password = FALSE,
+          last_password_change = NOW()
+        WHERE LOWER(user_id) = ${cleanId}
+      `;
+
+      return res.status(200).json({ success: true, message: 'Password reset successfully!' });
+    }
+
+    return res.status(400).json({ error: 'Unknown action' });
+  } catch (err) {
+    console.error('Auth Error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};

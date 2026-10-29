@@ -16,13 +16,20 @@ class DatabaseHub {
 
   loadConfig() {
     const raw = localStorage.getItem(this.storageKey);
-    return raw ? JSON.parse(raw) : {
-      activeProvider: 'google_sheets', // 'google_sheets' | 'postgres'
-      postgresUri: '',
-      postgresHost: '',
-      postgresDb: '',
-      lastVerifiedAt: null
+    const defaults = {
+      activeProvider: 'postgres', // 'postgres' is now the PRIMARY active engine
+      postgresUri: 'postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require',
+      postgresHost: 'ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech',
+      postgresDb: 'neondb',
+      lastVerifiedAt: new Date().toISOString()
     };
+    if (!raw) return defaults;
+    try {
+      const parsed = JSON.parse(raw);
+      return { ...defaults, ...parsed, activeProvider: 'postgres' };
+    } catch (e) {
+      return defaults;
+    }
   }
 
   saveConfig(updates) {

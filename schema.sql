@@ -44,19 +44,10 @@ CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
 CREATE INDEX IF NOT EXISTS idx_users_category ON users(category);
 
--- Seed initial roles & default users
--- Super Admin default: admin / admin@2026
+-- Seed initial Super Admin account: admin / admin@2026
 INSERT INTO users (user_id, full_name, email, category, role, phone, password_hash, must_change_password) VALUES
-  ('admin', 'Super Administrator', 'admin@dharshithan.com', 'Executive Management', 'super_admin', '+91 98765 43210', crypt('admin@2026', gen_salt('bf')), FALSE),
-  ('owner', 'Company Owner', 'owner@dharshithan.com', 'Executive Management', 'owner', '+91 98765 43211', crypt('owner@2026', gen_salt('bf')), FALSE),
-  ('admin_finance', 'Finance Admin', 'finance@dharshithan.com', 'Accounts & Audit', 'admin', '+91 98765 43212', crypt('finance@2026', gen_salt('bf')), FALSE),
-  ('dev_lead', 'Lead Developer', 'developer@dharshithan.com', 'Technology & Integrations', 'developer', '+91 98765 43213', crypt('dev@2026', gen_salt('bf')), FALSE),
-  ('employee_david', 'David (Site Supervisor)', 'david@dharshithan.com', 'Site Operations', 'employee', '+91 98765 43214', crypt('david@2026', gen_salt('bf')), TRUE),
-  ('investor', 'Business Stakeholder', 'stakeholder@dharshithan.com', 'Board & Investors', 'stakeholder', '+91 98765 43215', crypt('investor@2026', gen_salt('bf')), FALSE)
-ON CONFLICT (email) DO UPDATE SET
-  category = EXCLUDED.category,
-  role = EXCLUDED.role,
-  must_change_password = EXCLUDED.must_change_password;
+  ('admin', 'Super Administrator', 'admin@dharshithan.com', 'Executive Management', 'super_admin', '+91 98765 43210', crypt('admin@2026', gen_salt('bf')), FALSE)
+ON CONFLICT (email) DO NOTHING;
 
 -- 2. Transactions Table (Direct match with Dharshithan Google Sheet)
 CREATE TABLE IF NOT EXISTS transactions (

@@ -166,6 +166,26 @@ class FinanceDB {
   }
 
   async getAll() {
+    // 1. First try Neon Cloud Database via /api/transactions
+    try {
+      const res = await fetch('/api/transactions');
+      if (res.ok) {
+        const body = await res.json();
+        if (body.success && Array.isArray(body.data)) {
+          // Cache locally in IndexedDB/LocalStorage for offline reliability
+          this.syncLocalCache(body.data);
+          return body.data;
+        }
+      }
+    } catch (err) {
+      console.warn('Neon Cloud API offline or unreachable, serving from local cache:', err);
+    }
+
+    // 2. Fallback to Local IndexedDB or LocalStorage
+    return this.getLocalAll();
+  }
+
+  async getLocalAll() {
     if (!this.db) {
       try {
         const raw = localStorage.getItem('dharshithan_transactions');
@@ -193,19 +213,26 @@ class FinanceDB {
     });
   }
 
-  async getById(id) {
+  async syncLocalCache(records) {
     if (!this.db) {
-      const all = await this.getAll();
-      return all.find(item => item.id === id);
+      localStorage.setItem('dharshithan_transactions', JSON.stringify(records));
+      return;
     }
-
-    return new Promise((resolve, reject) => {
-      const tx = this.db.transaction([STORE_NAME], 'readonly');
+    try {
+      const tx = this.db.transaction([STORE_NAME], 'readwrite');
       const store = tx.objectStore(STORE_NAME);
-      const req = store.get(id);
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = (e) => reject(e.target.error);
-    });
+      await store.clear();
+      for (const r of records) {
+        store.put(r);
+      }
+    } catch (e) {
+      localStorage.setItem('dharshithan_transactions', JSON.stringify(records));
+    }
+  }
+
+  async getById(id) {
+    const all = await this.getAll();
+    return all.find(item => String(item.id) === String(id) || String(item.slNo) === String(id));
   }
 
   async add(item, skipNotify = false) {
@@ -213,7 +240,7 @@ class FinanceDB {
     const amount = Math.abs(parseFloat(item.amount) || 0);
     const isIncome = item.type.includes('Received') || item.type.includes('Income');
     
-    const existing = await this.getAll();
+    const existing = await this.getLocalAll();
     const nextSlNo = item.slNo || (existing.length > 0 ? Math.max(...existing.map(x => x.slNo || 0)) + 1 : 1);
 
     const record = {
@@ -228,11 +255,35 @@ class FinanceDB {
       updatedAt: new Date().toISOString()
     };
 
+    // 1. Commit directly to Neon Cloud Database
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(record)
+      });
+      if (res.ok) {
+        const body = await res.json();
+        if (body.success && body.data) {
+          record.id = body.data.id;
+          record.slNo = body.data.slNo;
+        }
+      }
+    } catch (err) {
+      console.warn('Neon Cloud API POST offline, committing locally:', err);
+    }
+
+    // 2. Commit to Local Storage / IndexedDB
+    await this.addLocal(record);
+    if (!skipNotify) this.notify();
+    return record;
+  }
+
+  async addLocal(record) {
     if (!this.db) {
-      const all = await this.getAll();
+      const all = await this.getLocalAll();
       all.push(record);
       localStorage.setItem('dharshithan_transactions', JSON.stringify(all));
-      if (!skipNotify) this.notify();
       return record;
     }
 
@@ -240,11 +291,7 @@ class FinanceDB {
       const tx = this.db.transaction([STORE_NAME], 'readwrite');
       const store = tx.objectStore(STORE_NAME);
       const req = store.put(record);
-
-      req.onsuccess = () => {
-        if (!skipNotify) this.notify();
-        resolve(record);
-      };
+      req.onsuccess = () => resolve(record);
       req.onerror = (e) => reject(e.target.error);
     });
   }
@@ -269,9 +316,21 @@ class FinanceDB {
       updatedAt: new Date().toISOString()
     };
 
+    // 1. Commit update to Neon Cloud Database
+    try {
+      await fetch('/api/transactions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      });
+    } catch (err) {
+      console.warn('Neon Cloud API PUT offline, updating locally:', err);
+    }
+
+    // 2. Commit update to local storage
     if (!this.db) {
-      const all = await this.getAll();
-      const idx = all.findIndex(x => x.id === id);
+      const all = await this.getLocalAll();
+      const idx = all.findIndex(x => String(x.id) === String(id) || String(x.slNo) === String(id));
       if (idx !== -1) {
         all[idx] = updated;
         localStorage.setItem('dharshithan_transactions', JSON.stringify(all));
@@ -294,9 +353,19 @@ class FinanceDB {
   }
 
   async delete(id) {
+    // 1. Commit delete to Neon Cloud Database
+    try {
+      await fetch(`/api/transactions?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.warn('Neon Cloud API DELETE offline, deleting locally:', err);
+    }
+
+    // 2. Commit delete to local storage
     if (!this.db) {
-      const all = await this.getAll();
-      const filtered = all.filter(x => x.id !== id);
+      const all = await this.getLocalAll();
+      const filtered = all.filter(x => String(x.id) !== String(id) && String(x.slNo) !== String(id));
       localStorage.setItem('dharshithan_transactions', JSON.stringify(filtered));
       this.notify();
       return true;

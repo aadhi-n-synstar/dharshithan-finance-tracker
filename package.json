@@ -1,0 +1,21 @@
+{
+  "name": "dharshithan-finance-tracker",
+  "version": "2.0.0",
+  "description": "Enterprise Role-Based Financial Governance & Tracking Software powered by Neon Cloud Database",
+  "main": "server.js",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "start": "node server.js",
+    "test": "node test-services.js",
+    "migrate": "node migrate.js",
+    "seed": "node seed-neon-transactions.js"
+  },
+  "dependencies": {
+    "@neon/config": "^1.9.5",
+    "@neon/env": "^1.6.6",
+    "@neondatabase/serverless": "^1.2.0",
+    "dotenv": "^18.0.9",
+    "pg": "^8.23.1",
+    "ws": "^8.22.0"
+  }
+}

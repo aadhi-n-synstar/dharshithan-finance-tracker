@@ -386,6 +386,15 @@ class AuthManager {
     this.users.push(newUser);
     this.saveUsers();
 
+    // Async sync to Neon PostgreSQL
+    try {
+      fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUser)
+      }).catch(e => console.warn('Neon user POST failed:', e));
+    } catch (e) {}
+
     this.logAudit(this.getCurrentUser()?.userId || 'admin', 'USER_CREATED', {
       createdUserId: userId,
       role: role,
@@ -430,6 +439,15 @@ class AuthManager {
     user.updatedAt = new Date().toISOString();
     this.saveUsers();
 
+    // Async sync update to Neon PostgreSQL
+    try {
+      fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.userId, ...updates })
+      }).catch(e => console.warn('Neon user PUT failed:', e));
+    } catch (e) {}
+
     // If edited user is the active user, refresh session
     if (this.session && this.session.userId === user.userId) {
       this.session.fullName = user.fullName;
@@ -471,7 +489,14 @@ class AuthManager {
     const removed = this.users.splice(idx, 1)[0];
     this.saveUsers();
 
-    this.logAudit(caller.userId, 'USER_DELETED', {
+    // Async sync delete to Neon PostgreSQL
+    try {
+      fetch(`/api/users?userId=${encodeURIComponent(cleanId)}`, {
+        method: 'DELETE'
+      }).catch(e => console.warn('Neon user DELETE failed:', e));
+    } catch (e) {}
+
+    this.logAudit(this.getCurrentUser()?.userId || 'admin', 'USER_DELETED', {
       deletedUserId: removed.userId,
       deletedEmail: removed.email
     });
