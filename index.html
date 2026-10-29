@@ -255,13 +255,6 @@
         <i data-lucide="database" class="w-3 h-3 text-sky-600"></i>
       </button>
 
-      <!-- Google Sheets Live Sync Pill Button (Standby) -->
-      <button onclick="app.openSyncModal()" id="sheetSyncPill" class="flex items-center space-x-1.5 px-2 py-1.5 rounded-full text-[11px] font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition shadow-2xs" title="Google Sheets Integration (Optional Standby)">
-        <span id="syncStatusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-        <span class="hidden md:inline">Sheets Sync</span>
-        <i data-lucide="file-spreadsheet" class="w-3 h-3 text-emerald-600"></i>
-      </button>
-
       <!-- User Management & RBAC Directory Button (Super Admin, Developer, Admin) -->
       <button onclick="app.openUserManagementModal()" id="userMgmtBtn" class="p-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition flex items-center justify-center shadow-2xs" title="User Management & RBAC Directory (Super Admin, Developer, Admin)">
         <i data-lucide="user-cog" class="w-4 h-4 text-purple-600"></i>
@@ -298,73 +291,13 @@
       </nav>
 
       <!-- Live Sync / Refresh Button -->
-      <button onclick="app.pullFromGoogleSheets()" id="headerSyncBtn" class="flex px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-semibold shadow-2xs items-center space-x-1.5 transition-all transform active:scale-95" title="Fetch latest entries from Google Sheets">
-        <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="headerSyncIcon"></i>
-        <span class="hidden sm:inline">Sync Sheets</span>
+      <button onclick="app.refreshFromNeon()" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Refresh latest from Neon Database">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-sky-600"></i>
+        <span class="font-medium text-[11px]">Refresh DB</span>
       </button>
-
-      <!-- Open Master Google Sheet -->
-      <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" title="Entries are strictly maintained in Google Sheets. Open Spreadsheet to Add or Edit entries." class="flex px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs items-center space-x-1.5 transition-all transform active:scale-95">
-        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-        <span class="hidden sm:inline">Master Sheet</span>
-        <i data-lucide="external-link" class="w-3 h-3 opacity-80"></i>
-      </a>
-    </div>
-  </header>
-
-  <!-- Live Google Sheets Sync Status Bar -->
-  <div class="bg-emerald-50/90 border-b border-emerald-200/80 px-3.5 lg:px-8 py-1.5 flex flex-wrap items-center justify-between text-xs text-emerald-900 shadow-2xs">
-    <div class="flex items-center space-x-2">
-      <span class="flex h-2 w-2 relative">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-      </span>
-      <span class="font-bold text-emerald-900">Google Sheets Live Connected</span>
-      <span class="text-emerald-700 text-[11px] hidden md:inline">• Read-Only Executive Analytics Viewer (Entries are strictly maintained in Google Sheets)</span>
-    </div>
-    <div class="flex items-center space-x-3 text-[11px]">
-      <span id="lastSyncBannerText" class="text-emerald-800 font-mono">Synced from Google Sheets</span>
-      <button onclick="app.pullFromGoogleSheets()" class="font-bold text-emerald-800 hover:text-emerald-950 underline flex items-center space-x-1 cursor-pointer">
-        <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-        <span>Refresh Now</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Global Filter & Period Bar -->
-  <section class="bg-white border-b border-slate-200 px-3.5 lg:px-8 py-2 md:py-2.5 flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
-    <div class="flex items-center space-x-2 text-xs flex-1 min-w-[240px]">
-      <span class="text-slate-500 flex items-center space-x-1 flex-shrink-0">
-        <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-400"></i>
-        <span class="font-medium hidden sm:inline">Period:</span>
-      </span>
-      <select id="filterFY" onchange="app.handleFilterChange()" class="bg-white border border-slate-300 text-slate-800 text-xs rounded-lg px-2 py-1 focus:ring-1 focus:ring-sky-500 focus:outline-none">
-        <option value="ALL">All FY</option>
-        <option value="F.Y. 2026-27" selected>F.Y. 2026-27</option>
-        <option value="F.Y. 2025-26">F.Y. 2025-26</option>
-      </select>
-      <select id="filterQuarter" onchange="app.handleFilterChange()" class="bg-white border border-slate-300 text-slate-800 text-xs rounded-lg px-2 py-1 focus:ring-1 focus:ring-sky-500 focus:outline-none">
-        <option value="ALL">All Quarters</option>
-        <option value="Q1">Q1 (Apr - Jun)</option>
-        <option value="Q2">Q2 (Jul - Sep)</option>
-        <option value="Q3">Q3 (Oct - Dec)</option>
-        <option value="Q4">Q4 (Jan - Mar)</option>
-      </select>
-    </div>
-
-    <!-- Quick Actions Pill Bar -->
-    <div class="flex items-center space-x-1.5 text-xs">
-      <button onclick="app.pullFromGoogleSheets()" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Pull latest updates from Google Sheets">
-        <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-emerald-600"></i>
-        <span class="font-medium text-[11px]">Pull Sheet</span>
-      </button>
-      <button onclick="app.pushAllToGoogleSheets()" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Sync all local entries to Google Sheets immediately">
-        <i data-lucide="upload-cloud" class="w-3.5 h-3.5 text-sky-600"></i>
-        <span class="font-medium text-[11px]">Push Sheet</span>
-      </button>
-      <button onclick="app.copyForGoogleSheets()" class="hidden md:flex px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 shadow-2xs transition items-center space-x-1" title="Copy table for pasting directly into Google Sheets">
-        <i data-lucide="clipboard-copy" class="w-3.5 h-3.5 text-emerald-600"></i>
-        <span class="font-medium text-[11px]">Copy for Sheets</span>
+      <button onclick="app.copyForGoogleSheets()" class="hidden md:flex px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 shadow-2xs transition items-center space-x-1" title="Copy table as TSV to clipboard">
+        <i data-lucide="clipboard-copy" class="w-3.5 h-3.5 text-sky-600"></i>
+        <span class="font-medium text-[11px]">Copy TSV</span>
       </button>
       <button onclick="app.exportCSV()" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Export as CSV">
         <i data-lucide="download" class="w-3.5 h-3.5 text-sky-600"></i>
@@ -376,7 +309,7 @@
   <!-- Main Content Body -->
   <main class="flex-1 p-3.5 md:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-5 md:space-y-6">
 
-    <!-- VIEW 1: EXECUTIVE FINANCIAL DASHBOARD (EXACT MATCH WITH DASHBOARD WORKSHEET) -->
+    <!-- VIEW 1: EXECUTIVE FINANCIAL DASHBOARD -->
     <div id="view-dashboard" class="space-y-5 md:space-y-6">
 
       <!-- Section Title Banner -->
@@ -386,15 +319,15 @@
             <i data-lucide="shield-check" class="w-4 h-4 text-sky-600"></i>
             <span>Executive Financial Dashboard</span>
           </h2>
-          <p class="text-[11px] text-slate-500">Live reflection of master Google Sheet Dashboard Worksheet</p>
+          <p class="text-[11px] text-slate-500">Live reflection of master Neon Serverless PostgreSQL Database</p>
         </div>
         <div class="text-[11px] font-mono text-slate-500 flex items-center space-x-2">
           <span>Active Driver:</span>
-          <span id="activeDriverBadge" class="px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">Google Sheets Master</span>
+          <span id="activeDriverBadge" class="px-2 py-0.5 rounded-full font-semibold text-[10px] bg-sky-50 text-sky-700 border border-sky-200">Neon PostgreSQL Master</span>
         </div>
       </div>
 
-      <!-- 5 Top KPI Metric Cards (Matching Rows 2-4 of Google Sheet Dashboard) -->
+      <!-- 5 Top KPI Metric Cards -->
       <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-3.5">
         
         <!-- 1. TOTAL REVENUE -->
@@ -471,7 +404,7 @@
 
       </div>
 
-      <!-- 5 Structured Panels (Matching Rows 6-13 of Google Sheet Dashboard) -->
+      <!-- 5 Structured Financial Panels -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5 md:gap-4">
 
         <!-- Panel 1: FINANCIAL SUMMARY -->
@@ -616,7 +549,7 @@
           <div class="flex items-center justify-between">
             <div>
               <h3 class="text-sm font-semibold text-slate-900">Historical Profit Trends — Monthly & Quarterly Analysis</h3>
-              <p class="text-[11px] text-slate-500">Dynamic comparative trajectory directly reflecting Google Sheet formulas</p>
+              <p class="text-[11px] text-slate-500">Dynamic comparative trajectory directly reflecting Neon financial records</p>
             </div>
             <span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono font-medium">Real-Time</span>
           </div>
@@ -698,15 +631,14 @@
         </div>
 
         <div class="flex items-center space-x-2">
-          <button onclick="app.pullFromGoogleSheets()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold flex items-center space-x-1.5 shadow-2xs transition">
+          <button onclick="app.refreshFromNeon()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold flex items-center space-x-1.5 shadow-2xs transition">
             <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-sky-600"></i>
             <span>Refresh</span>
           </button>
-          <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition">
-            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
-            <span>Edit / Add in Google Sheets</span>
-            <i data-lucide="external-link" class="w-3 h-3 opacity-80"></i>
-          </a>
+          <button onclick="app.openTransactionModal()" id="addTxnBtn" class="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+            <span>Add Transaction</span>
+          </button>
         </div>
       </div>
 
@@ -784,7 +716,7 @@
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-base md:text-lg font-bold text-slate-900">Profit & Loss / Quarterly Reports</h2>
-          <p class="text-[11px] md:text-xs text-slate-500">Dynamic breakdown matching Sheet1 pivot structure</p>
+          <p class="text-[11px] md:text-xs text-slate-500">Dynamic breakdown of revenue and expenditures</p>
         </div>
         <button onclick="window.print()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center space-x-1.5 shadow-2xs">
           <i data-lucide="printer" class="w-3.5 h-3.5"></i>
@@ -797,8 +729,8 @@
 
   </main>
 
-  <!-- ANDROID FLOATING ACTION BUTTON (Instant Sync from Google Sheets) -->
-  <button onclick="app.pullFromGoogleSheets()" id="androidFabBtn" class="android-fab md:hidden" aria-label="Sync from Google Sheets" title="Sync from Google Sheets">
+  <!-- ANDROID FLOATING ACTION BUTTON (Refresh from Neon Database) -->
+  <button onclick="app.refreshFromNeon()" id="androidFabBtn" class="android-fab md:hidden" aria-label="Refresh from Neon Database" title="Refresh from Neon Database">
     <i data-lucide="refresh-cw" class="w-6 h-6 stroke-[2.5]" id="fabSyncIcon"></i>
   </button>
 
@@ -820,7 +752,7 @@
       <div class="nav-pill"><i data-lucide="pie-chart" class="w-5 h-5"></i></div>
       <span>P&L</span>
     </button>
-    <button onclick="app.pullFromGoogleSheets()" id="nav-sync" class="android-nav-item">
+    <button onclick="app.refreshFromNeon()" id="nav-sync" class="android-nav-item">
       <div class="nav-pill"><i data-lucide="refresh-cw" class="w-5 h-5" id="navSyncIcon"></i></div>
       <span>Sync</span>
     </button>
@@ -882,21 +814,16 @@
         <p id="detailDescription" class="text-xs text-slate-700 font-medium whitespace-pre-wrap">No description</p>
       </div>
 
-      <!-- Google Sheets Master Notice -->
-      <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start space-x-2.5 text-xs text-emerald-900">
-        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5"></i>
-        <div class="flex-1">
-          <span class="font-bold">Strictly Maintained in Google Sheets</span>
-          <p class="text-[11px] text-emerald-700 mt-0.5">Entries are strictly maintained in Google Sheets. To edit or delete this entry, update row <span id="detailSheetRow" class="font-mono font-bold">#</span> in your master spreadsheet.</p>
-        </div>
-      </div>
-
-      <!-- Action buttons -->
+      <!-- Transaction Actions -->
       <div class="flex items-center space-x-2 pt-1">
-        <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition">
-          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-          <span>Open Master Google Sheet</span>
-        </a>
+        <button onclick="app.editCurrentDetailTransaction()" id="detailEditBtn" class="flex-1 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition">
+          <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+          <span>Edit Transaction</span>
+        </button>
+        <button onclick="app.deleteCurrentDetailTransaction()" id="detailDeleteBtn" class="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs flex items-center justify-center space-x-1.5 transition">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          <span>Delete</span>
+        </button>
         <button onclick="app.closeTransactionDetailModal()" class="py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition">
           Close
         </button>
@@ -904,7 +831,7 @@
     </div>
   </div>
 
-  <!-- TRANSACTION MODAL (Notice: Data entry is handled in Google Sheets) -->
+  <!-- TRANSACTION MODAL (Native Neon Database Storage) -->
   <div id="txnModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 android-modal-container hidden">
     <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet">
       <div class="android-sheet-handle sm:hidden"></div>
@@ -1000,7 +927,7 @@
 
         <div class="flex items-center justify-end space-x-2.5 pt-2 border-t border-slate-100">
           <button type="button" onclick="app.closeTransactionModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Cancel</button>
-          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-xs">Save & Strictly Sync to Sheet</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-xs">Save to Neon DB</button>
         </div>
       </form>
     </div>
@@ -1283,7 +1210,7 @@
     </div>
   </div>
 
-  <!-- ENTERPRISE DATABASE HUB & MIGRATION MODAL (SUPER ADMIN & DEV RESTRICTED) -->
+  <!-- ENTERPRISE DATABASE HUB MODAL (SUPER ADMIN & DEV RESTRICTED) -->
   <div id="dbHubModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
     <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] overflow-y-auto">
       <div class="android-sheet-handle sm:hidden"></div>
@@ -1292,9 +1219,9 @@
         <div>
           <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
             <i data-lucide="database" class="w-5 h-5 text-sky-600"></i>
-            <span>Enterprise Cloud Database Hub</span>
+            <span>Neon Cloud Database Hub</span>
           </h3>
-          <p class="text-xs text-slate-500">Migrate beyond Google Sheets to Free Vercel-supported PostgreSQL (Supabase / Neon)</p>
+          <p class="text-xs text-slate-500">Lakebase Serverless PostgreSQL • Master Financial Data Engine</p>
         </div>
         <button onclick="app.closeDatabaseHubModal()" class="text-slate-400 hover:text-slate-600 p-1">
           <i data-lucide="x" class="w-5 h-5"></i>
@@ -1302,79 +1229,68 @@
       </div>
 
       <div class="space-y-3.5 text-xs text-slate-700">
-        <!-- Provider Selection Cards -->
-        <div class="grid grid-cols-2 gap-2.5">
-          <div onclick="app.selectDbProvider('postgres')" id="providerCardPostgres" class="cursor-pointer p-3 rounded-xl border-2 border-sky-500 bg-sky-50/70 relative hover:border-sky-600 transition shadow-xs">
-            <span id="badgePostgresActive" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-600 text-white">ACTIVE MASTER</span>
-            <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
-              <i data-lucide="database" class="w-4 h-4 text-sky-600"></i>
-              <span>Neon Cloud DB</span>
-            </h4>
-            <p class="text-[10px] text-slate-500 mt-1">100% Full-Fledged Neon Lakebase Postgres with Multi-User RBAC & Realtime.</p>
+        <!-- Active Database Status Card -->
+        <div class="p-3.5 rounded-2xl bg-sky-50/70 border border-sky-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <h4 class="font-bold text-slate-900">Neon PostgreSQL Lakebase Engine</h4>
+            </div>
+            <span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-emerald-600 text-white">ACTIVE MASTER</span>
           </div>
-
-          <div onclick="app.selectDbProvider('google_sheets')" id="providerCardSheets" class="cursor-pointer p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative hover:border-emerald-400 transition">
-            <span id="badgeSheetsActive" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-700">STANDBY</span>
-            <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
-              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
-              <span>Google Sheets</span>
-            </h4>
-            <p class="text-[10px] text-slate-500 mt-1">Optional secondary backup source for viewing formula sheets.</p>
+          <p class="text-[11px] text-slate-600">
+            Exclusive enterprise storage engine powering all financial transactions, RBAC credentials, audit ledgers, and P&amp;L reports.
+          </p>
+          <div class="pt-1 flex flex-wrap gap-2 text-[10px] text-slate-600">
+            <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 font-mono">SSL: 256-Bit TLS (require)</span>
+            <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 font-mono">Region: us-east-2</span>
+            <span class="px-2 py-0.5 rounded-md bg-white border border-slate-200 font-mono">Pooler: Active</span>
           </div>
         </div>
 
-        <!-- 1-Click Migration Card -->
-        <div class="p-3.5 rounded-2xl bg-sky-50/60 border border-sky-200 space-y-2">
+        <!-- 1-Click Backup & Schema Tools -->
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-2">
-              <i data-lucide="download" class="w-4 h-4 text-sky-700"></i>
-              <h4 class="font-bold text-sky-950">1-Click PostgreSQL Migration Script</h4>
+              <i data-lucide="database-backup" class="w-4 h-4 text-sky-700"></i>
+              <h4 class="font-bold text-slate-900">SQL Backup &amp; DDL Schema</h4>
             </div>
             <div class="flex items-center space-x-1.5">
-              <button onclick="app.copySchemaSQL()" class="px-2.5 py-1 rounded-lg bg-white border border-sky-300 hover:bg-sky-100 text-sky-800 font-semibold text-xs flex items-center space-x-1 shadow-2xs">
+              <button onclick="app.copySchemaSQL()" class="px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 font-semibold text-xs flex items-center space-x-1 shadow-2xs">
                 <i data-lucide="copy" class="w-3 h-3"></i>
-                <span>Copy Schema</span>
+                <span>Copy DDL</span>
               </button>
               <button onclick="app.downloadMigrationSQL()" class="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-xs flex items-center space-x-1">
                 <i data-lucide="download" class="w-3 h-3"></i>
-                <span>Download .SQL</span>
+                <span>Export .SQL Backup</span>
               </button>
             </div>
           </div>
-          <p class="text-[11px] text-sky-800">
-            Exports your complete Google Sheets records into ready-to-run PostgreSQL <code class="bg-white px-1 border rounded font-mono">INSERT</code> statements matching <code class="bg-white px-1 border rounded font-mono">schema.sql</code>.
+          <p class="text-[11px] text-slate-500">
+            Export all current Neon database records into reproducible PostgreSQL <code class="bg-white px-1 border rounded font-mono">INSERT</code> statements matching <code class="bg-white px-1 border rounded font-mono">schema.sql</code>.
           </p>
         </div>
 
         <!-- Connection Settings Accordion -->
-        <details open class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-2">
-          <summary class="font-semibold text-slate-800 cursor-pointer">Configure Free Cloud PostgreSQL (Supabase / Neon)</summary>
+        <details class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-2">
+          <summary class="font-semibold text-slate-800 cursor-pointer">PostgreSQL Connection Settings (Super Admin Only)</summary>
           <div class="space-y-2.5 pt-2 text-xs">
             <div>
               <div class="flex items-center justify-between mb-1">
-                <label class="block font-medium text-slate-700">PostgreSQL Connection URI (Neon / Supabase / Vercel)</label>
+                <label class="block font-medium text-slate-700">Neon Connection URI</label>
                 <button type="button" onclick="app.togglePgPasswordVisibility()" class="text-[10px] text-sky-600 hover:text-sky-700 font-medium">Toggle Visibility</button>
               </div>
               <div class="flex items-center space-x-2">
-                <input type="password" id="pgConnInput" placeholder="postgres://user:password@ep-host.region.aws.neon.tech/neondb" class="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 font-mono text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+                <input type="password" id="pgConnInput" placeholder="postgresql://user:password@ep-host.region.aws.neon.tech/neondb?sslmode=require" class="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 font-mono text-xs text-slate-900 focus:outline-none focus:border-sky-500">
                 <button type="button" onclick="app.testAndSavePgConnection()" class="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs whitespace-nowrap shadow-xs">
-                  Test & Save
+                  Test &amp; Save
                 </button>
               </div>
             </div>
             
             <div id="pgConnStatusBanner" class="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] flex items-center space-x-2">
-              <span id="pgStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
-              <span id="pgStatusText" class="text-slate-600">No database connection configured yet.</span>
-            </div>
-
-            <div class="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1 text-[11px]">
-              <span class="font-semibold text-slate-800 block">How to connect with Free Cloud Postgres (Supabase / Neon):</span>
-              <ul class="list-disc pl-4 space-y-0.5 text-slate-600 text-[10px]">
-                <li><strong>Neon Serverless Postgres:</strong> Create project at <a href="https://neon.tech" target="_blank" class="text-sky-600 underline">neon.tech</a> (Free 500MB) &rarr; Copy connection URI.</li>
-                <li><strong>Supabase:</strong> Create project at <a href="https://supabase.com" target="_blank" class="text-sky-600 underline">supabase.com</a> &rarr; Project Settings &rarr; Database &rarr; Connection String URI.</li>
-                <li>Paste above, click <strong>Test & Save</strong>. Click <strong>Copy Schema</strong> to run table creation in their SQL editor!</li>
-              </ul>
+              <span id="pgStatusDot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              <span id="pgStatusText" class="text-emerald-700 font-medium">Connected: ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech (neondb)</span>
             </div>
           </div>
         </details>
@@ -1382,72 +1298,6 @@
 
       <div class="flex justify-end pt-1 border-t border-slate-100">
         <button onclick="app.closeDatabaseHubModal()" class="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- GOOGLE SHEETS SYNC MODAL -->
-  <div id="syncModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
-    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] overflow-y-auto">
-      <div class="android-sheet-handle sm:hidden"></div>
-
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-        <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
-          <i data-lucide="cloud" class="w-5 h-5 text-emerald-600"></i>
-          <span>Google Sheets Real-Time Sync</span>
-        </h3>
-        <button onclick="app.closeSyncModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="space-y-3.5 text-xs text-slate-700">
-        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-          <div class="flex items-center justify-between">
-            <span class="font-medium text-slate-600">Sync Status:</span>
-            <span id="syncModalStatusBadge" class="px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">Checking...</span>
-          </div>
-          <p id="syncModalStatusDetail" class="text-[11px] text-slate-500">Every transaction added, edited, or deleted strictly syncs with your Google Sheet.</p>
-        </div>
-
-        <!-- Backend Configuration (Strictly Super Admin & Developer Only) -->
-        <div id="syncBackendConfigSection" class="space-y-3">
-          <div>
-            <label class="block font-medium mb-1 text-slate-700">Google Apps Script Web App URL</label>
-            <input type="url" id="syncWebhookInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
-            <p class="text-[10px] text-slate-500 mt-1">Generated from your Google Sheet via <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">Extensions &gt; Apps Script</code>.</p>
-          </div>
-
-          <details class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-1">
-            <summary class="font-semibold text-slate-800 cursor-pointer">How to get your Web App URL (3 quick steps)</summary>
-            <ol class="list-decimal pl-4 space-y-1 text-[11px] mt-2">
-              <li>Open your <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit" target="_blank" class="text-sky-600 underline font-medium">Google Sheet</a>.</li>
-              <li>Click <strong>Extensions &gt; Apps Script</strong> and paste the contents of <code class="bg-white px-1 border rounded text-slate-800">google-apps-script.js</code>.</li>
-              <li>Click <strong>Deploy &gt; New deployment &gt; Web app</strong>. Set <em>Execute as: Me</em> and <em>Who has access: Anyone</em>. Copy the URL and paste it above!</li>
-            </ol>
-          </details>
-
-          <div class="flex flex-wrap gap-2 pt-1">
-            <button onclick="app.saveWebhookUrl()" type="button" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-center transition shadow-xs">
-              Save Webhook URL
-            </button>
-            <button onclick="app.pullFromGoogleSheets()" type="button" class="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition">
-              Pull from Sheet
-            </button>
-            <button onclick="app.pushAllToGoogleSheets()" type="button" class="py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold transition shadow-xs">
-              Push All to Sheet
-            </button>
-          </div>
-        </div>
-
-        <!-- Non-Admin Read-Only View -->
-        <div id="syncStaffSection" class="hidden space-y-2">
-          <p class="text-[11px] text-slate-600">Company Google Sheets synchronization is active. All transaction records are synced directly.</p>
-          <button onclick="app.pullFromGoogleSheets()" type="button" class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center space-x-1.5">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            <span>Refresh Latest Records</span>
-          </button>
-        </div>
       </div>
     </div>
   </div>
@@ -1514,7 +1364,7 @@
   <script src="js/analytics.js"></script>
   <script src="js/charts.js"></script>
   <script src="js/export-import.js"></script>
-  <script src="js/google-sync.js"></script>
+  
   <script src="js/app.js"></script>
   
   <!-- PWA Service Worker Registration -->

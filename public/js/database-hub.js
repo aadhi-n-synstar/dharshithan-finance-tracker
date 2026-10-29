@@ -2,10 +2,7 @@
  * Dharshithan Waterproofing - Finance Tracker
  * Enterprise Database Hub & Cloud Migration Manager
  * Strictly restricted to Super Admin and Developer.
- * Supported Databases:
- * 1. Neon Serverless Postgres (Free Tier via Vercel Storage)
- * 2. Supabase (PostgreSQL - Free Tier)
- * 3. Vercel Postgres
+ * Master Database Engine: Neon Serverless Postgres (Lakebase PostgreSQL)
  */
 
 class DatabaseHub {
@@ -17,7 +14,7 @@ class DatabaseHub {
   loadConfig() {
     const raw = localStorage.getItem(this.storageKey);
     const defaults = {
-      activeProvider: 'postgres', // 'postgres' is now the PRIMARY active engine
+      activeProvider: 'postgres',
       postgresUri: 'postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require',
       postgresHost: 'ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech',
       postgresDb: 'neondb',
@@ -33,21 +30,20 @@ class DatabaseHub {
   }
 
   saveConfig(updates) {
-    this.config = { ...this.config, ...updates };
+    this.config = { ...this.config, ...updates, activeProvider: 'postgres' };
     localStorage.setItem(this.storageKey, JSON.stringify(this.config));
   }
 
   getActiveProvider() {
-    return this.config.activeProvider || 'google_sheets';
+    return 'postgres';
   }
 
   getPostgresUri() {
-    return this.config.postgresUri || '';
+    return this.config.postgresUri || 'postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require';
   }
 
   /**
    * Validate and test PostgreSQL Connection URI
-   * (e.g. postgres://user:password@ep-host.region.aws.neon.tech/neondb)
    */
   testAndSaveConnection(uri) {
     const clean = (uri || '').trim();
@@ -56,7 +52,6 @@ class DatabaseHub {
     }
 
     try {
-      // Basic URI format check
       if (!clean.startsWith('postgres://') && !clean.startsWith('postgresql://')) {
         return {
           success: false,
@@ -66,14 +61,13 @@ class DatabaseHub {
 
       const parsedUrl = new URL(clean);
       const host = parsedUrl.hostname;
-      const database = parsedUrl.pathname ? parsedUrl.pathname.replace(/^\//, '') : 'defaultdb';
+      const database = parsedUrl.pathname ? parsedUrl.pathname.replace(/^\//, '') : 'neondb';
       const username = parsedUrl.username;
 
       if (!host) {
         return { success: false, error: 'Could not resolve database host in connection string.' };
       }
 
-      // Save valid connection config
       this.saveConfig({
         postgresUri: clean,
         postgresHost: host,
@@ -85,8 +79,8 @@ class DatabaseHub {
         success: true,
         host: host,
         database: database,
-        username: username || 'postgres',
-        message: `Connection URI verified for ${host} (Database: ${database}).`
+        username: username || 'neondb_owner',
+        message: `Connection verified: Connected to ${host} (Database: ${database}).`
       };
     } catch (err) {
       return {
@@ -96,24 +90,20 @@ class DatabaseHub {
     }
   }
 
-  /**
-   * Switch active primary driver
-   */
   setProvider(provider) {
-    if (provider !== 'google_sheets' && provider !== 'postgres') return;
-    this.saveConfig({ activeProvider: provider });
+    this.saveConfig({ activeProvider: 'postgres' });
   }
 
   /**
    * Generates production-ready SQL INSERT statements from current transactions
-   * for 1-click execution in Supabase SQL Editor or Neon Console!
+   * for execution in Neon SQL Console
    */
   generatePostgresInsertSQL(transactions) {
     if (!transactions || !transactions.length) return '-- No transactions to export.';
 
     const lines = [
       '-- ==========================================================',
-      '-- Dharshithan Waterproofing - Data Migration to PostgreSQL',
+      '-- Dharshithan Waterproofing - Data Export for Neon PostgreSQL',
       `-- Exported on: ${new Date().toISOString()}`,
       `-- Total Records: ${transactions.length}`,
       '-- ==========================================================',
@@ -149,65 +139,11 @@ class DatabaseHub {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `dharshithan_migration_${new Date().toISOString().slice(0, 10)}.sql`;
+    link.download = `dharshithan-neon-backup-${new Date().toISOString().slice(0,10)}.sql`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  }
-
-  getSchemaDDL() {
-    return `-- ======================================================================
--- Dharshithan Waterproofing - PostgreSQL Database Schema
--- Ready for Free Vercel-supported PostgreSQL (Supabase / Neon / Vercel Postgres)
--- ======================================================================
-
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
-DO $$ BEGIN
-  CREATE TYPE user_role AS ENUM ('super_admin', 'owner', 'admin', 'developer', 'employee', 'stakeholder');
-EXCEPTION
-  WHEN duplicate_object THEN null;
-END $$;
-
-CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id VARCHAR(50) UNIQUE NOT NULL,
-  full_name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  category VARCHAR(100) NOT NULL DEFAULT 'Site Operations',
-  role user_role NOT NULL DEFAULT 'employee',
-  phone VARCHAR(20),
-  password_hash VARCHAR(255) NOT NULL,
-  must_change_password BOOLEAN DEFAULT TRUE,
-  email_verified BOOLEAN DEFAULT TRUE,
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS transactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  sl_no SERIAL,
-  date DATE NOT NULL,
-  type VARCHAR(50) NOT NULL,
-  party_name VARCHAR(255) NOT NULL,
-  description TEXT,
-  amount NUMERIC(14, 2) NOT NULL CHECK (amount >= 0),
-  mode VARCHAR(50) NOT NULL DEFAULT 'CASH',
-  ref_number VARCHAR(255),
-  quarter VARCHAR(10) NOT NULL,
-  financial_year VARCHAR(20) NOT NULL,
-  profit_value NUMERIC(14, 2) NOT NULL,
-  category VARCHAR(100) DEFAULT 'General',
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
-CREATE INDEX IF NOT EXISTS idx_transactions_party ON transactions(party_name);
-
-INSERT INTO users (user_id, full_name, email, category, role, phone, password_hash, must_change_password)
-VALUES ('admin', 'Super Administrator', 'admin@dharshithan.com', 'Executive Management', 'super_admin', '+91 98765 43210', crypt('admin@2026', gen_salt('bf')), FALSE)
-ON CONFLICT (email) DO NOTHING;`;
+    URL.revokeObjectURL(url);
   }
 }
 

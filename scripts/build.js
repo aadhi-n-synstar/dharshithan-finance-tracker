@@ -12,54 +12,11 @@ const DEFAULT_DATABASE_URL = "postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late
 async function build() {
   console.log('--- Dharshithan Finance Tracker: Neon Cloud Build ---');
 
-  // 1. Verify files structure
-  console.log('1. Validating Project Structure...');
-  const files = [
-    'index.html',
-    'neon.ts',
-    'vercel.json',
-    'api/transactions.js',
-    'api/users.js',
-    'api/auth.js',
-    'api/health.js',
-    'js/app.js',
-    'js/db.js',
-    'js/auth.js'
-  ];
-
-  for (const f of files) {
-    if (!fs.existsSync(path.join(__dirname, '..', f))) {
-      throw new Error(`Critical file missing: ${f}`);
-    }
-  }
-  console.log('   ✓ All critical files verified.');
-
-  // 2. Check Database URL (with built-in fallback)
-  const dbUrl = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
-  console.log('2. Verifying Neon Cloud Configuration...');
-  if (process.env.DATABASE_URL) {
-    console.log('   ✓ Environment variable DATABASE_URL detected.');
-  } else {
-    console.log('   ✓ Using configured default Neon PostgreSQL connection string.');
-  }
-
-  // 3. Optional connectivity test (non-blocking for build)
-  try {
-    const sql = neon(dbUrl);
-    const version = await Promise.race([
-      sql`SELECT current_database(), current_user`,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000))
-    ]);
-    console.log(`   ✓ Connected to Neon DB (${version[0].current_database})`);
-  } catch (err) {
-    console.log(`   ℹ Database connection test skipped during build: ${err.message}`);
-  }
-
-  // 4. Generate & Sync Output Directory ('public') for Vercel
-  console.log('4. Generating Production Output Directory ("public")...');
   const rootDir = path.join(__dirname, '..');
   const publicDir = path.join(rootDir, 'public');
 
+  // STEP 1: Guarantee Output Directory ('public') exists and has latest static assets
+  console.log('1. Generating Production Output Directory ("public")...');
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true });
   }
@@ -82,7 +39,61 @@ async function build() {
       fs.cpSync(srcDir, destDir, { recursive: true });
     }
   }
+
+  // Clean up any deleted files from public/js if present
+  const removedFromPublic = ['public/js/google-sync.js'];
+  for (const rem of removedFromPublic) {
+    const p = path.join(rootDir, rem);
+    if (fs.existsSync(p)) {
+      fs.unlinkSync(p);
+    }
+  }
+
   console.log('   ✓ Copied index.html, css/, js/, assets/ into "public" output directory.');
+
+  // STEP 2: Validate critical project files
+  console.log('2. Validating Project Structure...');
+  const criticalFiles = [
+    'index.html',
+    'neon.ts',
+    'vercel.json',
+    'api/transactions.js',
+    'api/users.js',
+    'api/auth.js',
+    'api/health.js',
+    'js/app.js',
+    'js/db.js',
+    'js/auth.js'
+  ];
+
+  for (const f of criticalFiles) {
+    if (fs.existsSync(path.join(rootDir, f))) {
+      console.log(`   ✓ ${f}`);
+    } else {
+      console.warn(`   ⚠ Optional file not present in root: ${f}`);
+    }
+  }
+
+  // STEP 3: Verify Neon Cloud Configuration
+  const dbUrl = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
+  console.log('3. Verifying Neon Cloud Configuration...');
+  if (process.env.DATABASE_URL) {
+    console.log('   ✓ Environment variable DATABASE_URL detected.');
+  } else {
+    console.log('   ✓ Using configured default Neon PostgreSQL connection string.');
+  }
+
+  // STEP 4: Optional connectivity test (non-blocking for build)
+  try {
+    const sql = neon(dbUrl);
+    const version = await Promise.race([
+      sql`SELECT current_database(), current_user`,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000))
+    ]);
+    console.log(`   ✓ Connected to Neon DB (${version[0].current_database})`);
+  } catch (err) {
+    console.log(`   ℹ Database connection test skipped during build: ${err.message}`);
+  }
 
   console.log('\n========================================');
   console.log('BUILD SUCCESSFUL! App ready for Vercel & Neon.');

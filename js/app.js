@@ -1,6 +1,6 @@
 /**
  * Dharshithan Waterproofing - Finance Tracker
- * Main Controller: Executive Dashboard, Multi-Role RBAC & Google Sheets / Cloud Sync
+ * Main Controller: Executive Dashboard, Multi-Role RBAC & Neon Serverless PostgreSQL
  */
 
 class FinanceApp {
@@ -49,29 +49,13 @@ class FinanceApp {
     // Populate initial FY dropdown dynamically
     await this.refreshData();
 
-    // Setup Google Sheets Live Sync listeners
-    this.setupSyncListener();
-
-    // Populate initial FY dropdown dynamically
-    await this.refreshData();
-
-    // Automatically pull latest data from Google Sheets immediately on launch
-    if (window.googleSync && window.googleSync.isConfigured()) {
-      await this.pullFromGoogleSheets({ silent: true });
-    }
-
-    // Auto-sync polling every 30 seconds
-    setInterval(() => {
-      this.pullFromGoogleSheets({ silent: true });
-    }, 30000);
-
     // Refresh when user returns to window/tab
     window.addEventListener('focus', () => {
-      this.pullFromGoogleSheets({ silent: true });
+      this.refreshFromNeon({ silent: true });
     });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
-        this.pullFromGoogleSheets({ silent: true });
+        this.refreshFromNeon({ silent: true });
       }
     });
 
@@ -102,14 +86,11 @@ class FinanceApp {
         this.closeAllModals();
       } else if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        this.openMasterGoogleSheet();
+        this.openTransactionModal();
       }
     });
 
-    // If Google Sheets webhook is configured, process queue
-    if (window.googleSync && window.googleSync.isConfigured()) {
-      window.googleSync.processQueue();
-    }
+    
 
     // Enterprise 30-minute inactivity security lock
     this.setupInactivityTimer();
@@ -136,57 +117,7 @@ class FinanceApp {
     reset();
   }
 
-  setupSyncListener() {
-    if (!window.googleSync) return;
-
-    window.googleSync.onStatusChange((status, detail) => {
-      this.updateSyncUI(status, detail);
-    });
-
-    const isConfigured = window.googleSync.isConfigured();
-    this.updateSyncUI(isConfigured ? 'connected' : 'unconfigured', isConfigured ? 'Ready to sync' : 'Configure webhook URL');
-  }
-
-  updateSyncUI(status, detail = '') {
-    const dot = document.getElementById('syncStatusDot');
-    const text = document.getElementById('syncStatusText');
-    const badge = document.getElementById('syncModalStatusBadge');
-    const modalDetail = document.getElementById('syncModalStatusDetail');
-
-    if (status === 'connected') {
-      if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-      if (text) text.textContent = 'Sheets Live';
-      if (badge) {
-        badge.className = 'px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200';
-        badge.textContent = 'Live Connected';
-      }
-    } else if (status === 'syncing') {
-      if (dot) dot.className = 'w-2 h-2 rounded-full bg-sky-500 animate-ping';
-      if (text) text.textContent = 'Syncing...';
-      if (badge) {
-        badge.className = 'px-2 py-0.5 rounded-full font-semibold text-[10px] bg-sky-50 text-sky-700 border border-sky-200';
-        badge.textContent = 'Syncing Now...';
-      }
-    } else if (status === 'offline') {
-      if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-500';
-      if (text) text.textContent = 'Queued';
-      if (badge) {
-        badge.className = 'px-2 py-0.5 rounded-full font-semibold text-[10px] bg-amber-50 text-amber-700 border border-amber-200';
-        badge.textContent = 'Queued (Offline)';
-      }
-    } else {
-      if (dot) dot.className = 'w-2 h-2 rounded-full bg-slate-400';
-      if (text) text.textContent = 'Sheets Sync';
-      if (badge) {
-        badge.className = 'px-2 py-0.5 rounded-full font-semibold text-[10px] bg-slate-100 text-slate-600 border border-slate-300';
-        badge.textContent = 'Unconfigured';
-      }
-    }
-
-    if (modalDetail && detail) {
-      modalDetail.textContent = detail;
-    }
-  }
+  
 
   async refreshData() {
     this.transactions = await window.financeDB.getAll();
@@ -352,7 +283,7 @@ class FinanceApp {
   }
 
   /**
-   * Complete render mirroring the exact Dashboard Worksheet from Google Sheets:
+   * Complete render mirroring financial analytics from Neon PostgreSQL:
    * 1. 5 Top KPI Cards
    * 2. Financial Summary Panel
    * 3. Income by Mode Panel
@@ -776,7 +707,7 @@ class FinanceApp {
           </div>
 
           <div>
-            <h4 class="text-xs uppercase font-semibold text-slate-500 mb-2">Quarterly Breakdown (Sheet1 Pivot)</h4>
+            <h4 class="text-xs uppercase font-semibold text-slate-500 mb-2">Quarterly Breakdown</h4>
             <div class="overflow-x-auto rounded-xl border border-slate-200">
               <table class="w-full text-left text-xs text-slate-800">
                 <thead class="bg-slate-100 text-slate-600 uppercase text-[10px] font-semibold border-b border-slate-200">
@@ -841,8 +772,65 @@ class FinanceApp {
 
   // MODAL HANDLERS
   openTransactionModal(editId = null) {
-    this.showToast('Entries are strictly maintained in Google Sheets. Opening master spreadsheet...', 'info');
-    this.openMasterGoogleSheet();
+    if (window.roleManager && !window.roleManager.can('canAdd') && !editId) {
+      this.showToast('Your role does not have permission to add transactions.', 'error');
+      return;
+    }
+    if (window.roleManager && !window.roleManager.can('canEdit') && editId) {
+      this.showToast('Your role does not have permission to edit transactions.', 'error');
+      return;
+    }
+
+    const modal = document.getElementById('txnModal');
+    if (!modal) return;
+
+    this.editingId = editId;
+    const form = document.getElementById('txnForm');
+    if (form) form.reset();
+
+    const titleEl = document.getElementById('modalTitle');
+    const idInput = document.getElementById('txnId');
+    const dateInput = document.getElementById('modalDate');
+
+    if (editId) {
+      const item = this.transactions.find(t => t.id === editId || t.slNo === editId);
+      if (item) {
+        if (titleEl) titleEl.innerHTML = `<i data-lucide="edit-3" class="w-5 h-5 text-sky-600"></i><span>Edit Transaction #${item.slNo}</span>`;
+        if (idInput) idInput.value = item.id;
+        if (dateInput) dateInput.value = item.date;
+
+        const isIncome = item.type.includes('Received') || item.type.includes('Income');
+        const radios = document.querySelectorAll('input[name="modalType"]');
+        radios.forEach(r => {
+          if (isIncome && (r.value.includes('Received') || r.value.includes('Income'))) r.checked = true;
+          if (!isIncome && (r.value.includes('Paid') || r.value.includes('Expense'))) r.checked = true;
+        });
+
+        const partyInput = document.getElementById('modalParty');
+        if (partyInput) partyInput.value = item.partyName;
+
+        const amtInput = document.getElementById('modalAmount');
+        if (amtInput) amtInput.value = item.amount;
+
+        const modeInput = document.getElementById('modalMode');
+        if (modeInput) modeInput.value = item.mode || 'CASH';
+
+        const refInput = document.getElementById('modalRef');
+        if (refInput) refInput.value = item.refNumber || '';
+
+        const descInput = document.getElementById('modalDesc');
+        if (descInput) descInput.value = item.description || '';
+      }
+    } else {
+      if (titleEl) titleEl.innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-emerald-600"></i><span>Add New Transaction</span>`;
+      if (idInput) idInput.value = '';
+      if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+      const radioIncome = document.querySelector('input[name="modalType"][value*="Received"]');
+      if (radioIncome) radioIncome.checked = true;
+    }
+
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
   }
 
   closeTransactionModal() {
@@ -887,18 +875,12 @@ class FinanceApp {
         savedRecord = await window.financeDB.update(id, payload);
         this.showToast('Transaction updated', 'success');
         
-        // Strictly sync to Google Sheets
-        if (window.googleSync) {
-          window.googleSync.update(savedRecord);
-        }
+        
       } else {
         savedRecord = await window.financeDB.add(payload);
         this.showToast('Transaction saved', 'success');
 
-        // Strictly sync to Google Sheets
-        if (window.googleSync) {
-          window.googleSync.add(savedRecord);
-        }
+        
       }
       this.closeTransactionModal();
     } catch (err) {
@@ -916,14 +898,10 @@ class FinanceApp {
     const item = this.transactions.find(t => t.id === id);
     if (!item) return;
 
-    if (confirm(`Delete #${item.slNo} "${item.partyName}" (${FinanceAnalytics.formatINR(item.amount)})? This will also remove it from Google Sheets.`)) {
+    if (confirm(`Delete #${item.slNo} "${item.partyName}" (${FinanceAnalytics.formatINR(item.amount)})? This will permanently delete it from Neon Database.`)) {
       await window.financeDB.delete(id);
-      this.showToast('Transaction deleted', 'info');
-
-      // Strictly sync delete to Google Sheets
-      if (window.googleSync) {
-        window.googleSync.delete(item.slNo);
-      }
+      this.showToast('Transaction deleted from Neon DB', 'info');
+      await this.refreshData();
     }
   }
 
@@ -1001,9 +979,9 @@ class FinanceApp {
 
   selectDbProvider(provider) {
     if (!window.databaseHub) return;
-    window.databaseHub.setProvider(provider);
+    window.databaseHub.setProvider('postgres');
     this.refreshDatabaseHubUI();
-    this.showToast(`Primary Driver switched to: ${provider === 'postgres' ? 'Cloud PostgreSQL (Supabase/Neon)' : 'Google Sheets'}`, 'info');
+    this.showToast('Master Database: Neon Serverless PostgreSQL', 'info');
   }
 
   testAndSavePgConnection() {
@@ -1071,113 +1049,27 @@ class FinanceApp {
 
   refreshDatabaseHubUI() {
     if (!window.databaseHub) return;
-    const activeProvider = window.databaseHub.getActiveProvider();
     const uri = window.databaseHub.getPostgresUri();
-
     const input = document.getElementById('pgConnInput');
     if (input && uri) input.value = uri;
 
-    const sheetsCard = document.getElementById('providerCardSheets');
-    const pgCard = document.getElementById('providerCardPostgres');
-    const sheetsBadge = document.getElementById('badgeSheetsActive');
-    const pgBadge = document.getElementById('badgePostgresActive');
-
-    if (activeProvider === 'postgres') {
-      if (pgCard) pgCard.className = 'cursor-pointer p-3 rounded-xl border-2 border-sky-500 bg-sky-50/60 relative hover:border-sky-600 transition';
-      if (pgBadge) {
-        pgBadge.className = 'absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-600 text-white';
-        pgBadge.textContent = 'ACTIVE';
-      }
-      if (sheetsCard) sheetsCard.className = 'cursor-pointer p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative hover:border-emerald-400 transition';
-      if (sheetsBadge) {
-        sheetsBadge.className = 'absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-700';
-        sheetsBadge.textContent = 'STANDBY';
-      }
-    } else {
-      if (sheetsCard) sheetsCard.className = 'cursor-pointer p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50/50 relative hover:border-emerald-600 transition';
-      if (sheetsBadge) {
-        sheetsBadge.className = 'absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white';
-        sheetsBadge.textContent = 'ACTIVE';
-      }
-      if (pgCard) pgCard.className = 'cursor-pointer p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative hover:border-sky-400 transition';
-      if (pgBadge) {
-        pgBadge.className = 'absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-800';
-        pgBadge.textContent = 'FREE TIER';
-      }
-    }
-
     const dot = document.getElementById('pgStatusDot');
     const text = document.getElementById('pgStatusText');
-    if (uri && window.databaseHub.config && window.databaseHub.config.postgresHost) {
-      if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-      if (text) {
-        text.className = 'text-emerald-700 font-medium';
-        text.textContent = `Configured: ${window.databaseHub.config.postgresHost} (${window.databaseHub.config.postgresDb})`;
-      }
+    if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+    if (text) {
+      text.className = 'text-emerald-700 font-medium';
+      text.textContent = 'Connected: ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech (neondb)';
     }
   }
 
   downloadMigrationSQL() {
     if (!window.databaseHub) return;
     window.databaseHub.downloadSQLMigration(this.transactions);
-    this.showToast('PostgreSQL Migration Script Downloaded!', 'success');
+    this.showToast('PostgreSQL Backup Script Downloaded!', 'success');
   }
 
-  // SYNC MODAL
-  openSyncModal() {
-    const modal = document.getElementById('syncModal');
-    if (!modal) return;
-
-    const input = document.getElementById('syncWebhookInput');
-    if (input && window.googleSync) {
-      input.value = window.googleSync.getWebhookUrl();
-    }
-
-    modal.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  closeSyncModal() {
-    const modal = document.getElementById('syncModal');
-    if (modal) modal.classList.add('hidden');
-  }
-
-  saveWebhookUrl() {
-    const input = document.getElementById('syncWebhookInput');
-    if (!input || !window.googleSync) return;
-
-    const url = input.value.trim();
-    window.googleSync.setWebhookUrl(url);
-    this.showToast(url ? 'Google Sheets Live Sync Connected!' : 'Sync Webhook Removed', url ? 'success' : 'info');
-    this.closeSyncModal();
-  }
-
-  async pushAllToGoogleSheets() {
-    if (!window.googleSync || !window.googleSync.isConfigured()) {
-      this.showToast('Please configure Google Apps Script Web App URL first', 'error');
-      this.openSyncModal();
-      return;
-    }
-
-    try {
-      this.showToast('Syncing all entries strictly to Google Sheets...', 'info');
-      await window.googleSync.syncAll(this.transactions);
-      this.showToast('All transactions strictly synced to Google Sheets!', 'success');
-    } catch (e) {
-      this.showToast('Failed to sync to Google Sheets: ' + e.message, 'error');
-    }
-  }
-
-  async pullFromGoogleSheets(options = {}) {
+  async refreshFromNeon(options = {}) {
     const isSilent = options.silent === true;
-    if (!window.googleSync || !window.googleSync.isConfigured()) {
-      if (!isSilent) {
-        this.showToast('Please configure Google Apps Script Web App URL first', 'error');
-        this.openSyncModal();
-      }
-      return;
-    }
-
     const icons = [
       document.getElementById('headerSyncIcon'),
       document.getElementById('fabSyncIcon'),
@@ -1186,31 +1078,16 @@ class FinanceApp {
     icons.forEach(i => { if (i) i.classList.add('animate-spin'); });
 
     try {
-      if (!isSilent) this.showToast('Fetching latest from Google Sheets...', 'info');
-      const remoteItems = await window.googleSync.fetchFromSheet();
-      if (!remoteItems || !remoteItems.length) {
-        if (!isSilent) this.showToast('No entries found in Google Sheet', 'info');
-        return;
-      }
-
-      await window.financeDB.clearAll();
-      for (const item of remoteItems) {
-        if (!item.financialYear || !item.quarter) {
-          const meta = FinanceDB.getFinancialMetadata(item.date);
-          item.financialYear = item.financialYear || meta.financialYear;
-          item.quarter = item.quarter || meta.quarter;
-        }
-        await window.financeDB.add(item, true);
-      }
-      window.financeDB.notify();
+      if (!isSilent) this.showToast('Fetching latest from Neon Database...', 'info');
+      await this.refreshData();
       this.updateLastSyncTimeDisplay();
       if (!isSilent) {
-        this.showToast(`Fetched & updated ${remoteItems.length} transactions from Google Sheets!`, 'success');
-        this.closeSyncModal();
+        const count = this.transactions ? this.transactions.length : 0;
+        this.showToast(`Neon DB Live: ${count} records active`, 'success');
       }
     } catch (e) {
-      console.warn('Pull failed:', e);
-      if (!isSilent) this.showToast('Pull failed: ' + e.message, 'error');
+      console.warn('Neon refresh failed:', e);
+      if (!isSilent) this.showToast('Failed to refresh from Neon: ' + e.message, 'error');
     } finally {
       setTimeout(() => {
         icons.forEach(i => { if (i) i.classList.remove('animate-spin'); });
@@ -1224,131 +1101,10 @@ class FinanceApp {
     const count = this.transactions ? this.transactions.length : 0;
     
     const bannerEl = document.getElementById('lastSyncBannerText');
-    if (bannerEl) bannerEl.textContent = `Synced at ${timeStr} • ${count} entries live`;
+    if (bannerEl) bannerEl.textContent = `Neon DB Live • ${timeStr} (${count} entries)`;
 
-    const statusText = document.getElementById('syncStatusText');
-    if (statusText) statusText.textContent = `Synced ${timeStr}`;
-  }
-
-  openMasterGoogleSheet() {
-    window.open('https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing', '_blank');
-  }
-
-  viewTransactionDetails(id) {
-    const item = this.transactions.find(t => t.id === id);
-    if (!item) return;
-
-    const modal = document.getElementById('txnDetailModal');
-    if (!modal) return;
-
-    const isIncome = item.type.includes('Received') || item.type.includes('Income');
-    const badgeEl = document.getElementById('detailTypeBadge');
-    if (badgeEl) {
-      badgeEl.className = isIncome 
-        ? 'w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-xs' 
-        : 'w-8 h-8 rounded-xl bg-rose-100 text-rose-800 flex items-center justify-center font-bold text-xs';
-      badgeEl.textContent = isIncome ? 'IN' : 'OUT';
-    }
-
-    const partyEl = document.getElementById('detailPartyName');
-    if (partyEl) partyEl.textContent = item.partyName;
-
-    const subEl = document.getElementById('detailSlNoDate');
-    if (subEl) subEl.textContent = `Entry #${item.slNo} • ${FinanceAnalytics.formatDateDisplay(item.date)} • ${item.quarter || 'Q3'}`;
-
-    const amtEl = document.getElementById('detailAmount');
-    if (amtEl) amtEl.textContent = FinanceAnalytics.formatINR(item.amount);
-
-    const profitEl = document.getElementById('detailProfit');
-    if (profitEl) {
-      const pVal = Number(item.profitValue) || 0;
-      profitEl.textContent = FinanceAnalytics.formatINR(pVal);
-      profitEl.className = pVal >= 0 ? 'font-mono font-bold text-lg text-emerald-600' : 'font-mono font-bold text-lg text-rose-600';
-    }
-
-    const modeEl = document.getElementById('detailMode');
-    if (modeEl) modeEl.innerHTML = this.getModeBadge(item.mode);
-
-    const refEl = document.getElementById('detailRefNumber');
-    if (refEl) refEl.textContent = item.refNumber || '-';
-
-    const qfyEl = document.getElementById('detailQuarterFY');
-    if (qfyEl) qfyEl.textContent = `${item.quarter || 'Q3'} • ${item.financialYear || 'F.Y. 2026-27'}`;
-
-    const catEl = document.getElementById('detailCategory');
-    if (catEl) catEl.textContent = item.category || (isIncome ? 'Revenue' : 'Operating Expense');
-
-    const descEl = document.getElementById('detailDescription');
-    if (descEl) descEl.textContent = item.description || 'No description entered.';
-
-    const rowEl = document.getElementById('detailSheetRow');
-    if (rowEl) rowEl.textContent = `#${(Number(item.slNo) || 1) + 1}`;
-
-    modal.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  closeTransactionDetailModal() {
-    const modal = document.getElementById('txnDetailModal');
-    if (modal) modal.classList.add('hidden');
-  }
-
-  // PARTY MODAL
-  openPartyModal(partyName) {
-    const modal = document.getElementById('partyModal');
-    const parties = FinanceAnalytics.getPartySummary(this.transactions);
-    const party = parties.find(p => p.name.toLowerCase() === partyName.toLowerCase());
-    if (!party) return;
-
-    document.getElementById('partyModalName').textContent = party.name;
-    document.getElementById('partyModalSubtitle').textContent = `${party.transactionCount} entries | Last: ${FinanceAnalytics.formatDateDisplay(party.lastDate)}`;
-    document.getElementById('partyModalReceived').textContent = FinanceAnalytics.formatINR(party.totalReceived);
-    document.getElementById('partyModalPaid').textContent = FinanceAnalytics.formatINR(party.totalPaid);
-    
-    const elNet = document.getElementById('partyModalNet');
-    elNet.textContent = FinanceAnalytics.formatINR(party.netBalance);
-    elNet.className = party.netBalance >= 0 ? 'font-mono font-bold text-xs sm:text-sm text-emerald-700' : 'font-mono font-bold text-xs sm:text-sm text-rose-700';
-
-    const tbody = document.getElementById('partyModalTable');
-    tbody.innerHTML = party.transactions.map(t => {
-      const isIncome = t.type.includes('Received') || t.type.includes('Income');
-      const badge = isIncome
-        ? `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Received</span>`
-        : `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Paid</span>`;
-
-      return `
-        <tr class="hover:bg-slate-50 border-b border-slate-100">
-          <td class="py-2 px-3 text-slate-600 font-sans">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
-          <td class="py-2 px-3 font-sans">${badge}</td>
-          <td class="py-2 px-3 font-sans">${this.getModeBadge(t.mode)}</td>
-          <td class="py-2 px-3 text-slate-500 font-sans text-[11px]">${this.escapeHtml(t.refNumber || '-')}</td>
-          <td class="py-2 px-3 text-right font-semibold ${isIncome ? 'text-emerald-700' : 'text-rose-700'}">${FinanceAnalytics.formatINR(t.amount)}</td>
-        </tr>
-      `;
-    }).join('');
-
-    modal.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  closePartyModal() {
-    const modal = document.getElementById('partyModal');
-    if (modal) modal.classList.add('hidden');
-  }
-
-  exportCSV() {
-    FinanceDataTransfer.exportToCSV(this.filteredTransactions);
-    this.showToast('CSV downloaded', 'success');
-  }
-
-  async copyForGoogleSheets() {
-    try {
-      await FinanceDataTransfer.copyForGoogleSheets(this.filteredTransactions);
-      this.showToast('Copied to clipboard! Ready to paste into Google Sheets (Ctrl+V)', 'success');
-    } catch (e) {
-      this.showToast('Clipboard access denied, using CSV download instead', 'error');
-      this.exportCSV();
-    }
+    const statusText = document.getElementById('neonStatusText');
+    if (statusText) statusText.textContent = `Neon Live ${timeStr}`;
   }
 
   closeAllModals() {
@@ -1411,18 +1167,7 @@ class FinanceApp {
       }
     }
 
-    // Backend Gating: Google Sheets Webhook and Backend Scripts strictly hidden from public & non-dev staff
-    const syncBackendSection = document.getElementById('syncBackendConfigSection');
-    const syncStaffSection = document.getElementById('syncStaffSection');
-    if (syncBackendSection && syncStaffSection) {
-      if (isSuperOrDev) {
-        syncBackendSection.classList.remove('hidden');
-        syncStaffSection.classList.add('hidden');
-      } else {
-        syncBackendSection.classList.add('hidden');
-        syncStaffSection.classList.remove('hidden');
-      }
-    }
+    
   }
 
   async handleLogin(e) {

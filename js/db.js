@@ -85,59 +85,7 @@ class FinanceDB {
    * 3. Raj Enterprises | Received for Client Work | ₹ 40,000.00 | NETBANKING | Q3 | ₹ 40,000.00
    */
   getInitialSeed() {
-    return [
-      {
-        id: 'txn-seed-1',
-        slNo: 1,
-        date: '2026-11-01',
-        type: 'Paid / Expense',
-        partyName: 'David',
-        category: 'Staff & Salary',
-        description: 'Given Weekly Salary',
-        amount: 1200.0,
-        mode: 'CASH',
-        refNumber: 'PYSL-001',
-        quarter: 'Q3',
-        financialYear: 'F.Y. 2026-27',
-        profitValue: -1200.0,
-        createdAt: new Date('2026-11-01T09:00:00Z').toISOString(),
-        updatedAt: new Date('2026-11-01T09:00:00Z').toISOString(),
-      },
-      {
-        id: 'txn-seed-2',
-        slNo: 2,
-        date: '2026-11-01',
-        type: 'Paid / Expense',
-        partyName: 'Synstar',
-        category: 'Software & Tracking',
-        description: 'Paid for Client Tracking',
-        amount: 20000.0,
-        mode: 'CASH',
-        refNumber: '-',
-        quarter: 'Q3',
-        financialYear: 'F.Y. 2026-27',
-        profitValue: -20000.0,
-        createdAt: new Date('2026-11-01T10:00:00Z').toISOString(),
-        updatedAt: new Date('2026-11-01T10:00:00Z').toISOString(),
-      },
-      {
-        id: 'txn-seed-3',
-        slNo: 3,
-        date: '2026-11-01',
-        type: 'Received / Income',
-        partyName: 'Raj Enterprises',
-        category: 'Client Waterproofing',
-        description: 'Received for Client Work',
-        amount: 40000.0,
-        mode: 'NETBANKING',
-        refNumber: '',
-        quarter: 'Q3',
-        financialYear: 'F.Y. 2026-27',
-        profitValue: 40000.0,
-        createdAt: new Date('2026-11-01T11:30:00Z').toISOString(),
-        updatedAt: new Date('2026-11-01T11:30:00Z').toISOString(),
-      }
-    ];
+    return [];
   }
 
   async ensureInitialSeedData() {
