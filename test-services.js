@@ -101,6 +101,7 @@ async function testServices() {
   if (passed !== total) {
     process.exit(1);
   }
+  process.exit(0);
 }
 
 testServices();
