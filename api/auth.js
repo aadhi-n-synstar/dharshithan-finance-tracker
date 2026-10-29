@@ -1,98 +1,170 @@
-const crypto = require('crypto');
-const { getSql } = require('../lib/db');
+const { neon } = require('@neondatabase/serverless');
 
-function hashPassword(password) {
-  const salt = 'dwcs_salt_2026_enterprise';
-  return crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
+const DEFAULT_DATABASE_URL = "postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require";
+
+function getDb() {
+  const url = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
+  return neon(url);
 }
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-User-Role, X-User-Id');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
-
-  const sql = getSql();
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
   try {
-    const { action = 'login' } = req.body || req.query || {};
+    const sql = getDb();
+    const action = req.query.action || (req.body && req.body.action) || 'login';
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
-    // ----------------------------------------------------
     // LOGIN
-    // ----------------------------------------------------
-    if (action === 'login' && req.method === 'POST') {
-      const { email, password } = req.body || {};
-      if (!email || !password) {
-        return res.status(400).json({ error: 'Email/Username and Password are required' });
+    if (action === 'login') {
+      const { userId, password } = body;
+      if (!userId || !password) {
+        return res.status(400).json({ success: false, error: 'User ID and Password are required' });
       }
 
-      const inputHash = hashPassword(password);
+      const cleanId = userId.toLowerCase().trim();
 
-      // Search user by email or username
-      const rows = await sql.query(`
-        SELECT id, full_name, email, role, is_active, created_at, password_hash
-        FROM finance_users
-        WHERE (email ILIKE $1 OR email = $2) AND is_active = TRUE
-      `, [email.trim(), email.trim()]);
+      const userRows = await sql`
+        SELECT 
+          id, user_id as "userId", full_name as "fullName", email,
+          category, role, phone, must_change_password as "mustChangePassword",
+          is_active as "isActive",
+          (password_hash = crypt(${password}, password_hash)) as "passwordMatches"
+        FROM users 
+        WHERE LOWER(user_id) = ${cleanId} OR LOWER(email) = ${cleanId}
+        LIMIT 1
+      `;
 
-      if (!rows || rows.length === 0) {
-        return res.status(401).json({ error: 'Invalid credentials or user inactive' });
+      if (!userRows || userRows.length === 0) {
+        return res.status(401).json({ success: false, error: 'Invalid credentials. User ID not found.' });
       }
 
-      const user = rows[0];
-
-      // Verify password hash or legacy password match
-      const passwordMatch = (user.password_hash === inputHash) ||
-        (user.password_hash === password) ||
-        (email === 'admin' && password === 'admin@2026');
-
-      if (!passwordMatch) {
-        return res.status(401).json({ error: 'Incorrect password' });
+      const user = userRows[0];
+      if (!user.isActive) {
+        return res.status(403).json({ success: false, error: 'Account has been deactivated. Please contact Super Admin.' });
       }
 
-      // Generate session token (encrypted state token)
-      const sessionToken = crypto.randomBytes(32).toString('hex');
+      if (!user.passwordMatches) {
+        return res.status(401).json({ success: false, error: 'Incorrect password. Please verify and try again.' });
+      }
+
+      if (user.mustChangePassword) {
+        return res.status(200).json({
+          success: true,
+          mustChangePassword: true,
+          user: {
+            userId: user.userId,
+            fullName: user.fullName,
+            role: user.role,
+            category: user.category,
+            email: user.email
+          }
+        });
+      }
 
       return res.status(200).json({
         success: true,
+        mustChangePassword: false,
         user: {
-          id: user.id,
-          full_name: user.full_name,
-          email: user.email,
-          role: user.role
-        },
-        token: sessionToken,
-        neon_status: 'Connected'
+          userId: user.userId,
+          fullName: user.fullName,
+          role: user.role,
+          category: user.category,
+          email: user.email
+        }
       });
     }
 
-    // ----------------------------------------------------
-    // GET CURRENT SESSION / VERIFY
-    // ----------------------------------------------------
-    if (action === 'me' || req.method === 'GET') {
-      const email = req.query.email || 'dharshithanpartiban@gmail.com';
-      const rows = await sql.query(`
-        SELECT id, full_name, email, role, is_active
-        FROM finance_users
-        WHERE email ILIKE $1 AND is_active = TRUE
-      `, [email]);
-
-      if (!rows.length) {
-        return res.status(404).json({ error: 'User not found' });
+    // FIRST TIME PASSWORD CHANGE
+    if (action === 'change-password') {
+      const { userId, newPassword } = body;
+      if (!userId || !newPassword || newPassword.length < 6) {
+        return res.status(400).json({ success: false, error: 'New password must be at least 6 characters' });
       }
 
+      await sql`
+        UPDATE users SET 
+          password_hash = crypt(${newPassword}, gen_salt('bf')),
+          must_change_password = FALSE,
+          last_password_change = NOW(),
+          updated_at = NOW()
+        WHERE LOWER(user_id) = ${userId.toLowerCase().trim()}
+      `;
+
+      return res.status(200).json({ success: true, message: 'Password updated successfully' });
+    }
+
+    // REQUEST PASSWORD RESET OTP
+    if (action === 'request-otp') {
+      const { emailOrUserId } = body;
+      const cleanTarget = (emailOrUserId || '').toLowerCase().trim();
+
+      const userRows = await sql`
+        SELECT user_id as "userId", email FROM users 
+        WHERE LOWER(user_id) = ${cleanTarget} OR LOWER(email) = ${cleanTarget}
+        LIMIT 1
+      `;
+
+      if (!userRows.length) {
+        return res.status(404).json({ success: false, error: 'User not found' });
+      }
+
+      const user = userRows[0];
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      await sql`
+        UPDATE users SET
+          reset_otp = ${otp},
+          reset_otp_expires = NOW() + INTERVAL '15 minutes'
+        WHERE user_id = ${user.userId}
+      `;
+
       return res.status(200).json({
-        user: rows[0],
-        neon_status: 'Connected'
+        success: true,
+        message: `OTP generated for verification: ${otp} (Valid for 15 mins)`,
+        maskedEmail: user.email.replace(/(.{2})(.*)(?=@)/, (gp1, gp2, gp3) => gp2 + '*'.repeat(gp3.length))
       });
     }
 
-    res.status(400).json({ error: 'Invalid auth action' });
+    // VERIFY OTP AND RESET PASSWORD
+    if (action === 'verify-otp-reset') {
+      const { emailOrUserId, otp, newPassword } = body;
+      const cleanTarget = (emailOrUserId || '').toLowerCase().trim();
+
+      const userRows = await sql`
+        SELECT user_id as "userId", reset_otp, reset_otp_expires 
+        FROM users 
+        WHERE (LOWER(user_id) = ${cleanTarget} OR LOWER(email) = ${cleanTarget})
+          AND reset_otp = ${otp.trim()}
+          AND reset_otp_expires > NOW()
+        LIMIT 1
+      `;
+
+      if (!userRows.length) {
+        return res.status(400).json({ success: false, error: 'Invalid or expired OTP code' });
+      }
+
+      const user = userRows[0];
+      await sql`
+        UPDATE users SET
+          password_hash = crypt(${newPassword}, gen_salt('bf')),
+          reset_otp = NULL,
+          reset_otp_expires = NULL,
+          must_change_password = FALSE,
+          last_password_change = NOW()
+        WHERE user_id = ${user.userId}
+      `;
+
+      return res.status(200).json({ success: true, message: 'Password reset completed. You may now sign in.' });
+    }
+
+    return res.status(400).json({ success: false, error: 'Invalid action requested' });
   } catch (err) {
-    console.error('Auth API error:', err);
-    res.status(500).json({ error: err.message });
+    console.error('Auth API Error:', err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 };

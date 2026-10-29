@@ -10,22 +10,21 @@ try {
 const DEFAULT_DATABASE_URL = "postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require";
 
 async function build() {
-  console.log('--- Dharshithan Waterproofing: Enterprise Financial Ledger Build ---');
+  console.log('--- Dharshithan Finance Tracker: Neon Cloud Build ---');
 
   // 1. Verify files structure
   console.log('1. Validating Project Structure...');
   const files = [
     'index.html',
+    'neon.ts',
     'vercel.json',
-    'api/invoices.js',
-    'api/vouchers.js',
-    'api/salaries.js',
-    'api/audit-logs.js',
-    'api/dashboard-metrics.js',
+    'api/transactions.js',
+    'api/users.js',
     'api/auth.js',
     'api/health.js',
-    'lib/db.js',
-    'lib/inr-words.js'
+    'js/app.js',
+    'js/db.js',
+    'js/auth.js'
   ];
 
   for (const f of files) {
@@ -48,7 +47,7 @@ async function build() {
   try {
     const sql = neon(dbUrl);
     const version = await Promise.race([
-      sql.query('SELECT current_database(), current_user'),
+      sql`SELECT current_database(), current_user`,
       new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 4000))
     ]);
     console.log(`   ✓ Connected to Neon DB (${version[0].current_database})`);
@@ -85,9 +84,9 @@ async function build() {
   }
   console.log('   ✓ Copied index.html, css/, js/, assets/ into "public" output directory.');
 
-  console.log('\n======================================================');
+  console.log('\n========================================');
   console.log('BUILD SUCCESSFUL! App ready for Vercel & Neon.');
-  console.log('======================================================');
+  console.log('========================================');
 }
 
 build()

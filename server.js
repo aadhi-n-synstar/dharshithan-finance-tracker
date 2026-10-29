@@ -4,11 +4,8 @@ const path = require('path');
 const url = require('url');
 require('dotenv').config({ path: '.env.local' });
 
-const invoicesHandler = require('./api/invoices');
-const vouchersHandler = require('./api/vouchers');
-const salariesHandler = require('./api/salaries');
-const auditLogsHandler = require('./api/audit-logs');
-const metricsHandler = require('./api/dashboard-metrics');
+const transactionsHandler = require('./api/transactions');
+const usersHandler = require('./api/users');
 const authHandler = require('./api/auth');
 const healthHandler = require('./api/health');
 
@@ -64,20 +61,11 @@ const server = http.createServer(async (req, res) => {
     createMockReqRes(req, res, parsedUrl);
 
     // API Routes
-    if (pathname === '/api/invoices') {
-      return invoicesHandler(req, res);
+    if (pathname === '/api/transactions') {
+      return transactionsHandler(req, res);
     }
-    if (pathname === '/api/vouchers') {
-      return vouchersHandler(req, res);
-    }
-    if (pathname === '/api/salaries') {
-      return salariesHandler(req, res);
-    }
-    if (pathname === '/api/audit-logs') {
-      return auditLogsHandler(req, res);
-    }
-    if (pathname === '/api/dashboard-metrics') {
-      return metricsHandler(req, res);
+    if (pathname === '/api/users') {
+      return usersHandler(req, res);
     }
     if (pathname === '/api/auth') {
       return authHandler(req, res);
@@ -115,8 +103,8 @@ const server = http.createServer(async (req, res) => {
 
 if (require.main === module) {
   server.listen(PORT, () => {
-    console.log(`Dharshithan Waterproofing Enterprise Ledger running at http://localhost:${PORT}`);
-    console.log(`100% Neon PostgreSQL Native Engine`);
+    console.log(`Dharshithan Finance Tracker is running at http://localhost:${PORT}`);
+    console.log(`Powered 100% by Neon Cloud Database (Postgres, Auth, Realtime)`);
   });
 }
 
