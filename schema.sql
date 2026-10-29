@@ -1,124 +1,133 @@
--- ======================================================================
--- Dharshithan Waterproofing - Enterprise PostgreSQL Database Schema
--- Ready for Free Vercel-supported PostgreSQL (Supabase / Neon / Vercel Postgres)
--- Multi-Role RBAC & User Governance with Password First-Change Policy
--- ======================================================================
+-- ==============================================================================
+-- DHARSHITHAN WATERPROOFING AND CONCRETE SOLUTIONS
+-- Enterprise Financial, Billing, Voucher & Salary Disbursement Ledger Engine
+-- Native Neon PostgreSQL DDL Schema
+-- ==============================================================================
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
--- 1. User Roles & Authentication
+-- 1. Authentication & RBAC
 DO $$ BEGIN
-  CREATE TYPE user_role AS ENUM (
-    'super_admin',
-    'owner',
-    'admin',
-    'developer',
-    'employee',
-    'stakeholder'
-  );
+    CREATE TYPE finance_role AS ENUM ('SUPER_ADMIN', 'OWNER', 'FINANCE', 'AUDITOR');
 EXCEPTION
-  WHEN duplicate_object THEN null;
+    WHEN duplicate_object THEN null;
 END $$;
 
-CREATE TABLE IF NOT EXISTS users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id VARCHAR(50) UNIQUE NOT NULL,
-  full_name VARCHAR(255) NOT NULL,
-  email VARCHAR(255) UNIQUE NOT NULL,
-  category VARCHAR(100) NOT NULL DEFAULT 'Site Operations',
-  role user_role NOT NULL DEFAULT 'employee',
-  phone VARCHAR(20),
-  password_hash VARCHAR(255) NOT NULL,
-  must_change_password BOOLEAN DEFAULT TRUE,
-  email_verified BOOLEAN DEFAULT TRUE,
-  reset_otp VARCHAR(10),
-  reset_otp_expires TIMESTAMPTZ,
-  last_password_change TIMESTAMPTZ,
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+CREATE TABLE IF NOT EXISTS finance_users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    full_name VARCHAR(150) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role finance_role NOT NULL DEFAULT 'FINANCE',
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_users_user_id ON users(user_id);
-CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-CREATE INDEX IF NOT EXISTS idx_users_category ON users(category);
-
--- Seed initial Super Admin account: admin / admin@2026
-INSERT INTO users (user_id, full_name, email, category, role, phone, password_hash, must_change_password) VALUES
-  ('admin', 'Super Administrator', 'admin@dharshithan.com', 'Executive Management', 'super_admin', '+91 98765 43210', crypt('admin@2026', gen_salt('bf')), FALSE)
-ON CONFLICT (email) DO NOTHING;
-
--- 2. Transactions Table (Direct match with Dharshithan Google Sheet)
-CREATE TABLE IF NOT EXISTS transactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  sl_no SERIAL,
-  date DATE NOT NULL,
-  type VARCHAR(50) NOT NULL, -- 'Received / Income' OR 'Paid / Expense'
-  party_name VARCHAR(255) NOT NULL,
-  description TEXT,
-  amount NUMERIC(14, 2) NOT NULL CHECK (amount >= 0),
-  mode VARCHAR(50) NOT NULL DEFAULT 'CASH', -- 'CASH', 'NETBANKING', 'UPI', 'DEBIT CARD / CREDIT CARD', 'CHEQUE', 'OTHERS'
-  ref_number VARCHAR(255),
-  quarter VARCHAR(10) NOT NULL, -- 'Q1', 'Q2', 'Q3', 'Q4'
-  financial_year VARCHAR(20) NOT NULL, -- 'F.Y. 2026-27'
-  profit_value NUMERIC(14, 2) NOT NULL, -- Signed amount (+ for income, - for expense)
-  category VARCHAR(100) DEFAULT 'General',
-  created_by UUID REFERENCES users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
+-- 2. Tax Invoices & Receipts Engine
+CREATE TABLE IF NOT EXISTS invoices_receipts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    receipt_no VARCHAR(50) UNIQUE NOT NULL, -- e.g., DWCS/REC/2026/001
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    client_name VARCHAR(200) NOT NULL,
+    client_address TEXT,
+    client_gstin VARCHAR(20),
+    site_location VARCHAR(255),
+    work_description TEXT,
+    sub_total DECIMAL(12,2) NOT NULL,
+    is_interstate BOOLEAN DEFAULT FALSE, -- FALSE = Intra (CGST+SGST), TRUE = Inter (IGST)
+    cgst_rate DECIMAL(5,2) DEFAULT 9.00,
+    cgst_amount DECIMAL(12,2) DEFAULT 0.00,
+    sgst_rate DECIMAL(5,2) DEFAULT 9.00,
+    sgst_amount DECIMAL(12,2) DEFAULT 0.00,
+    igst_rate DECIMAL(5,2) DEFAULT 0.00,
+    igst_amount DECIMAL(12,2) DEFAULT 0.00,
+    grand_total DECIMAL(12,2) NOT NULL,
+    grand_total_words TEXT NOT NULL,
+    payment_mode VARCHAR(50) NOT NULL, -- Bank Transfer, NEFT, RTGS, UPI, Cheque, Cash
+    transaction_ref VARCHAR(100),
+    signing_authority VARCHAR(100) DEFAULT 'Authorized Signatory',
+    status VARCHAR(50) DEFAULT 'PAID', -- DRAFT, PAID, CANCELLED
+    created_by UUID REFERENCES finance_users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
-CREATE INDEX IF NOT EXISTS idx_transactions_party ON transactions(party_name);
-CREATE INDEX IF NOT EXISTS idx_transactions_fy_quarter ON transactions(financial_year, quarter);
-CREATE INDEX IF NOT EXISTS idx_transactions_mode ON transactions(mode);
-
--- 3. Liquidity Float & Reconciliation Table
-CREATE TABLE IF NOT EXISTS liquidity_settings (
-  id SERIAL PRIMARY KEY,
-  opening_bank_balance NUMERIC(14, 2) DEFAULT 0.00,
-  opening_cash_float NUMERIC(14, 2) DEFAULT 0.00,
-  last_reconciled_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_by UUID REFERENCES users(id)
+CREATE TABLE IF NOT EXISTS invoice_line_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    invoice_id UUID REFERENCES invoices_receipts(id) ON DELETE CASCADE,
+    description TEXT NOT NULL,
+    hsn_sac_code VARCHAR(20) DEFAULT '9954', -- Waterproofing & Construction Services
+    quantity DECIMAL(10,2) NOT NULL,
+    unit VARCHAR(30) DEFAULT 'Sq.Ft',
+    rate DECIMAL(10,2) NOT NULL,
+    total_amount DECIMAL(12,2) NOT NULL
 );
 
-INSERT INTO liquidity_settings (id, opening_bank_balance, opening_cash_float)
-VALUES (1, 0.00, 0.00)
-ON CONFLICT (id) DO NOTHING;
-
--- 4. Audit Trail Log (Enterprise Governance)
-CREATE TABLE IF NOT EXISTS audit_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id VARCHAR(50),
-  user_email VARCHAR(255),
-  action VARCHAR(100) NOT NULL, -- 'USER_LOGIN', 'PASSWORD_CHANGED', 'OTP_REQUESTED', 'USER_CREATED', 'ROLE_CHANGE', 'SYNC_GSHEETS'
-  record_id VARCHAR(255),
-  details JSONB,
-  ip_address VARCHAR(45),
-  created_at TIMESTAMPTZ DEFAULT NOW()
+-- 3. Comprehensive Financial Vouchers (Expense, Vendor, Subcontractor, Cash)
+CREATE TABLE IF NOT EXISTS financial_vouchers (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    voucher_no VARCHAR(50) UNIQUE NOT NULL, -- e.g., DWCS/VOU/2026/001
+    voucher_type VARCHAR(50) NOT NULL, -- 'PAYMENT', 'RECEIPT', 'PETTY_CASH', 'JOURNAL'
+    category VARCHAR(100) NOT NULL, -- 'Material Cost', 'Chemical Purchase', 'Subcontractor', 'Equipment', 'Site Overhead', 'Fuel'
+    voucher_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    paid_to_or_received_from VARCHAR(200) NOT NULL,
+    amount DECIMAL(12,2) NOT NULL,
+    amount_in_words TEXT NOT NULL,
+    payment_mode VARCHAR(50) NOT NULL,
+    reference_number VARCHAR(100),
+    narration TEXT NOT NULL,
+    prepared_by UUID REFERENCES finance_users(id),
+    approved_by VARCHAR(100) DEFAULT 'Partner / Managing Director',
+    status VARCHAR(50) DEFAULT 'CONFIRMED',
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 5. Row Level Security (RLS) Policies
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+-- 4. Financial Salary Disbursement & Payslip Register (Pure Finance Records)
+CREATE TABLE IF NOT EXISTS salary_disbursements (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    disbursement_no VARCHAR(50) UNIQUE NOT NULL, -- e.g., DWCS/SAL/2026/001
+    disbursement_month VARCHAR(30) NOT NULL, -- e.g., "October 2026"
+    disbursement_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    employee_name VARCHAR(150) NOT NULL,
+    employee_id VARCHAR(50),
+    designation VARCHAR(100) NOT NULL,
+    bank_account_no VARCHAR(50),
+    ifsc_code VARCHAR(30),
+    basic_pay DECIMAL(10,2) NOT NULL,
+    hra DECIMAL(10,2) DEFAULT 0.00,
+    special_allowance DECIMAL(10,2) DEFAULT 0.00,
+    total_earnings DECIMAL(10,2) NOT NULL,
+    pf_deduction DECIMAL(10,2) DEFAULT 0.00,
+    esi_deduction DECIMAL(10,2) DEFAULT 0.00,
+    tds_deduction DECIMAL(10,2) DEFAULT 0.00,
+    advance_adjustment DECIMAL(10,2) DEFAULT 0.00,
+    total_deductions DECIMAL(10,2) NOT NULL,
+    net_salary DECIMAL(10,2) NOT NULL,
+    net_salary_words TEXT NOT NULL,
+    payment_mode VARCHAR(50) DEFAULT 'Bank Transfer',
+    transaction_ref VARCHAR(100),
+    linked_voucher_id UUID REFERENCES financial_vouchers(id),
+    created_by UUID REFERENCES finance_users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Super Admin, Developer, and Admin can view and manage users
-CREATE POLICY "Allow user management to privileged roles" ON users
-  FOR ALL USING (
-    current_setting('app.current_user_role', true) IN ('super_admin', 'developer', 'admin', 'owner')
-  );
+-- 5. Audit Log (Tracks any alter/edit/delete operation)
+CREATE TABLE IF NOT EXISTS finance_audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    table_name VARCHAR(50) NOT NULL,
+    record_id UUID NOT NULL,
+    action VARCHAR(20) NOT NULL, -- 'INSERT', 'UPDATE', 'DELETE', 'VOID'
+    performed_by UUID REFERENCES finance_users(id),
+    reason TEXT,
+    previous_state JSONB,
+    new_state JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- Users can view their own profile
-CREATE POLICY "Allow users to view own profile" ON users
-  FOR SELECT USING (
-    user_id = current_setting('app.current_user_id', true)
-  );
-
--- Stakeholders and Employees have read access to transactions
-CREATE POLICY "Allow read to authenticated roles" ON transactions
-  FOR SELECT USING (TRUE);
-
--- Super Admin, Owner, and Admin can mutate transactions
-CREATE POLICY "Allow write to admin roles" ON transactions
-  FOR ALL USING (TRUE);
+-- Indexes for high performance querying
+CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices_receipts(date DESC);
+CREATE INDEX IF NOT EXISTS idx_invoices_client ON invoices_receipts(client_name);
+CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices_receipts(status);
+CREATE INDEX IF NOT EXISTS idx_vouchers_date ON financial_vouchers(voucher_date DESC);
+CREATE INDEX IF NOT EXISTS idx_vouchers_type ON financial_vouchers(voucher_type);
+CREATE INDEX IF NOT EXISTS idx_vouchers_category ON financial_vouchers(category);
+CREATE INDEX IF NOT EXISTS idx_salaries_month ON salary_disbursements(disbursement_month);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON finance_audit_logs(created_at DESC);

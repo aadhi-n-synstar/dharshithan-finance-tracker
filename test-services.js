@@ -1,102 +1,93 @@
 const { neon } = require('@neondatabase/serverless');
-const https = require('https');
 require('dotenv').config({ path: '.env.local' });
 
+const dbUrl = process.env.DATABASE_URL ||
+  "postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require";
+
 async function testServices() {
-  console.log('====================================================');
-  console.log('   Dharshithan Finance Tracker - Neon End-to-End Test');
-  console.log('====================================================\n');
+  console.log('========================================================================');
+  console.log('   Dharshithan Waterproofing - Enterprise Neon Ledger Test Suite');
+  console.log('========================================================================\n');
 
   let passed = 0;
-  let total = 3;
+  let total = 4;
 
-  // --- SERVICE 1: NEON POSTGRESQL ---
-  console.log('[1/3] Testing Service: Neon Lakebase Postgres...');
+  const sql = neon(dbUrl);
+
+  // --- TEST 1: NEON DATABASE CONNECTIVITY ---
+  console.log('[1/4] Testing Neon Serverless PostgreSQL Connection...');
   try {
-    const sql = neon(process.env.DATABASE_URL);
-    const dbInfo = await sql`SELECT current_database(), current_user, version()`;
-    console.log(`  ✓ Database connected: ${dbInfo[0].current_database} (User: ${dbInfo[0].current_user})`);
+    const dbInfo = await sql.query('SELECT current_database(), current_user, version()');
+    console.log(`  ✓ Connected: Database=${dbInfo[0].current_database}, User=${dbInfo[0].current_user}`);
+    passed++;
+  } catch (err) {
+    console.error('  ✗ Neon connection error:', err.message);
+  }
 
-    // Test Write (Insert)
-    const testParty = 'Neon E2E Test Party ' + Date.now();
-    const insertRes = await sql`
-      INSERT INTO transactions (
-        sl_no, date, type, party_name, category, description,
-        amount, mode, ref_number, quarter, financial_year, profit_value
+  // --- TEST 2: TAX INVOICES & RECEIPTS ENGINE ---
+  console.log('\n[2/4] Testing Invoices & Receipts Engine...');
+  try {
+    const invCount = await sql.query('SELECT count(*)::int as count FROM invoices_receipts');
+    console.log(`  ✓ Invoices table accessible. Total invoices: ${invCount[0].count}`);
+
+    // Insert test invoice
+    const testInv = await sql.query(`
+      INSERT INTO invoices_receipts (
+        receipt_no, date, client_name, sub_total, grand_total, grand_total_words, payment_mode
       ) VALUES (
-        9999, '2026-11-01', 'Received / Income', ${testParty}, 'Test Category', 'E2E Testing',
-        5000.00, 'UPI', 'TEST-REF', 'Q3', 'F.Y. 2026-27', 5000.00
-      )
-      RETURNING id, sl_no, party_name, amount
-    `;
-    console.log(`  ✓ Write Test: Inserted test transaction id=${insertRes[0].id} (₹${insertRes[0].amount})`);
+        'DWCS/TEST/001', CURRENT_DATE, 'Automated Test Client', 10000.00, 11800.00,
+        'Eleven Thousand Eight Hundred Rupees Only', 'UPI'
+      ) RETURNING id, receipt_no
+    `);
+    console.log(`  ✓ Inserted test invoice id=${testInv[0].id}`);
 
-    // Test Read (Select)
-    const readRes = await sql`SELECT id, party_name, amount FROM transactions WHERE id = ${insertRes[0].id}`;
-    if (!readRes.length || readRes[0].party_name !== testParty) {
-      throw new Error('Read verification failed!');
-    }
-    console.log(`  ✓ Read Test: Verified test record retrieved successfully`);
-
-    // Test Cleanup (Delete)
-    await sql`DELETE FROM transactions WHERE id = ${insertRes[0].id}`;
-    console.log(`  ✓ Delete Test: Cleaned up test record`);
-
-    console.log('  >>> SERVICE 1 (Neon Postgres): PASSED! <<<\n');
+    // Clean up
+    await sql.query('DELETE FROM invoices_receipts WHERE id = $1', [testInv[0].id]);
+    console.log('  ✓ Cleaned up test invoice');
     passed++;
   } catch (err) {
-    console.error('  ✗ SERVICE 1 FAILED:', err.message, '\n');
+    console.error('  ✗ Invoices test error:', err.message);
   }
 
-  // --- SERVICE 2: NEON AUTH ---
-  console.log('[2/3] Testing Service: Neon Auth (Managed Better Auth)...');
+  // --- TEST 3: FINANCIAL VOUCHERS ENGINE ---
+  console.log('\n[3/4] Testing Financial Vouchers Engine...');
   try {
-    const authUrl = process.env.NEON_AUTH_BASE_URL;
-    const jwksUrl = process.env.NEON_AUTH_JWKS_URL;
-    if (!authUrl || !jwksUrl) {
-      throw new Error('Missing NEON_AUTH_BASE_URL or NEON_AUTH_JWKS_URL');
-    }
-    console.log(`  ✓ Auth Base URL: ${authUrl}`);
-    console.log(`  ✓ JWKS URL: ${jwksUrl}`);
+    const vouCount = await sql.query('SELECT count(*)::int as count FROM financial_vouchers');
+    console.log(`  ✓ Financial vouchers table accessible. Total vouchers: ${vouCount[0].count}`);
 
-    // Verify JWKS endpoint responds
-    await new Promise((resolve, reject) => {
-      https.get(jwksUrl, (res) => {
-        if (res.statusCode >= 200 && res.statusCode < 400) {
-          console.log(`  ✓ JWKS Endpoint Responding: HTTP ${res.statusCode}`);
-          resolve();
-        } else {
-          reject(new Error(`JWKS HTTP error: ${res.statusCode}`));
-        }
-      }).on('error', reject);
-    });
+    const testVou = await sql.query(`
+      INSERT INTO financial_vouchers (
+        voucher_no, voucher_type, category, paid_to_or_received_from, amount,
+        amount_in_words, payment_mode, narration
+      ) VALUES (
+        'DWCS/TEST/V01', 'PAYMENT', 'Chemical Purchase', 'Test Vendor', 5000.00,
+        'Five Thousand Rupees Only', 'UPI', 'Test Voucher'
+      ) RETURNING id, voucher_no
+    `);
+    console.log(`  ✓ Inserted test voucher id=${testVou[0].id}`);
 
-    console.log('  >>> SERVICE 2 (Neon Auth): PASSED! <<<\n');
+    await sql.query('DELETE FROM financial_vouchers WHERE id = $1', [testVou[0].id]);
+    console.log('  ✓ Cleaned up test voucher');
     passed++;
   } catch (err) {
-    console.error('  ✗ SERVICE 2 FAILED:', err.message, '\n');
+    console.error('  ✗ Vouchers test error:', err.message);
   }
 
-  // --- SERVICE 3: NEON REALTIME ---
-  console.log('[3/3] Testing Service: Neon Realtime...');
+  // --- TEST 4: SALARY DISBURSEMENT & AUDIT LOG ENGINE ---
+  console.log('\n[4/4] Testing Salary Disbursements & Audit Logs...');
   try {
-    const rtUrl = process.env.NEON_REALTIME_URL;
-    const rtSecret = process.env.NEON_REALTIME_SECRET;
-    if (!rtUrl || !rtSecret) {
-      throw new Error('Missing NEON_REALTIME_URL or NEON_REALTIME_SECRET');
-    }
-    console.log(`  ✓ Realtime WebSocket Endpoint: ${rtUrl}`);
-    console.log(`  ✓ Realtime Secret Configured: ${rtSecret.slice(0, 12)}...`);
-
-    console.log('  >>> SERVICE 3 (Neon Realtime): PASSED! <<<\n');
+    const salCount = await sql.query('SELECT count(*)::int as count FROM salary_disbursements');
+    const auditCount = await sql.query('SELECT count(*)::int as count FROM finance_audit_logs');
+    console.log(`  ✓ Salary disbursements: ${salCount[0].count} records`);
+    console.log(`  ✓ Finance audit logs: ${auditCount[0].count} records`);
     passed++;
   } catch (err) {
-    console.error('  ✗ SERVICE 3 FAILED:', err.message, '\n');
+    console.error('  ✗ Salary/Audit test error:', err.message);
   }
 
-  console.log('====================================================');
-  console.log(`Summary: ${passed}/${total} Services Verified and Active`);
-  console.log('====================================================');
+  console.log('\n========================================================================');
+  console.log(`Summary: ${passed}/${total} Enterprise Ledger Engines Verified and Active`);
+  console.log('========================================================================\n');
 
   if (passed !== total) {
     process.exit(1);

@@ -2,1528 +2,881 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Dharshithan Waterproofing - Finance Tracker Pro</title>
-  
-  <!-- PWA & Mobile Web App Meta -->
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#ffffff">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Dharshithan">
-
-  <link rel="icon" type="image/webp" href="assets/favicon.webp">
-  <link rel="shortcut icon" href="assets/favicon.webp">
-  <link rel="apple-touch-icon" href="assets/logo.webp">
-  
-  <!-- Google Fonts: Inter & JetBrains Mono -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#f0f9ff',
-              100: '#e0f2fe',
-              500: '#0284c7',
-              600: '#0369a1',
-              700: '#075985',
-              800: '#0c4a6e',
-              900: '#082f49',
-            }
-          },
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          }
-        }
-      }
-    }
-  </script>
-
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
-  <!-- Custom Styles & Android App UI -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dharshithan Waterproofing - Enterprise Financial Ledger & Billing Engine</title>
   <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <!-- SheetJS for pure client-side Excel (.xlsx / .csv) export without Google Sheets -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
-<body class="bg-[#f8fafc] text-slate-900 min-h-screen flex flex-col font-sans antialiased selection:bg-sky-500 selection:text-white pb-20 md:pb-6">
+<body>
 
-  <!-- LOGIN OVERLAY / AUTH GATEWAY -->
-  <div id="loginOverlay" class="fixed inset-0 z-50 bg-[#f8fafc] overflow-y-auto flex items-center justify-center p-4">
-    <div class="max-w-md w-full bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 space-y-6 shadow-xl relative my-auto">
-      
-      <!-- Branding Header -->
-      <div class="text-center space-y-2">
-        <div class="w-16 h-16 mx-auto rounded-2xl bg-white p-1.5 shadow-md border border-slate-200 overflow-hidden flex items-center justify-center">
-          <img src="assets/logo.webp" alt="Dharshithan Waterproofing Logo" class="w-full h-full object-contain">
-        </div>
-        <div>
-          <h2 class="text-xl font-bold text-slate-900 tracking-tight">Dharshithan Finance Tracker</h2>
-          <p class="text-xs text-slate-500 font-medium">Enterprise Role-Based Financial Governance</p>
+  <!-- ==============================================================================
+       EXECUTIVE TOP BAR
+       ============================================================================== -->
+  <header class="top-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <img src="assets/logo.webp" alt="Dharshithan Logo" class="brand-logo" onerror="this.src='assets/favicon.svg'">
+        <div class="brand-titles">
+          <h1>Dharshithan Waterproofing and Concrete Solutions</h1>
+          <p>GSTIN: <strong>33CEQPP3071Q1ZR</strong> | 69/8 Karuneegar St, Adambakkam, Chennai - 600088</p>
         </div>
       </div>
 
-      <!-- Login Form -->
-      <form id="loginForm" onsubmit="app.handleLogin(event)" class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold text-slate-700 mb-1">User ID</label>
-          <div class="relative">
-            <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-            <input type="text" id="loginUserId" required autocomplete="username" placeholder="e.g. admin" class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-sky-500 transition">
+      <div class="header-right">
+        <!-- Active Role & Profile Badge -->
+        <div class="user-badge-container">
+          <div class="user-badge-pill" id="userBadgeBtn" onclick="toggleUserDropdown()">
+            <span class="neon-dot" title="Neon DB: Connected"></span>
+            <span id="headerUserName">Dharshithan Partiban</span>
+            <span class="role-tag" id="headerUserRole">Super Admin</span>
+            <span style="font-size: 0.7rem; color: var(--text-dim);">▼</span>
+          </div>
+
+          <div class="user-dropdown" id="userDropdown">
+            <div class="dropdown-header">
+              <div class="user-name" id="dropdownUserName">Dharshithan Partiban</div>
+              <div class="user-email" id="dropdownUserEmail">dharshithanpartiban@gmail.com</div>
+              <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--emerald);">
+                <span class="neon-dot"></span> Neon DB: Connected
+              </div>
+            </div>
+
+            <div style="padding: 0.5rem 0.8rem 0.2rem; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">
+              Switch Role (RBAC)
+            </div>
+            <button class="dropdown-item" onclick="switchActiveRole('SUPER_ADMIN')">👑 Super Admin</button>
+            <button class="dropdown-item" onclick="switchActiveRole('OWNER')">👔 Owner / Partner</button>
+            <button class="dropdown-item" onclick="switchActiveRole('FINANCE')">💼 Finance Team</button>
+            <button class="dropdown-item" onclick="switchActiveRole('AUDITOR')">🔍 GST Auditor (Read-Only)</button>
+
+            <div class="dropdown-divider"></div>
+            <button class="dropdown-item" onclick="openLoginModal()" style="color: #60a5fa;">🔑 Switch Account</button>
+            <button class="dropdown-item" onclick="signOutUser()" style="color: var(--rose);">🚪 Sign Out</button>
           </div>
         </div>
-
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="block text-xs font-semibold text-slate-700">Password</label>
-            <button type="button" onclick="app.openForgotPasswordModal()" class="text-[11px] text-sky-600 hover:text-sky-700 font-semibold underline">Forgot Password?</button>
-          </div>
-          <div class="relative">
-            <i data-lucide="lock" class="w-4 h-4 text-slate-400 absolute left-3 top-3"></i>
-            <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="••••••••" class="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-10 py-2 text-xs text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:border-sky-500 transition">
-            <button type="button" onclick="app.toggleLoginPasswordVisibility()" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5">
-              <i data-lucide="eye" id="loginPassEyeIcon" class="w-4 h-4"></i>
-            </button>
-          </div>
-        </div>
-
-        <button type="submit" id="loginSubmitBtn" class="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs transition shadow-md flex items-center justify-center space-x-2">
-          <i data-lucide="log-in" class="w-4 h-4"></i>
-          <span>Sign In</span>
-        </button>
-      </form>
-
-      <!-- Enterprise Security Assurance Badge -->
-      <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center space-x-3 text-slate-600 text-xs">
-        <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-700">
-          <i data-lucide="shield-check" class="w-5 h-5"></i>
-        </div>
-        <div>
-          <span class="font-bold text-slate-800 text-[11px] block">256-Bit SSL Encrypted Enterprise Portal</span>
-          <p class="text-[10px] text-slate-500">Authorized personnel only. Protected under Company Financial Data Privacy.</p>
-        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- FIRST-TIME LOGIN PASSWORD CHANGE MODAL -->
-  <div id="firstLoginModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden">
-    <div class="glass-card bg-white rounded-3xl border border-slate-200 max-w-md w-full p-6 sm:p-7 space-y-4 shadow-2xl">
-      <div class="flex items-center space-x-3 text-amber-600">
-        <div class="w-10 h-10 rounded-2xl bg-amber-100 flex items-center justify-center">
-          <i data-lucide="shield-alert" class="w-5 h-5 text-amber-700"></i>
-        </div>
-        <div>
-          <h3 class="text-base font-bold text-slate-900">Change Temporary Password</h3>
-          <p class="text-xs text-slate-500">First-time login security requirement</p>
-        </div>
-      </div>
-
-      <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-        <p>Hello <strong id="firstLoginTargetName">User</strong>! Your account was initialized with a temporary password. You must set a new secure personal password to activate your account.</p>
-      </div>
-
-      <form id="firstLoginForm" onsubmit="app.handleFirstLoginPasswordChange(event)" class="space-y-3 text-xs">
-        <div>
-          <label class="block font-medium text-slate-700 mb-1">Current / Temporary Password</label>
-          <input type="password" id="firstLoginCurrentPass" required class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-sky-500">
-        </div>
-        <div>
-          <label class="block font-medium text-slate-700 mb-1">New Secure Password</label>
-          <input type="password" id="firstLoginNewPass" minlength="6" required placeholder="At least 6 characters" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-sky-500">
-        </div>
-        <div>
-          <label class="block font-medium text-slate-700 mb-1">Confirm New Password</label>
-          <input type="password" id="firstLoginConfirmPass" minlength="6" required placeholder="Re-enter new password" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-sky-500">
-        </div>
-
-        <button type="submit" class="w-full py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-2 mt-4">
-          <i data-lucide="check-circle" class="w-4 h-4"></i>
-          <span>Activate Account & Continue</span>
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- FORGOT PASSWORD & OTP MODAL -->
-  <div id="forgotPasswordModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden">
-    <div class="glass-card bg-white rounded-3xl border border-slate-200 max-w-md w-full p-6 sm:p-7 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-        <div class="flex items-center space-x-2.5">
-          <div class="w-9 h-9 rounded-xl bg-sky-100 flex items-center justify-center text-sky-700">
-            <i data-lucide="key-round" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h3 class="text-base font-bold text-slate-900">Reset Password</h3>
-            <p class="text-xs text-slate-500">Verify via OTP sent to registered Mail ID</p>
-          </div>
-        </div>
-        <button onclick="app.closeForgotPasswordModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <!-- Step 1: Request OTP -->
-      <div id="forgotStep1" class="space-y-3 text-xs">
-        <p class="text-slate-600">Enter your User ID or registered Mail ID to receive a 6-digit OTP verification code.</p>
-        <div>
-          <label class="block font-medium text-slate-700 mb-1">User ID or Mail ID</label>
-          <input type="text" id="forgotInputUserOrEmail" placeholder="admin or admin@dharshithan.com" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:bg-white focus:outline-none focus:border-sky-500">
-        </div>
-        <button onclick="app.handleRequestResetOTP()" class="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
-          <i data-lucide="send" class="w-3.5 h-3.5"></i>
-          <span>Send Verification OTP</span>
-        </button>
-      </div>
-
-      <!-- Step 2: Verify OTP & Enter New Password -->
-      <div id="forgotStep2" class="space-y-3.5 text-xs hidden">
-        <div class="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 space-y-1">
-          <span class="font-bold text-emerald-900 flex items-center space-x-1">
-            <i data-lucide="mail-check" class="w-4 h-4 text-emerald-600"></i>
-            <span>Verification OTP Dispatched!</span>
-          </span>
-          <p class="text-[11px] text-emerald-800">OTP code sent to: <strong id="forgotDispatchedEmail"></strong></p>
-          <div class="flex items-center justify-between pt-1 font-mono text-[11px]">
-            <span>Test OTP: <strong id="forgotTestingOTP" class="text-emerald-950 font-bold bg-white px-2 py-0.5 rounded border border-emerald-300"></strong></span>
-            <button onclick="app.autofillOTP()" class="text-[10px] text-emerald-700 underline font-semibold">Autofill OTP</button>
-          </div>
-        </div>
-
-        <div>
-          <label class="block font-medium text-slate-700 mb-1">Enter 6-Digit OTP Code</label>
-          <input type="text" id="forgotOTPCode" maxlength="6" placeholder="123456" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-center text-lg font-mono tracking-widest text-slate-900 focus:outline-none focus:border-sky-500">
-        </div>
-
-        <div>
-          <label class="block font-medium text-slate-700 mb-1">Set New Password</label>
-          <input type="password" id="forgotNewPass" minlength="6" placeholder="At least 6 characters" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-sky-500">
-        </div>
-
-        <div class="flex space-x-2 pt-1">
-          <button onclick="app.handleVerifyOTPAndReset()" class="flex-1 py-2.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
-            <i data-lucide="check" class="w-4 h-4"></i>
-            <span>Verify & Update Password</span>
-          </button>
-          <button onclick="app.closeForgotPasswordModal()" class="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Top App Bar (Android / Desktop Header) -->
-  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3.5 lg:px-8 py-2.5 md:py-3.5 flex items-center justify-between shadow-xs">
-    <div class="flex items-center space-x-2.5 md:space-x-3.5">
-      <div class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white p-1 flex items-center justify-center shadow-xs border border-slate-200 overflow-hidden flex-shrink-0">
-        <img src="assets/logo.webp" alt="Dharshithan Waterproofing Logo" class="w-full h-full object-contain">
-      </div>
-      <div>
-        <div class="flex items-center space-x-1.5">
-          <h1 class="text-base md:text-lg font-bold text-slate-900 tracking-tight leading-none">Dharshithan</h1>
-          <span class="text-[9px] md:text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">Finance Pro</span>
-        </div>
-        <p class="text-[10px] md:text-xs text-slate-500 mt-0.5">Waterproofing & Complete Solutions</p>
-      </div>
-    </div>
-
-    <!-- Header Actions, Role Selector & Sync Status -->
-    <div class="flex items-center space-x-2 md:space-x-3">
-      <!-- Role / User Persona Pill Switcher -->
-      <button onclick="app.openRoleModal()" id="rolePillBtn" class="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 transition shadow-2xs" title="Switch User Role & Permissions">
-        <span id="roleAvatarDot" class="w-2 h-2 rounded-full bg-purple-600"></span>
-        <span id="rolePillText">Super Admin</span>
-        <i data-lucide="chevron-down" class="w-3 h-3 text-purple-600"></i>
-      </button>
-
-      <!-- Neon Cloud Database Live Sync Pill Button -->
-      <button onclick="app.openDatabaseHubModal()" id="neonSyncPill" class="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition shadow-2xs" title="Neon Cloud PostgreSQL Database (100% Active Master Source)">
-        <span id="neonStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span id="neonStatusText" class="hidden sm:inline">Neon Cloud Live</span>
-        <i data-lucide="database" class="w-3 h-3 text-sky-600"></i>
-      </button>
-
-      <!-- Google Sheets Live Sync Pill Button (Standby) -->
-      <button onclick="app.openSyncModal()" id="sheetSyncPill" class="flex items-center space-x-1.5 px-2 py-1.5 rounded-full text-[11px] font-semibold bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100 transition shadow-2xs" title="Google Sheets Integration (Optional Standby)">
-        <span id="syncStatusDot" class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-        <span class="hidden md:inline">Sheets Sync</span>
-        <i data-lucide="file-spreadsheet" class="w-3 h-3 text-emerald-600"></i>
-      </button>
-
-      <!-- User Management & RBAC Directory Button (Super Admin, Developer, Admin) -->
-      <button onclick="app.openUserManagementModal()" id="userMgmtBtn" class="p-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 transition flex items-center justify-center shadow-2xs" title="User Management & RBAC Directory (Super Admin, Developer, Admin)">
-        <i data-lucide="user-cog" class="w-4 h-4 text-purple-600"></i>
-      </button>
-
-      <!-- Database Hub Button (Prime Database - Restricted to Super Admin & Dev) -->
-      <button onclick="app.openDatabaseHubModal()" id="dbHubBtn" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition flex items-center justify-center shadow-2xs hidden" title="Enterprise Database Hub & Cloud Migration (Super Admin & Developer Only)">
-        <i data-lucide="database" class="w-4 h-4 text-sky-600"></i>
-      </button>
-
-      <!-- Sign Out / Logout Button -->
-      <button onclick="app.handleLogout()" id="headerLogoutBtn" class="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 transition flex items-center justify-center shadow-2xs" title="Sign Out">
-        <i data-lucide="log-out" class="w-4 h-4"></i>
-      </button>
-
-      <!-- Desktop Nav Tabs -->
-      <nav class="hidden md:flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-medium text-slate-600">
-        <button onclick="app.setActiveTab('dashboard')" id="tab-dashboard" class="px-3 py-1.5 rounded-lg transition-all text-white bg-sky-600 font-semibold shadow-xs flex items-center space-x-1.5">
-          <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
-          <span>Dashboard</span>
-        </button>
-        <button onclick="app.setActiveTab('transactions')" id="tab-transactions" class="px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 flex items-center space-x-1.5">
-          <i data-lucide="receipt" class="w-3.5 h-3.5"></i>
-          <span>Ledger</span>
-        </button>
-        <button onclick="app.setActiveTab('parties')" id="tab-parties" class="px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 flex items-center space-x-1.5">
-          <i data-lucide="users" class="w-3.5 h-3.5"></i>
-          <span>Parties</span>
-        </button>
-        <button onclick="app.setActiveTab('reports')" id="tab-reports" class="px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 flex items-center space-x-1.5">
-          <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
-          <span>P&L Reports</span>
-        </button>
-      </nav>
-
-      <!-- Live Sync / Refresh Button -->
-      <button onclick="app.pullFromGoogleSheets()" id="headerSyncBtn" class="flex px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-xs font-semibold shadow-2xs items-center space-x-1.5 transition-all transform active:scale-95" title="Fetch latest entries from Google Sheets">
-        <i data-lucide="refresh-cw" class="w-3.5 h-3.5" id="headerSyncIcon"></i>
-        <span class="hidden sm:inline">Sync Sheets</span>
-      </button>
-
-      <!-- Open Master Google Sheet -->
-      <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" title="Entries are strictly maintained in Google Sheets. Open Spreadsheet to Add or Edit entries." class="flex px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs items-center space-x-1.5 transition-all transform active:scale-95">
-        <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
-        <span class="hidden sm:inline">Master Sheet</span>
-        <i data-lucide="external-link" class="w-3 h-3 opacity-80"></i>
-      </a>
     </div>
   </header>
 
-  <!-- Live Google Sheets Sync Status Bar -->
-  <div class="bg-emerald-50/90 border-b border-emerald-200/80 px-3.5 lg:px-8 py-1.5 flex flex-wrap items-center justify-between text-xs text-emerald-900 shadow-2xs">
-    <div class="flex items-center space-x-2">
-      <span class="flex h-2 w-2 relative">
-        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
-      </span>
-      <span class="font-bold text-emerald-900">Google Sheets Live Connected</span>
-      <span class="text-emerald-700 text-[11px] hidden md:inline">• Read-Only Executive Analytics Viewer (Entries are strictly maintained in Google Sheets)</span>
-    </div>
-    <div class="flex items-center space-x-3 text-[11px]">
-      <span id="lastSyncBannerText" class="text-emerald-800 font-mono">Synced from Google Sheets</span>
-      <button onclick="app.pullFromGoogleSheets()" class="font-bold text-emerald-800 hover:text-emerald-950 underline flex items-center space-x-1 cursor-pointer">
-        <i data-lucide="refresh-cw" class="w-3 h-3"></i>
-        <span>Refresh Now</span>
-      </button>
-    </div>
-  </div>
-
-  <!-- Global Filter & Period Bar -->
-  <section class="bg-white border-b border-slate-200 px-3.5 lg:px-8 py-2 md:py-2.5 flex flex-wrap items-center justify-between gap-2.5 shadow-2xs">
-    <div class="flex items-center space-x-2 text-xs flex-1 min-w-[240px]">
-      <span class="text-slate-500 flex items-center space-x-1 flex-shrink-0">
-        <i data-lucide="filter" class="w-3.5 h-3.5 text-slate-400"></i>
-        <span class="font-medium hidden sm:inline">Period:</span>
-      </span>
-      <select id="filterFY" onchange="app.handleFilterChange()" class="bg-white border border-slate-300 text-slate-800 text-xs rounded-lg px-2 py-1 focus:ring-1 focus:ring-sky-500 focus:outline-none">
-        <option value="ALL">All FY</option>
-        <option value="F.Y. 2026-27" selected>F.Y. 2026-27</option>
-        <option value="F.Y. 2025-26">F.Y. 2025-26</option>
-      </select>
-      <select id="filterQuarter" onchange="app.handleFilterChange()" class="bg-white border border-slate-300 text-slate-800 text-xs rounded-lg px-2 py-1 focus:ring-1 focus:ring-sky-500 focus:outline-none">
-        <option value="ALL">All Quarters</option>
-        <option value="Q1">Q1 (Apr - Jun)</option>
-        <option value="Q2">Q2 (Jul - Sep)</option>
-        <option value="Q3">Q3 (Oct - Dec)</option>
-        <option value="Q4">Q4 (Jan - Mar)</option>
-      </select>
-    </div>
-
-    <!-- Quick Actions Pill Bar -->
-    <div class="flex items-center space-x-1.5 text-xs">
-      <button onclick="app.pullFromGoogleSheets()" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Pull latest updates from Google Sheets">
-        <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-emerald-600"></i>
-        <span class="font-medium text-[11px]">Pull Sheet</span>
-      </button>
-      <button onclick="app.pushAllToGoogleSheets()" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Sync all local entries to Google Sheets immediately">
-        <i data-lucide="upload-cloud" class="w-3.5 h-3.5 text-sky-600"></i>
-        <span class="font-medium text-[11px]">Push Sheet</span>
-      </button>
-      <button onclick="app.copyForGoogleSheets()" class="hidden md:flex px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 shadow-2xs transition items-center space-x-1" title="Copy table for pasting directly into Google Sheets">
-        <i data-lucide="clipboard-copy" class="w-3.5 h-3.5 text-emerald-600"></i>
-        <span class="font-medium text-[11px]">Copy for Sheets</span>
-      </button>
-      <button onclick="app.exportCSV()" class="px-2 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Export as CSV">
-        <i data-lucide="download" class="w-3.5 h-3.5 text-sky-600"></i>
-        <span class="font-medium text-[11px]">CSV</span>
-      </button>
-    </div>
-  </section>
-
-  <!-- Main Content Body -->
-  <main class="flex-1 p-3.5 md:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-5 md:space-y-6">
-
-    <!-- VIEW 1: EXECUTIVE FINANCIAL DASHBOARD (EXACT MATCH WITH DASHBOARD WORKSHEET) -->
-    <div id="view-dashboard" class="space-y-5 md:space-y-6">
-
-      <!-- Section Title Banner -->
-      <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-        <div>
-          <h2 class="text-sm md:text-base font-bold text-slate-900 uppercase tracking-wide flex items-center space-x-2">
-            <i data-lucide="shield-check" class="w-4 h-4 text-sky-600"></i>
-            <span>Executive Financial Dashboard</span>
-          </h2>
-          <p class="text-[11px] text-slate-500">Live reflection of master Google Sheet Dashboard Worksheet</p>
-        </div>
-        <div class="text-[11px] font-mono text-slate-500 flex items-center space-x-2">
-          <span>Active Driver:</span>
-          <span id="activeDriverBadge" class="px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">Google Sheets Master</span>
-        </div>
-      </div>
-
-      <!-- 5 Top KPI Metric Cards (Matching Rows 2-4 of Google Sheet Dashboard) -->
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-3.5">
-        
-        <!-- 1. TOTAL REVENUE -->
-        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-4 bg-white border border-slate-200 hover:border-emerald-300 relative overflow-hidden">
-          <div class="flex items-center justify-between text-slate-500 mb-1">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Revenue</span>
-            <div class="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 flex-shrink-0">
-              <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
-            </div>
-          </div>
-          <div id="kpi-total-revenue" class="text-base md:text-xl font-bold text-emerald-600 font-mono tracking-tight">₹40,000.00</div>
-          <div class="mt-1 text-[10px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1">
-            <span>Turnover / Inflows</span>
-            <span id="kpi-income-txns" class="font-semibold text-emerald-700">0 txns</span>
-          </div>
-        </div>
-
-        <!-- 2. TOTAL EXPENSES -->
-        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-4 bg-white border border-slate-200 hover:border-rose-300 relative overflow-hidden">
-          <div class="flex items-center justify-between text-slate-500 mb-1">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Expenses</span>
-            <div class="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 flex-shrink-0">
-              <i data-lucide="trending-down" class="w-3.5 h-3.5"></i>
-            </div>
-          </div>
-          <div id="kpi-total-expenses" class="text-base md:text-xl font-bold text-rose-600 font-mono tracking-tight">₹21,200.00</div>
-          <div class="mt-1 text-[10px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1">
-            <span>Operating Outflows</span>
-            <span id="kpi-expense-txns" class="font-semibold text-rose-700">0 txns</span>
-          </div>
-        </div>
-
-        <!-- 3. NET PROFIT -->
-        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-4 bg-white border border-slate-200 hover:border-sky-300 relative overflow-hidden">
-          <div class="flex items-center justify-between text-slate-500 mb-1">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Net Profit</span>
-            <div class="w-6 h-6 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100 flex-shrink-0">
-              <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
-            </div>
-          </div>
-          <div id="kpi-net-profit" class="text-base md:text-xl font-bold text-sky-700 font-mono tracking-tight">₹18,800.00</div>
-          <div class="mt-1 text-[10px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1">
-            <span>Retained Earnings</span>
-          </div>
-        </div>
-
-        <!-- 4. PROFIT MARGIN -->
-        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-4 bg-white border border-slate-200 hover:border-amber-300 relative overflow-hidden">
-          <div class="flex items-center justify-between text-slate-500 mb-1">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Profit Margin</span>
-            <div class="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 flex-shrink-0">
-              <i data-lucide="percent" class="w-3.5 h-3.5"></i>
-            </div>
-          </div>
-          <div id="kpi-profit-margin" class="text-base md:text-xl font-bold text-amber-700 font-mono tracking-tight">47.0%</div>
-          <div class="mt-1 text-[10px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1">
-            <span id="kpi-margin-health-badge" class="px-1.5 py-0.5 rounded font-semibold text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200">Healthy (&gt;20%)</span>
-          </div>
-        </div>
-
-        <!-- 5. TOTAL LIQUIDITY -->
-        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-4 bg-white border border-slate-200 hover:border-indigo-300 relative overflow-hidden col-span-2 md:col-span-1">
-          <div class="flex items-center justify-between text-slate-500 mb-1">
-            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Liquidity</span>
-            <div class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 flex-shrink-0">
-              <i data-lucide="landmark" class="w-3.5 h-3.5"></i>
-            </div>
-          </div>
-          <div id="kpi-total-liquidity" class="text-base md:text-xl font-bold font-mono tracking-tight text-slate-900">₹18,800.00</div>
-          <div class="mt-1 text-[10px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1">
-            <span>Bank + Cash Position</span>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- 5 Structured Panels (Matching Rows 6-13 of Google Sheet Dashboard) -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5 md:gap-4">
-
-        <!-- Panel 1: FINANCIAL SUMMARY -->
-        <div class="glass-card rounded-2xl p-4 space-y-3 bg-white border border-slate-200 flex flex-col justify-between">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div class="flex items-center space-x-1.5">
-              <div class="w-2 h-2 rounded-full bg-sky-600"></div>
-              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Financial Summary</h3>
-            </div>
-          </div>
-          <div class="space-y-2 text-xs">
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500">Gross Revenue</span>
-              <span id="fs-gross-revenue" class="font-mono font-semibold text-emerald-700">₹40,000.00</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500">Operating Costs</span>
-              <span id="fs-operating-costs" class="font-mono font-semibold text-rose-700">₹21,200.00</span>
-            </div>
-            <div class="flex items-center justify-between pt-1 border-t border-slate-100">
-              <span class="text-slate-700 font-medium">Net Profit</span>
-              <span id="fs-net-profit" class="font-mono font-bold text-sky-800">₹18,800.00</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500">Profit Margin</span>
-              <span id="fs-profit-margin" class="font-mono font-semibold text-amber-700">47.0%</span>
-            </div>
-            <div class="flex items-center justify-between pt-1 border-t border-slate-100">
-              <span class="text-slate-700 font-medium">Total Liquidity</span>
-              <span id="fs-total-liquidity" class="font-mono font-bold text-slate-900">₹18,800.00</span>
-            </div>
-          </div>
-          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[10px] text-slate-600 flex items-center justify-between">
-            <span class="font-medium">Liquidity Split:</span>
-            <span id="fs-liquidity-split" class="font-mono font-semibold text-slate-800">₹40k Bank / ₹-21k Cash</span>
-          </div>
-        </div>
-
-        <!-- Panel 2: INCOME BY MODE -->
-        <div class="glass-card rounded-2xl p-4 space-y-3 bg-white border border-slate-200">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div class="flex items-center space-x-1.5">
-              <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Income by Mode</h3>
-            </div>
-          </div>
-          <div id="list-income-modes" class="space-y-1.5 text-xs">
-            <!-- Dynamically populated -->
-          </div>
-        </div>
-
-        <!-- Panel 3: EXPENSES BY MODE -->
-        <div class="glass-card rounded-2xl p-4 space-y-3 bg-white border border-slate-200">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div class="flex items-center space-x-1.5">
-              <div class="w-2 h-2 rounded-full bg-rose-500"></div>
-              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Expenses by Mode</h3>
-            </div>
-          </div>
-          <div id="list-expense-modes" class="space-y-1.5 text-xs">
-            <!-- Dynamically populated -->
-          </div>
-        </div>
-
-        <!-- Panel 4: BANK ACCOUNT POSITION -->
-        <div class="glass-card rounded-2xl p-4 space-y-3 bg-white border border-slate-200 flex flex-col justify-between">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div class="flex items-center space-x-1.5">
-              <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
-              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Bank Position</h3>
-            </div>
-            <span id="bp-health-badge" class="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Reconciled</span>
-          </div>
-          <div class="space-y-2 text-xs">
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500">Total Inflows</span>
-              <span id="bp-total-inflows" class="font-mono font-semibold text-emerald-700">₹40,000.00</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500">Total Outflows</span>
-              <span id="bp-total-outflows" class="font-mono font-semibold text-rose-700">₹0.00</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500">Operating Movement</span>
-              <span id="bp-operating-movement" class="font-mono font-semibold text-indigo-700">₹40,000.00</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500 flex items-center space-x-1">
-                <span>Opening Balance</span>
-                <button onclick="app.promptOpeningFloat('bank')" class="text-slate-400 hover:text-sky-600" title="Edit Opening Float"><i data-lucide="edit-2" class="w-3 h-3"></i></button>
-              </span>
-              <span id="bp-opening-balance" class="font-mono text-slate-600">₹0.00</span>
-            </div>
-          </div>
-          <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-between text-xs">
-            <span class="text-sky-900 font-semibold text-[11px]">Current Bank:</span>
-            <span id="bp-current-balance" class="font-mono font-bold text-sm text-sky-800">₹40,000.00</span>
-          </div>
-        </div>
-
-        <!-- Panel 5: CASH POSITION & FLOAT -->
-        <div class="glass-card rounded-2xl p-4 space-y-3 bg-white border border-slate-200 flex flex-col justify-between">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
-            <div class="flex items-center space-x-1.5">
-              <div class="w-2 h-2 rounded-full bg-amber-500"></div>
-              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Cash Position</h3>
-            </div>
-            <span id="cp-health-badge" class="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Replenish Cash</span>
-          </div>
-          <div class="space-y-2 text-xs">
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500">Total Inflows</span>
-              <span id="cp-total-inflows" class="font-mono font-semibold text-emerald-700">₹0.00</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500">Total Expenses</span>
-              <span id="cp-total-expenses" class="font-mono font-semibold text-rose-700">₹21,200.00</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500">Net Movement</span>
-              <span id="cp-net-movement" class="font-mono font-semibold text-rose-700">-₹21,200.00</span>
-            </div>
-            <div class="flex items-center justify-between">
-              <span class="text-slate-500 flex items-center space-x-1">
-                <span>Opening Cash Float</span>
-                <button onclick="app.promptOpeningFloat('cash')" class="text-slate-400 hover:text-sky-600" title="Edit Cash Float"><i data-lucide="edit-2" class="w-3 h-3"></i></button>
-              </span>
-              <span id="cp-opening-float" class="font-mono text-slate-600">₹0.00</span>
-            </div>
-          </div>
-          <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs">
-            <span class="text-amber-900 font-semibold text-[11px]">Available Cash:</span>
-            <span id="cp-available-cash" class="font-mono font-bold text-sm text-amber-800">-₹21,200.00</span>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- Historical Profit Trends & Channel Visualizations -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        <div class="glass-card rounded-2xl p-4 md:p-5 lg:col-span-2 space-y-3 bg-white border border-slate-200">
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="text-sm font-semibold text-slate-900">Historical Profit Trends — Monthly & Quarterly Analysis</h3>
-              <p class="text-[11px] text-slate-500">Dynamic comparative trajectory directly reflecting Google Sheet formulas</p>
-            </div>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono font-medium">Real-Time</span>
-          </div>
-          <div class="h-60 md:h-64 relative">
-            <canvas id="trendChart"></canvas>
-          </div>
-        </div>
-
-        <div class="glass-card rounded-2xl p-4 md:p-5 space-y-3 bg-white border border-slate-200">
-          <div class="flex items-center justify-between">
-            <div>
-              <h3 class="text-sm font-semibold text-slate-900">Channel Turnover & Disbursements</h3>
-              <p class="text-[11px] text-slate-500">Banking vs Cash vs UPI instrument mix</p>
-            </div>
-          </div>
-          <div class="h-60 md:h-64 relative">
-            <canvas id="modeChart"></canvas>
-          </div>
-        </div>
-      </div>
-
-      <!-- Recent Transactions Quick Preview -->
-      <div class="glass-card rounded-2xl p-4 md:p-5 space-y-3 bg-white border border-slate-200">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
-            <i data-lucide="clock" class="w-4 h-4 text-sky-600"></i>
-            <h3 class="text-sm font-semibold text-slate-900">Recent Transactions</h3>
-          </div>
-          <button onclick="app.setActiveTab('transactions')" class="text-xs text-sky-600 hover:text-sky-700 font-semibold flex items-center space-x-1">
-            <span>View Full Ledger</span>
-            <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
-          </button>
-        </div>
-        
-        <div id="dashboard-recent-mobile" class="md:hidden divide-y divide-slate-100"></div>
-
-        <div class="hidden md:block overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-700">
-            <thead class="text-slate-600 uppercase bg-slate-100 border-b border-slate-200 font-semibold">
-              <tr>
-                <th class="py-2.5 px-3">Sl No.</th>
-                <th class="py-2.5 px-3">Date</th>
-                <th class="py-2.5 px-3">Party Name</th>
-                <th class="py-2.5 px-3">Type</th>
-                <th class="py-2.5 px-3">Mode</th>
-                <th class="py-2.5 px-3 text-right">Amount</th>
-                <th class="py-2.5 px-3 text-right">Profit Value</th>
-              </tr>
-            </thead>
-            <tbody id="dashboard-recent-table" class="divide-y divide-slate-100 font-mono"></tbody>
-          </table>
-        </div>
-      </div>
-
-    </div>
-
-    <!-- VIEW 2: TRANSACTIONS LEDGER -->
-    <div id="view-transactions" class="space-y-4 hidden">
-      <div class="glass-card rounded-2xl p-3.5 md:p-4 flex flex-wrap items-center justify-between gap-2.5 bg-white border border-slate-200">
-        <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[260px]">
-          <div class="relative flex-1 min-w-[180px]">
-            <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3 top-2.5"></i>
-            <input type="text" id="txnSearch" oninput="app.handleFilterChange()" placeholder="Search party, remarks, amount..." class="w-full bg-white border border-slate-300 rounded-xl pl-9 pr-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
-          </div>
-          <select id="txnTypeFilter" onchange="app.handleFilterChange()" class="bg-white border border-slate-300 text-xs rounded-xl px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-sky-500">
-            <option value="ALL">All Types</option>
-            <option value="INCOME">Income / Received</option>
-            <option value="EXPENSE">Expense / Paid</option>
-          </select>
-          <select id="txnModeFilter" onchange="app.handleFilterChange()" class="bg-white border border-slate-300 text-xs rounded-xl px-2.5 py-1.5 text-slate-700 focus:outline-none focus:border-sky-500">
-            <option value="ALL">All Modes</option>
-            <option value="CASH">CASH</option>
-            <option value="NETBANKING">NETBANKING</option>
-            <option value="UPI">UPI</option>
-            <option value="DEBIT CARD / CREDIT CARD">CARD</option>
-            <option value="CHEQUE">CHEQUE</option>
-            <option value="OTHERS">OTHERS</option>
-          </select>
-        </div>
-
-        <div class="flex items-center space-x-2">
-          <button onclick="app.pullFromGoogleSheets()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-semibold flex items-center space-x-1.5 shadow-2xs transition">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-sky-600"></i>
-            <span>Refresh</span>
-          </button>
-          <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs transition">
-            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
-            <span>Edit / Add in Google Sheets</span>
-            <i data-lucide="external-link" class="w-3 h-3 opacity-80"></i>
-          </a>
-        </div>
-      </div>
-
-      <!-- Android Mobile Transaction Card Stream (<768px) -->
-      <div id="transactions-mobile-cards" class="md:hidden space-y-2.5"></div>
-
-      <!-- Desktop Ledger Table Container (>=768px) -->
-      <div class="hidden md:block glass-card rounded-2xl overflow-hidden bg-white border border-slate-200">
-        <div class="overflow-x-auto">
-          <table class="w-full text-left text-xs text-slate-800">
-            <thead class="text-slate-600 uppercase bg-slate-100 border-b border-slate-200 text-[11px] font-semibold tracking-wider">
-              <tr>
-                <th class="py-3 px-3">Sl No.</th>
-                <th class="py-3 px-3">Date</th>
-                <th class="py-3 px-3">Type</th>
-                <th class="py-3 px-4">Party Name</th>
-                <th class="py-3 px-4">Description</th>
-                <th class="py-3 px-3 text-right">Amount (₹)</th>
-                <th class="py-3 px-3">Mode</th>
-                <th class="py-3 px-4">Ref / Remarks</th>
-                <th class="py-3 px-2 text-center">Quarter</th>
-                <th class="py-3 px-3 text-right">Profit Value</th>
-                <th class="py-3 px-3 text-center">Details</th>
-              </tr>
-            </thead>
-            <tbody id="transactions-table-body" class="divide-y divide-slate-100 font-sans"></tbody>
-          </table>
-        </div>
-
-        <div class="bg-slate-50 border-t border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between text-xs text-slate-600">
-          <div id="table-record-count" class="font-medium">Showing 0 entries</div>
-          <div class="flex items-center space-x-6 font-mono">
-            <div>Revenue: <span id="table-sum-income" class="text-emerald-700 font-semibold">₹ 0.00</span></div>
-            <div>Expenses: <span id="table-sum-expense" class="text-rose-700 font-semibold">₹ 0.00</span></div>
-            <div>Net Standing: <span id="table-sum-net" class="text-sky-800 font-bold">₹ 0.00</span></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Mobile Total Summary Bar -->
-      <div class="md:hidden p-3 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between text-xs">
-        <div class="text-slate-500"><span id="m-record-count">0</span> entries</div>
-        <div class="font-mono flex items-center space-x-3 text-[11px]">
-          <span class="text-emerald-700 font-semibold" id="m-sum-income">₹ 0.00</span>
-          <span class="text-rose-700 font-semibold" id="m-sum-expense">₹ 0.00</span>
-          <span class="text-sky-800 font-bold" id="m-sum-net">₹ 0.00</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- VIEW 3: PARTIES & CLIENTS DIRECTORY -->
-    <div id="view-parties" class="space-y-5 hidden">
-      <div class="flex flex-wrap items-center justify-between gap-2.5">
-        <div>
-          <h2 class="text-base md:text-lg font-bold text-slate-900">Clients & Vendor Directory</h2>
-          <p class="text-[11px] md:text-xs text-slate-500">Track party balances, total billings, receipts and payouts</p>
-        </div>
-        <div class="w-full sm:w-64">
-          <input type="text" id="partySearch" oninput="app.renderParties()" placeholder="Search party..." class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
-        </div>
-      </div>
-
-      <div class="glass-card rounded-2xl p-4 md:p-5 space-y-3 bg-white border border-slate-200">
-        <h3 class="text-sm font-semibold text-slate-900">Top Parties Volume Breakdown</h3>
-        <div class="h-52 relative">
-          <canvas id="partyChart"></canvas>
-        </div>
-      </div>
-
-      <div id="parties-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4"></div>
-    </div>
-
-    <!-- VIEW 4: P&L REPORTS & FISCAL ANALYSIS -->
-    <div id="view-reports" class="space-y-5 hidden">
-      <div class="flex items-center justify-between">
-        <div>
-          <h2 class="text-base md:text-lg font-bold text-slate-900">Profit & Loss / Quarterly Reports</h2>
-          <p class="text-[11px] md:text-xs text-slate-500">Dynamic breakdown matching Sheet1 pivot structure</p>
-        </div>
-        <button onclick="window.print()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center space-x-1.5 shadow-2xs">
-          <i data-lucide="printer" class="w-3.5 h-3.5"></i>
-          <span>Print Statement</span>
+  <!-- ==============================================================================
+       MAIN NAVIGATION TABS
+       ============================================================================== -->
+  <nav class="main-nav-bar">
+    <div class="nav-container">
+      <div class="nav-tabs">
+        <button class="nav-tab-btn active" onclick="switchTab('overview')">
+          <span>📊</span> Financial Overview
+        </button>
+        <button class="nav-tab-btn" onclick="switchTab('invoices')">
+          <span>🧾</span> Invoices & Tax Receipts
+        </button>
+        <button class="nav-tab-btn" onclick="switchTab('vouchers')">
+          <span>💳</span> Financial Vouchers
+        </button>
+        <button class="nav-tab-btn" onclick="switchTab('salaries')">
+          <span>💼</span> Salary Disbursements
+        </button>
+        <button class="nav-tab-btn" onclick="switchTab('tax')">
+          <span>📑</span> GST & Tax Summary
+        </button>
+        <button class="nav-tab-btn" id="auditTabBtn" onclick="switchTab('audit')">
+          <span>🛡️</span> Audit Logs
         </button>
       </div>
 
-      <div id="fy-summary-container" class="space-y-5 md:space-y-6"></div>
+      <div class="nav-actions">
+        <button class="btn btn-secondary btn-sm" onclick="exportDataCopy('xlsx')">
+          <span>📥</span> Export Data Copy (.xlsx)
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="exportDataCopy('csv')">
+          <span>📄</span> Export CSV
+        </button>
+      </div>
     </div>
+  </nav>
+
+  <!-- ==============================================================================
+       MAIN CONTENT CONTAINER
+       ============================================================================== -->
+  <main class="app-container">
+
+    <!-- ==========================================================================
+         TAB 1: FINANCIAL OVERVIEW
+         ========================================================================== -->
+    <section id="tab-overview" class="tab-pane active">
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Total Billed (Invoices)</span>
+            <div class="kpi-icon-pill icon-blue">🧾</div>
+          </div>
+          <div class="kpi-value" id="kpiTotalBilled">₹0.00</div>
+          <div class="kpi-subtext" id="kpiInvoiceCount">0 Invoices Issued</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Revenue Received</span>
+            <div class="kpi-icon-pill icon-green">💰</div>
+          </div>
+          <div class="kpi-value" id="kpiTotalReceived" style="color: var(--emerald);">₹0.00</div>
+          <div class="kpi-subtext" id="kpiPendingReceivable">₹0.00 Pending Clearance</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Total Expenses (Vouchers)</span>
+            <div class="kpi-icon-pill icon-red">💳</div>
+          </div>
+          <div class="kpi-value" id="kpiTotalExpenses" style="color: var(--rose);">₹0.00</div>
+          <div class="kpi-subtext" id="kpiVoucherCount">Materials, Chemicals & Subcontractors</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Salaries Disbursed</span>
+            <div class="kpi-icon-pill icon-purple">💼</div>
+          </div>
+          <div class="kpi-value" id="kpiSalariesDisbursed">₹0.00</div>
+          <div class="kpi-subtext" id="kpiSalaryCount">0 Pure Finance Records</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Total GST Collected</span>
+            <div class="kpi-icon-pill icon-amber">📑</div>
+          </div>
+          <div class="kpi-value" id="kpiTotalTax">₹0.00</div>
+          <div class="kpi-subtext" id="kpiTaxSplit">CGST + SGST (18%)</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Net Cash Surplus</span>
+            <div class="kpi-icon-pill icon-green">📈</div>
+          </div>
+          <div class="kpi-value" id="kpiNetSurplus" style="color: var(--emerald);">₹0.00</div>
+          <div class="kpi-subtext">Operating Surplus (Revenue - Outflows)</div>
+        </div>
+      </div>
+
+      <!-- Quick Action Buttons -->
+      <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="openNewInvoiceForm()">
+          <span>➕</span> New Tax Invoice / Receipt
+        </button>
+        <button class="btn btn-secondary" onclick="openNewVoucherForm()">
+          <span>➕</span> New Payment / Expense Voucher
+        </button>
+        <button class="btn btn-secondary" onclick="openNewSalaryForm()">
+          <span>➕</span> New Salary Disbursement
+        </button>
+      </div>
+
+      <!-- Recent Ledgers Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <div class="table-card">
+          <div class="table-toolbar">
+            <strong style="color: #fff;">Recent Tax Invoices & Receipts</strong>
+            <button class="btn btn-secondary btn-sm" onclick="switchTab('invoices')">View All</button>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Receipt No</th>
+                  <th>Client</th>
+                  <th>Grand Total</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="overviewRecentInvoicesBody">
+                <tr><td colspan="4" style="text-align: center; color: var(--text-dim);">Loading invoices...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="table-toolbar">
+            <strong style="color: #fff;">Recent Financial Vouchers</strong>
+            <button class="btn btn-secondary btn-sm" onclick="switchTab('vouchers')">View All</button>
+          </div>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Voucher No</th>
+                  <th>Category</th>
+                  <th>Paid To</th>
+                  <th>Amount</th>
+                </tr>
+              </thead>
+              <tbody id="overviewRecentVouchersBody">
+                <tr><td colspan="4" style="text-align: center; color: var(--text-dim);">Loading vouchers...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         TAB 2: TAX INVOICES & RECEIPTS
+         ========================================================================== -->
+    <section id="tab-invoices" class="tab-pane">
+      <!-- Invoice Generator Form (Expandable) -->
+      <div class="form-card" id="invoiceFormCard" style="display: none;">
+        <div class="form-header">
+          <h2 id="invoiceFormTitle">Generate Tax Receipt / Invoice</h2>
+          <button class="btn btn-secondary btn-sm" onclick="closeInvoiceForm()">Cancel</button>
+        </div>
+
+        <form id="invoiceForm" onsubmit="handleSaveInvoice(event)">
+          <input type="hidden" id="invoiceId">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Receipt / Invoice No</label>
+              <input type="text" id="invReceiptNo" class="form-input" placeholder="Auto-generated (e.g. DWCS/REC/2026/001)">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Date *</label>
+              <input type="date" id="invDate" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Payment Mode *</label>
+              <select id="invPaymentMode" class="form-select" required>
+                <option value="Bank Transfer">Bank Transfer (NEFT/RTGS)</option>
+                <option value="UPI">UPI / Online</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Transaction / Ref Number</label>
+              <input type="text" id="invTxRef" class="form-input" placeholder="e.g. UTR / Cheque No">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="grid-column: span 2;">
+              <label class="form-label">Client Name *</label>
+              <input type="text" id="invClientName" class="form-input" placeholder="Company or Client Full Name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Client GSTIN</label>
+              <input type="text" id="invClientGstin" class="form-input" placeholder="e.g. 33AAACL0140P1ZT">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Site Location</label>
+              <input type="text" id="invSiteLocation" class="form-input" placeholder="Project / Site Address">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">Client Billing Address</label>
+            <input type="text" id="invClientAddress" class="form-input" placeholder="Full Registered Address">
+          </div>
+
+          <!-- Dynamic Line Items -->
+          <div style="margin: 1.25rem 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <strong style="color: #fff; font-size: 0.9rem;">Work Description & Line Items</strong>
+              <button type="button" class="btn btn-secondary btn-sm" onclick="addLineItem()">➕ Add Line Item</button>
+            </div>
+            <table class="line-items-table">
+              <thead>
+                <tr>
+                  <th style="width: 45%;">Description</th>
+                  <th style="width: 12%;">HSN/SAC</th>
+                  <th style="width: 12%;">Qty</th>
+                  <th style="width: 10%;">Unit</th>
+                  <th style="width: 12%;">Rate (₹)</th>
+                  <th style="width: 12%;">Total (₹)</th>
+                  <th style="width: 5%;"></th>
+                </tr>
+              </thead>
+              <tbody id="lineItemsBody">
+                <!-- Rows added dynamically -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Tax Options & Calculations -->
+          <div class="form-row" style="background: var(--bg-subtle); padding: 1rem; border-radius: var(--radius-sm); align-items: center;">
+            <div class="form-group">
+              <label class="form-label">GST Tax Structure</label>
+              <div class="tax-radio-group">
+                <label class="tax-radio-label">
+                  <input type="radio" name="taxStructure" value="intra" checked onchange="recalculateInvoiceTotals()">
+                  Intra-State (CGST 9% + SGST 9%)
+                </label>
+                <label class="tax-radio-label">
+                  <input type="radio" name="taxStructure" value="inter" onchange="recalculateInvoiceTotals()">
+                  Inter-State (IGST 18%)
+                </label>
+              </div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0.25rem; font-size: 0.85rem; text-align: right;">
+              <div>Sub Total: <strong id="invDisplaySubTotal">₹0.00</strong></div>
+              <div id="invDisplayTax">CGST (9%): ₹0.00 | SGST (9%): ₹0.00</div>
+              <div style="font-size: 1.15rem; color: var(--emerald); font-weight: 700; margin-top: 4px;">
+                Grand Total: <span id="invDisplayGrandTotal">₹0.00</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Amount in Words -->
+          <div class="form-group" style="margin-top: 0.75rem;">
+            <label class="form-label">Amount in Words (Auto-Generated)</label>
+            <input type="text" id="invGrandTotalWords" class="form-input" readonly style="background: rgba(255,255,255,0.05); color: #93c5fd;">
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeInvoiceForm()">Cancel</button>
+            <button type="submit" class="btn btn-emerald" id="saveInvoiceBtn">Save to Neon DB</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Invoices Data Table -->
+      <div class="table-card">
+        <div class="table-toolbar">
+          <div class="table-search-group">
+            <input type="text" id="invoiceSearchInput" class="form-input" placeholder="Search by Client, Receipt No, Site..." oninput="filterInvoices()">
+            <select id="invoiceStatusFilter" class="form-select" onchange="filterInvoices()">
+              <option value="">All Statuses</option>
+              <option value="PAID">PAID</option>
+              <option value="DRAFT">DRAFT</option>
+              <option value="CANCELLED">CANCELLED</option>
+            </select>
+          </div>
+          <div>
+            <button class="btn btn-primary btn-sm" onclick="openNewInvoiceForm()">
+              <span>➕</span> New Tax Invoice
+            </button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Receipt No</th>
+                <th>Date</th>
+                <th>Client Name</th>
+                <th>Site Location</th>
+                <th>Subtotal</th>
+                <th>GST (18%)</th>
+                <th>Grand Total</th>
+                <th>Mode</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="invoicesTableBody">
+              <tr><td colspan="10" style="text-align: center; color: var(--text-dim);">Loading invoices from Neon DB...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         TAB 3: FINANCIAL VOUCHERS
+         ========================================================================== -->
+    <section id="tab-vouchers" class="tab-pane">
+      <!-- Voucher Generator Form -->
+      <div class="form-card" id="voucherFormCard" style="display: none;">
+        <div class="form-header">
+          <h2 id="voucherFormTitle">Generate Financial Voucher</h2>
+          <button class="btn btn-secondary btn-sm" onclick="closeVoucherForm()">Cancel</button>
+        </div>
+
+        <form id="voucherForm" onsubmit="handleSaveVoucher(event)">
+          <input type="hidden" id="voucherId">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Voucher No</label>
+              <input type="text" id="vouNumber" class="form-input" placeholder="Auto-generated (e.g. DWCS/VOU/2026/001)">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Voucher Type *</label>
+              <select id="vouType" class="form-select" required>
+                <option value="PAYMENT">Payment Voucher (Expense)</option>
+                <option value="RECEIPT">Receipt Voucher</option>
+                <option value="PETTY_CASH">Petty Cash Voucher</option>
+                <option value="JOURNAL">Journal Adjustment</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Expense Category *</label>
+              <select id="vouCategory" class="form-select" required>
+                <option value="Material Cost">Material Cost</option>
+                <option value="Chemical Purchase">Chemical Purchase</option>
+                <option value="Subcontractor">Subcontractor</option>
+                <option value="Equipment">Equipment / Machinery</option>
+                <option value="Fuel">Fuel & Transportation</option>
+                <option value="Site Overhead">Site Overhead & Misc</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Voucher Date *</label>
+              <input type="date" id="vouDate" class="form-input" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="grid-column: span 2;">
+              <label class="form-label">Paid To / Received From *</label>
+              <input type="text" id="vouParty" class="form-input" placeholder="Vendor, Subcontractor, or Party Name" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Amount (₹) *</label>
+              <input type="number" step="0.01" id="vouAmount" class="form-input" placeholder="0.00" required oninput="updateVoucherWords()">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Payment Mode *</label>
+              <select id="vouPaymentMode" class="form-select" required>
+                <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                <option value="UPI">UPI</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Reference Number / Bill No</label>
+              <input type="text" id="vouRefNo" class="form-input" placeholder="e.g. Vendor Invoice No or UTR">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Approved By</label>
+              <input type="text" id="vouApprovedBy" class="form-input" value="Partner / Managing Director">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">Detailed Narration *</label>
+            <textarea id="vouNarration" class="form-textarea" placeholder="State purpose of expense, site location, materials delivered..." required></textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label class="form-label">Amount in Words</label>
+            <input type="text" id="vouAmountWords" class="form-input" readonly style="background: rgba(255,255,255,0.05); color: #93c5fd;">
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+            <button type="button" class="btn btn-secondary" onclick="closeVoucherForm()">Cancel</button>
+            <button type="submit" class="btn btn-emerald">Save Voucher to Neon DB</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Vouchers Data Table -->
+      <div class="table-card">
+        <div class="table-toolbar">
+          <div class="table-search-group">
+            <input type="text" id="voucherSearchInput" class="form-input" placeholder="Search Payee, Voucher No, Narration..." oninput="filterVouchers()">
+            <select id="voucherCategoryFilter" class="form-select" onchange="filterVouchers()">
+              <option value="">All Categories</option>
+              <option value="Chemical Purchase">Chemical Purchase</option>
+              <option value="Material Cost">Material Cost</option>
+              <option value="Subcontractor">Subcontractor</option>
+              <option value="Equipment">Equipment</option>
+              <option value="Salary Disbursement">Salary Disbursement</option>
+              <option value="Site Overhead">Site Overhead</option>
+            </select>
+          </div>
+          <div>
+            <button class="btn btn-primary btn-sm" onclick="openNewVoucherForm()">
+              <span>➕</span> New Voucher
+            </button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Voucher No</th>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Category</th>
+                <th>Paid To / Party</th>
+                <th>Amount</th>
+                <th>Payment Mode</th>
+                <th>Ref No</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="vouchersTableBody">
+              <tr><td colspan="10" style="text-align: center; color: var(--text-dim);">Loading vouchers from Neon DB...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         TAB 4: SALARY DISBURSEMENTS & PAYSLIP REGISTER
+         ========================================================================== -->
+    <section id="tab-salaries" class="tab-pane">
+      <!-- Salary Disbursement Form -->
+      <div class="form-card" id="salaryFormCard" style="display: none;">
+        <div class="form-header">
+          <h2 id="salaryFormTitle">Process Salary Disbursement & Generate Payslip</h2>
+          <button class="btn btn-secondary btn-sm" onclick="closeSalaryForm()">Cancel</button>
+        </div>
+
+        <form id="salaryForm" onsubmit="handleSaveSalary(event)">
+          <input type="hidden" id="salaryId">
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Disbursement Month *</label>
+              <input type="text" id="salMonth" class="form-input" placeholder="e.g. October 2026" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Disbursement Date *</label>
+              <input type="date" id="salDate" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Employee ID</label>
+              <input type="text" id="salEmpId" class="form-input" placeholder="e.g. DWCS-EMP-004">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Employee Name *</label>
+              <input type="text" id="salEmpName" class="form-input" placeholder="Full Employee Name" required>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Designation *</label>
+              <input type="text" id="salDesignation" class="form-input" placeholder="e.g. Senior Waterproofing Applicator" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Bank Account No</label>
+              <input type="text" id="salBankAcc" class="form-input" placeholder="Bank Account Number">
+            </div>
+            <div class="form-group">
+              <label class="form-label">IFSC Code</label>
+              <input type="text" id="salIfsc" class="form-input" placeholder="e.g. HDFC0001244">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Payment Mode</label>
+              <select id="salPaymentMode" class="form-select">
+                <option value="Bank Transfer">Bank Transfer / NEFT</option>
+                <option value="UPI">UPI</option>
+                <option value="Cheque">Cheque</option>
+                <option value="Cash">Cash</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Earnings vs Deductions Breakdown -->
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1.25rem 0;">
+            <!-- Earnings -->
+            <div style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-sm); border-top: 3px solid var(--emerald);">
+              <h3 style="color: var(--emerald); font-size: 0.95rem; margin-bottom: 0.75rem;">Earnings (Gross Inflow)</h3>
+              <div class="form-group" style="margin-bottom: 0.6rem;">
+                <label class="form-label">Basic Pay (₹) *</label>
+                <input type="number" step="0.01" id="salBasicPay" class="form-input" value="0.00" oninput="recalcSalaryTotals()" required>
+              </div>
+              <div class="form-group" style="margin-bottom: 0.6rem;">
+                <label class="form-label">House Rent Allowance (HRA) (₹)</label>
+                <input type="number" step="0.01" id="salHra" class="form-input" value="0.00" oninput="recalcSalaryTotals()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Special Allowance (₹)</label>
+                <input type="number" step="0.01" id="salSpecialAllowance" class="form-input" value="0.00" oninput="recalcSalaryTotals()">
+              </div>
+              <div style="margin-top: 0.75rem; text-align: right; font-weight: 700; color: #fff;">
+                Total Earnings: <span id="salDisplayTotalEarnings">₹0.00</span>
+              </div>
+            </div>
+
+            <!-- Deductions -->
+            <div style="background: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-sm); border-top: 3px solid var(--rose);">
+              <h3 style="color: var(--rose); font-size: 0.95rem; margin-bottom: 0.75rem;">Statutory & Other Deductions</h3>
+              <div class="form-group" style="margin-bottom: 0.6rem;">
+                <label class="form-label">Provident Fund (PF) (₹)</label>
+                <input type="number" step="0.01" id="salPf" class="form-input" value="0.00" oninput="recalcSalaryTotals()">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.6rem;">
+                <label class="form-label">ESI Deduction (₹)</label>
+                <input type="number" step="0.01" id="salEsi" class="form-input" value="0.00" oninput="recalcSalaryTotals()">
+              </div>
+              <div class="form-group" style="margin-bottom: 0.6rem;">
+                <label class="form-label">TDS (Tax Deduction) (₹)</label>
+                <input type="number" step="0.01" id="salTds" class="form-input" value="0.00" oninput="recalcSalaryTotals()">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Advance Recovery (₹)</label>
+                <input type="number" step="0.01" id="salAdvance" class="form-input" value="0.00" oninput="recalcSalaryTotals()">
+              </div>
+              <div style="margin-top: 0.75rem; text-align: right; font-weight: 700; color: #fff;">
+                Total Deductions: <span id="salDisplayTotalDeductions">₹0.00</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Highlighted Net Payable Box -->
+          <div style="background: rgba(16, 185, 129, 0.1); border: 2px solid var(--emerald); padding: 1rem; border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <span style="font-size: 0.82rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Net Salary Disbursed</span>
+              <div id="salDisplayNetSalaryWords" style="font-size: 0.84rem; color: #93c5fd; margin-top: 2px;">Zero Rupees Only</div>
+            </div>
+            <div id="salDisplayNetSalary" style="font-size: 1.85rem; font-weight: 800; color: #ffffff; font-family: monospace;">
+              ₹0.00
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.25rem;">
+            <span style="font-size: 0.78rem; color: var(--text-dim);">
+              ℹ Automatically links a debit expense entry in <code>financial_vouchers</code>.
+            </span>
+            <div style="display: flex; gap: 1rem;">
+              <button type="button" class="btn btn-secondary" onclick="closeSalaryForm()">Cancel</button>
+              <button type="submit" class="btn btn-emerald">Disburse & Save to Neon</button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Salary Data Table -->
+      <div class="table-card">
+        <div class="table-toolbar">
+          <div class="table-search-group">
+            <input type="text" id="salarySearchInput" class="form-input" placeholder="Search Employee, ID, Designation..." oninput="filterSalaries()">
+          </div>
+          <div>
+            <button class="btn btn-primary btn-sm" onclick="openNewSalaryForm()">
+              <span>➕</span> New Disbursement
+            </button>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Disbursement No</th>
+                <th>Month</th>
+                <th>Employee Name</th>
+                <th>Designation</th>
+                <th>Gross Earnings</th>
+                <th>Total Deductions</th>
+                <th>Net Salary</th>
+                <th>Mode</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="salariesTableBody">
+              <tr><td colspan="9" style="text-align: center; color: var(--text-dim);">Loading salary records from Neon DB...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         TAB 5: GST & TAX SUMMARY
+         ========================================================================== -->
+    <section id="tab-tax" class="tab-pane">
+      <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Central GST (CGST 9%)</span>
+            <div class="kpi-icon-pill icon-blue">🏛️</div>
+          </div>
+          <div class="kpi-value" id="taxCgstTotal">₹0.00</div>
+          <div class="kpi-subtext">Intra-State Supplies (Tamil Nadu)</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">State GST (SGST 9%)</span>
+            <div class="kpi-icon-pill icon-purple">🏙️</div>
+          </div>
+          <div class="kpi-value" id="taxSgstTotal">₹0.00</div>
+          <div class="kpi-subtext">Tamil Nadu Commercial Taxes Dept</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Integrated GST (IGST 18%)</span>
+            <div class="kpi-icon-pill icon-amber">🌐</div>
+          </div>
+          <div class="kpi-value" id="taxIgstTotal">₹0.00</div>
+          <div class="kpi-subtext">Inter-State Works Contracts</div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-header">
+            <span class="kpi-title">Total Tax Collected</span>
+            <div class="kpi-icon-pill icon-green">💵</div>
+          </div>
+          <div class="kpi-value" id="taxGrandTotal" style="color: var(--emerald);">₹0.00</div>
+          <div class="kpi-subtext">GSTIN: 33CEQPP3071Q1ZR</div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-toolbar">
+          <strong style="color: #fff;">GST Ledger & Output Tax Breakdown</strong>
+          <button class="btn btn-secondary btn-sm" onclick="exportDataCopy('xlsx')">Export Tax Ledger (.xlsx)</button>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Receipt / Invoice No</th>
+                <th>Date</th>
+                <th>Client Name</th>
+                <th>Client GSTIN</th>
+                <th>Taxable Subtotal</th>
+                <th>CGST (9%)</th>
+                <th>SGST (9%)</th>
+                <th>IGST (18%)</th>
+                <th>Total Tax</th>
+                <th>Grand Total</th>
+              </tr>
+            </thead>
+            <tbody id="taxLedgerTableBody">
+              <tr><td colspan="10" style="text-align: center; color: var(--text-dim);">Loading tax records...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==========================================================================
+         TAB 6: AUDIT LOGS (SUPER ADMIN & OWNER ONLY)
+         ========================================================================== -->
+    <section id="tab-audit" class="tab-pane">
+      <div class="table-card">
+        <div class="table-toolbar">
+          <div class="table-search-group">
+            <strong style="color: #fff;">System Security Audit Trail</strong>
+            <span style="font-size: 0.78rem; color: var(--text-dim);">Tracks every INSERT, UPDATE, DELETE, and VOID operation</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="loadAuditLogs()">Refresh Trail</button>
+        </div>
+
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Table</th>
+                <th>Action</th>
+                <th>Performed By</th>
+                <th>Reason</th>
+                <th>Record ID</th>
+              </tr>
+            </thead>
+            <tbody id="auditLogsTableBody">
+              <tr><td colspan="6" style="text-align: center; color: var(--text-dim);">Loading audit logs...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
   </main>
 
-  <!-- ANDROID FLOATING ACTION BUTTON (Instant Sync from Google Sheets) -->
-  <button onclick="app.pullFromGoogleSheets()" id="androidFabBtn" class="android-fab md:hidden" aria-label="Sync from Google Sheets" title="Sync from Google Sheets">
-    <i data-lucide="refresh-cw" class="w-6 h-6 stroke-[2.5]" id="fabSyncIcon"></i>
-  </button>
-
-  <!-- ANDROID BOTTOM NAVIGATION BAR (<768px) -->
-  <nav class="android-bottom-nav md:hidden">
-    <button onclick="app.setActiveTab('dashboard')" id="nav-dashboard" class="android-nav-item active">
-      <div class="nav-pill"><i data-lucide="layout-dashboard" class="w-5 h-5"></i></div>
-      <span>Home</span>
-    </button>
-    <button onclick="app.setActiveTab('transactions')" id="nav-transactions" class="android-nav-item">
-      <div class="nav-pill"><i data-lucide="receipt" class="w-5 h-5"></i></div>
-      <span>Ledger</span>
-    </button>
-    <button onclick="app.setActiveTab('parties')" id="nav-parties" class="android-nav-item">
-      <div class="nav-pill"><i data-lucide="users" class="w-5 h-5"></i></div>
-      <span>Parties</span>
-    </button>
-    <button onclick="app.setActiveTab('reports')" id="nav-reports" class="android-nav-item">
-      <div class="nav-pill"><i data-lucide="pie-chart" class="w-5 h-5"></i></div>
-      <span>P&L</span>
-    </button>
-    <button onclick="app.pullFromGoogleSheets()" id="nav-sync" class="android-nav-item">
-      <div class="nav-pill"><i data-lucide="refresh-cw" class="w-5 h-5" id="navSyncIcon"></i></div>
-      <span>Sync</span>
-    </button>
-  </nav>
-
-  <!-- TRANSACTION DETAIL MODAL (Read-Only Detail Viewer) -->
-  <div id="txnDetailModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 android-modal-container hidden">
-    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet">
-      <div class="android-sheet-handle sm:hidden"></div>
-
-      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-        <div class="flex items-center space-x-2.5">
-          <div id="detailTypeBadge" class="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-emerald-100 text-emerald-800">IN</div>
-          <div>
-            <h3 id="detailPartyName" class="text-base font-bold text-slate-900 leading-tight">Party Name</h3>
-            <p id="detailSlNoDate" class="text-xs text-slate-500">Sl No #1 • 01-Nov-2026</p>
-          </div>
-        </div>
-        <button onclick="app.closeTransactionDetailModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <!-- Amount and Profit impact -->
-      <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-        <div>
-          <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Transaction Amount</p>
-          <p id="detailAmount" class="font-mono font-bold text-xl text-slate-900">₹0.00</p>
-        </div>
-        <div class="text-right">
-          <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Profit Value Impact</p>
-          <p id="detailProfit" class="font-mono font-bold text-lg text-emerald-600">+₹0.00</p>
+  <!-- ==============================================================================
+       MODAL: PRINTABLE DOCUMENT VIEWER (INVOICE, VOUCHER, PAYSLIP)
+       ============================================================================== -->
+  <div class="modal-overlay" id="docViewerModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h3 id="docViewerTitle">Document Preview</h3>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-secondary btn-sm" onclick="window.print()">🖨️ Print Document</button>
+          <button class="btn btn-primary btn-sm" onclick="window.print()">📥 Download PDF</button>
+          <button class="btn btn-secondary btn-sm" onclick="closeDocViewer()">✕</button>
         </div>
       </div>
-
-      <!-- Details Grid -->
-      <div class="grid grid-cols-2 gap-2.5 text-xs">
-        <div class="p-2.5 rounded-xl bg-white border border-slate-200">
-          <span class="text-slate-400 text-[10px] block font-medium uppercase">Payment Mode</span>
-          <span id="detailMode" class="font-semibold text-slate-800">CASH</span>
-        </div>
-        <div class="p-2.5 rounded-xl bg-white border border-slate-200">
-          <span class="text-slate-400 text-[10px] block font-medium uppercase">Reference / Bill #</span>
-          <span id="detailRefNumber" class="font-mono font-semibold text-slate-800">-</span>
-        </div>
-        <div class="p-2.5 rounded-xl bg-white border border-slate-200">
-          <span class="text-slate-400 text-[10px] block font-medium uppercase">Quarter / FY</span>
-          <span id="detailQuarterFY" class="font-semibold text-slate-800">Q3 • F.Y. 2026-27</span>
-        </div>
-        <div class="p-2.5 rounded-xl bg-white border border-slate-200">
-          <span class="text-slate-400 text-[10px] block font-medium uppercase">Category</span>
-          <span id="detailCategory" class="font-semibold text-slate-800">Operational</span>
-        </div>
-      </div>
-
-      <!-- Description / Purpose -->
-      <div class="p-3 rounded-xl bg-slate-50 border border-slate-200">
-        <span class="text-slate-400 text-[10px] block font-medium uppercase mb-0.5">Description / Remarks</span>
-        <p id="detailDescription" class="text-xs text-slate-700 font-medium whitespace-pre-wrap">No description</p>
-      </div>
-
-      <!-- Google Sheets Master Notice -->
-      <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start space-x-2.5 text-xs text-emerald-900">
-        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-700 flex-shrink-0 mt-0.5"></i>
-        <div class="flex-1">
-          <span class="font-bold">Strictly Maintained in Google Sheets</span>
-          <p class="text-[11px] text-emerald-700 mt-0.5">Entries are strictly maintained in Google Sheets. To edit or delete this entry, update row <span id="detailSheetRow" class="font-mono font-bold">#</span> in your master spreadsheet.</p>
-        </div>
-      </div>
-
-      <!-- Action buttons -->
-      <div class="flex items-center space-x-2 pt-1">
-        <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing" target="_blank" rel="noopener noreferrer" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center justify-center space-x-1.5 shadow-xs transition">
-          <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
-          <span>Open Master Google Sheet</span>
-        </a>
-        <button onclick="app.closeTransactionDetailModal()" class="py-2 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition">
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TRANSACTION MODAL (Notice: Data entry is handled in Google Sheets) -->
-  <div id="txnModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 android-modal-container hidden">
-    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet">
-      <div class="android-sheet-handle sm:hidden"></div>
-
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-        <h3 id="modalTitle" class="text-base font-bold text-slate-900 flex items-center space-x-2">
-          <i data-lucide="plus-circle" class="w-5 h-5 text-emerald-600"></i>
-          <span>Add New Transaction</span>
-        </h3>
-        <button onclick="app.closeTransactionModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <form id="txnForm" onsubmit="app.saveTransaction(event)" class="space-y-3.5 text-xs">
-        <input type="hidden" id="txnId">
-
-        <div>
-          <label class="block text-slate-700 font-medium mb-1">Transaction Type</label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="cursor-pointer">
-              <input type="radio" name="modalType" value="Received / Income" class="peer sr-only" checked onchange="app.handleModalTypeChange()">
-              <div class="p-2.5 rounded-xl text-center border border-slate-200 bg-slate-50 peer-checked:bg-emerald-50 peer-checked:border-emerald-500 peer-checked:text-emerald-700 font-semibold transition active:scale-95">
-                + Received / Income
-              </div>
-            </label>
-            <label class="cursor-pointer">
-              <input type="radio" name="modalType" value="Paid / Expense" class="peer sr-only" onchange="app.handleModalTypeChange()">
-              <div class="p-2.5 rounded-xl text-center border border-slate-200 bg-slate-50 peer-checked:bg-rose-50 peer-checked:border-rose-500 peer-checked:text-rose-700 font-semibold transition active:scale-95">
-                - Paid / Expense
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2.5">
-          <div>
-            <label class="block text-slate-700 font-medium mb-1">Date</label>
-            <input type="date" id="modalDate" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-sky-500">
-          </div>
-          <div>
-            <label class="block text-slate-700 font-medium mb-1">Payment Mode</label>
-            <select id="modalMode" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 focus:outline-none focus:border-sky-500">
-              <option value="CASH">CASH</option>
-              <option value="NETBANKING">NETBANKING</option>
-              <option value="UPI">UPI</option>
-              <option value="DEBIT CARD / CREDIT CARD">DEBIT / CREDIT CARD</option>
-              <option value="CHEQUE">CHEQUE</option>
-              <option value="OTHERS">OTHERS</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <div>
-            <label class="block text-slate-700 font-medium mb-1">Party Name (Client/Vendor)</label>
-            <input type="text" id="modalParty" list="partySuggestions" required placeholder="e.g. Raj Enterprises" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
-            <datalist id="partySuggestions"></datalist>
-          </div>
-          <div>
-            <label class="block text-slate-700 font-medium mb-1">Amount (₹)</label>
-            <div class="relative">
-              <span class="absolute left-3 top-2 text-slate-400 font-mono">₹</span>
-              <input type="number" step="0.01" min="0.01" id="modalAmount" required placeholder="0.00" class="w-full bg-white border border-slate-300 rounded-xl pl-7 pr-3 py-2 font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2.5">
-          <div>
-            <label class="block text-slate-700 font-medium mb-1">Category</label>
-            <input type="text" id="modalCategory" list="categorySuggestions" placeholder="e.g. Chemical Waterproofing" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
-            <datalist id="categorySuggestions">
-              <option value="Client Waterproofing Project"></option>
-              <option value="Material & Chemical Supply"></option>
-              <option value="Staff & Salary"></option>
-              <option value="Subcontracting Services"></option>
-              <option value="Tools & Equipment"></option>
-              <option value="Transportation & Logistics"></option>
-              <option value="Office & Admin"></option>
-            </datalist>
-          </div>
-          <div>
-            <label class="block text-slate-700 font-medium mb-1">Invoice / Ref No.</label>
-            <input type="text" id="modalRef" placeholder="e.g. PYSL-001" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-slate-700 font-medium mb-1">Work Description / Details</label>
-          <textarea id="modalDesc" rows="2" placeholder="e.g. Payment for waterproofing materials" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500"></textarea>
-        </div>
-
-        <div class="flex items-center justify-end space-x-2.5 pt-2 border-t border-slate-100">
-          <button type="button" onclick="app.closeTransactionModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Cancel</button>
-          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-xs">Save & Strictly Sync to Sheet</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ROLE & USER PERSONA DRAWER/MODAL (RBAC) -->
-  <div id="roleModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
-    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] overflow-y-auto">
-      <div class="android-sheet-handle sm:hidden"></div>
-
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-        <div>
-          <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
-            <i data-lucide="shield" class="w-5 h-5 text-purple-600"></i>
-            <span>User & Role Governance (RBAC)</span>
-          </h3>
-          <p class="text-xs text-slate-500">Select active role to test permissions and workflow access</p>
-        </div>
-        <button onclick="app.closeRoleModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <!-- Roles Grid -->
-      <div class="space-y-2.5 text-xs" id="rolesListContainer">
-        <!-- Rendered via JS -->
-      </div>
-
-      <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
-        <span class="font-semibold text-slate-800">Permissions Enforcement:</span>
-        <p id="rolePermissionsSummary">Full administrative rights. Can add, edit, delete entries, manage database, and configure roles.</p>
-      </div>
-
-      <div class="flex justify-end pt-1 border-t border-slate-100">
-        <button onclick="app.closeRoleModal()" class="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700">Done</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- USER MANAGEMENT & RBAC DIRECTORY MODAL (Super Admin, Developer & Admin Control) -->
-  <div id="userMgmtModal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
-    <div class="glass-card bg-white rounded-3xl border border-slate-200 max-w-4xl w-full p-5 sm:p-7 space-y-4 shadow-2xl android-bottom-sheet max-h-[92vh] flex flex-col">
-      <div class="android-sheet-handle sm:hidden"></div>
-
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
-        <div class="flex items-center space-x-2.5">
-          <div class="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center text-purple-700">
-            <i data-lucide="users-cog" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h3 class="text-base md:text-lg font-bold text-slate-900">User Management & RBAC Directory</h3>
-            <p class="text-xs text-slate-500">Controlled under Super Admin, Developer & Admin permissions</p>
-          </div>
-        </div>
-        <div class="flex items-center space-x-2">
-          <button onclick="app.openNewUserModal()" class="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold shadow-xs flex items-center space-x-1.5 transition">
-            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
-            <span>Create New User</span>
-          </button>
-          <button onclick="app.downloadUserSQL()" class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold flex items-center space-x-1 transition" title="Export PostgreSQL Seed SQL">
-            <i data-lucide="download" class="w-3.5 h-3.5"></i>
-            <span class="hidden sm:inline">Export SQL</span>
-          </button>
-          <button onclick="app.closeUserManagementModal()" class="text-slate-400 hover:text-slate-600 p-1">
-            <i data-lucide="x" class="w-5 h-5"></i>
-          </button>
-        </div>
-      </div>
-
-      <!-- Quick Metrics -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-        <div class="p-2.5 rounded-2xl bg-purple-50/70 border border-purple-200">
-          <span class="text-[10px] text-purple-700 font-semibold uppercase block">Total Users</span>
-          <span id="mgmtStatTotalUsers" class="font-bold text-base text-purple-950 font-mono">6</span>
-        </div>
-        <div class="p-2.5 rounded-2xl bg-sky-50/70 border border-sky-200">
-          <span class="text-[10px] text-sky-700 font-semibold uppercase block">Categories</span>
-          <span id="mgmtStatCategories" class="font-bold text-base text-sky-950 font-mono">5</span>
-        </div>
-        <div class="p-2.5 rounded-2xl bg-amber-50/70 border border-amber-200">
-          <span class="text-[10px] text-amber-700 font-semibold uppercase block">Pending 1st Login</span>
-          <span id="mgmtStatPendingChanges" class="font-bold text-base text-amber-950 font-mono">1</span>
-        </div>
-        <div class="p-2.5 rounded-2xl bg-emerald-50/70 border border-emerald-200">
-          <span class="text-[10px] text-emerald-700 font-semibold uppercase block">Active Sessions</span>
-          <span id="mgmtStatActive" class="font-bold text-base text-emerald-950 font-mono">Active</span>
-        </div>
-      </div>
-
-      <!-- User List Table -->
-      <div class="flex-1 overflow-y-auto border border-slate-200 rounded-2xl">
-        <table class="w-full text-left text-xs text-slate-800">
-          <thead class="text-slate-600 uppercase bg-slate-100 border-b border-slate-200 text-[11px] font-semibold sticky top-0">
-            <tr>
-              <th class="py-2.5 px-3">User ID & Name</th>
-              <th class="py-2.5 px-3">Category</th>
-              <th class="py-2.5 px-3">Role</th>
-              <th class="py-2.5 px-3">Mail ID & Phone</th>
-              <th class="py-2.5 px-3">Password Status</th>
-              <th class="py-2.5 px-3 text-center">RBAC Actions</th>
-            </tr>
-          </thead>
-          <tbody id="userMgmtTableBody" class="divide-y divide-slate-100 font-sans"></tbody>
-        </table>
-      </div>
-
-      <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-        <span id="userMgmtSummaryText">Showing registered system users</span>
-        <button onclick="app.closeUserManagementModal()" class="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- CREATE NEW USER MODAL -->
-  <div id="newUserModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden">
-    <div class="glass-card bg-white rounded-3xl border border-slate-200 max-w-lg w-full p-6 sm:p-7 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-        <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
-          <i data-lucide="user-plus" class="w-5 h-5 text-purple-600"></i>
-          <span>Create New User & Assign RBAC</span>
-        </h3>
-        <button onclick="app.closeNewUserModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <form id="newUserForm" onsubmit="app.handleCreateUser(event)" class="space-y-3 text-xs">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">User ID <span class="text-rose-500">*</span></label>
-            <input type="text" id="newUserId" required placeholder="e.g. employee1" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-          </div>
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">Full Name <span class="text-rose-500">*</span></label>
-            <input type="text" id="newUserFullName" required placeholder="e.g. David Selvam" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">Category (Assigned by Admin)</label>
-            <select id="newUserCategory" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-              <option value="Executive Management">Executive Management</option>
-              <option value="Accounts & Audit">Accounts & Audit</option>
-              <option value="Site Operations" selected>Site Operations</option>
-              <option value="Field Technicians">Field Technicians</option>
-              <option value="Technology & Integrations">Technology & Integrations</option>
-              <option value="Board & Investors">Board & Investors</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">Role <span class="text-rose-500">*</span></label>
-            <select id="newUserRole" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-              <option value="employee" selected>👷 Employee (Field Entry & View)</option>
-              <option value="admin">🛡️ Admin (Financial Operations)</option>
-              <option value="developer">💻 Developer (APIs & Maintenance)</option>
-              <option value="owner">👔 Owner (Executive Oversight)</option>
-              <option value="stakeholder">📈 Stakeholder (Read-Only)</option>
-              <option value="super_admin">👑 Super Admin (Full Control)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">Mail ID (For OTP Verification) <span class="text-rose-500">*</span></label>
-            <input type="email" id="newUserEmail" required placeholder="user@dharshithan.com" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-          </div>
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">Phone Number</label>
-            <input type="tel" id="newUserPhone" placeholder="+91 98765 00000" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-          </div>
-        </div>
-
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <label class="block font-medium text-slate-700">Initial Temporary Password</label>
-            <button type="button" onclick="app.generateRandomTempPassword()" class="text-[10px] text-purple-600 hover:text-purple-700 font-semibold underline">Auto-Generate</button>
-          </div>
-          <input type="text" id="newUserTempPassword" value="Dhar@2026" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 focus:bg-white focus:outline-none focus:border-sky-500">
-        </div>
-
-        <div class="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-start space-x-2">
-          <i data-lucide="info" class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"></i>
-          <span><strong>First-Time Password Change Policy:</strong> The user will be required to change this temporary password upon their first login before accessing the application.</span>
-        </div>
-
-        <div class="flex space-x-2 pt-2">
-          <button type="submit" class="flex-1 py-2.5 px-4 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
-            <i data-lucide="user-check" class="w-4 h-4"></i>
-            <span>Create User</span>
-          </button>
-          <button type="button" onclick="app.closeNewUserModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- EDIT USER MODAL -->
-  <div id="editUserModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden">
-    <div class="glass-card bg-white rounded-3xl border border-slate-200 max-w-lg w-full p-6 sm:p-7 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-        <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
-          <i data-lucide="user-check" class="w-5 h-5 text-sky-600"></i>
-          <span>Edit User & Permissions</span>
-        </h3>
-        <button onclick="app.closeEditUserModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <form id="editUserForm" onsubmit="app.handleEditUser(event)" class="space-y-3 text-xs">
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">User ID (Permanent)</label>
-            <input type="text" id="editUserId" disabled class="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-600 cursor-not-allowed">
-          </div>
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">Full Name <span class="text-rose-500">*</span></label>
-            <input type="text" id="editUserFullName" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">Category</label>
-            <select id="editUserCategory" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-              <option value="Executive Management">Executive Management</option>
-              <option value="Accounts & Audit">Accounts & Audit</option>
-              <option value="Site Operations">Site Operations</option>
-              <option value="Field Technicians">Field Technicians</option>
-              <option value="Technology & Integrations">Technology & Integrations</option>
-              <option value="Board & Investors">Board & Investors</option>
-            </select>
-          </div>
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">Role & Permissions <span class="text-rose-500">*</span></label>
-            <select id="editUserRole" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-              <option value="employee">👷 Employee (Field Entry & View)</option>
-              <option value="admin">🛡️ Admin (Financial Operations)</option>
-              <option value="developer">💻 Developer (APIs & Maintenance)</option>
-              <option value="owner">👔 Owner (Executive Oversight)</option>
-              <option value="stakeholder">📈 Stakeholder (Read-Only)</option>
-              <option value="super_admin">👑 Super Admin (Full Control)</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">Mail ID <span class="text-rose-500">*</span></label>
-            <input type="email" id="editUserEmail" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-          </div>
-          <div>
-            <label class="block font-medium text-slate-700 mb-1">Phone Number</label>
-            <input type="tel" id="editUserPhone" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-          </div>
-        </div>
-
-        <div>
-          <label class="block font-medium text-slate-700 mb-1">Account Status</label>
-          <select id="editUserStatus" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-            <option value="active">Active & Authorized</option>
-            <option value="inactive">Inactive / Suspended (Access Blocked)</option>
-          </select>
-        </div>
-
-        <div class="flex space-x-2 pt-2">
-          <button type="submit" class="flex-1 py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
-            <i data-lucide="check" class="w-4 h-4"></i>
-            <span>Save User Changes</span>
-          </button>
-          <button type="button" onclick="app.closeEditUserModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
-            Cancel
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- ENTERPRISE DATABASE HUB & MIGRATION MODAL (SUPER ADMIN & DEV RESTRICTED) -->
-  <div id="dbHubModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
-    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] overflow-y-auto">
-      <div class="android-sheet-handle sm:hidden"></div>
-
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-        <div>
-          <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
-            <i data-lucide="database" class="w-5 h-5 text-sky-600"></i>
-            <span>Enterprise Cloud Database Hub</span>
-          </h3>
-          <p class="text-xs text-slate-500">Migrate beyond Google Sheets to Free Vercel-supported PostgreSQL (Supabase / Neon)</p>
-        </div>
-        <button onclick="app.closeDatabaseHubModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="space-y-3.5 text-xs text-slate-700">
-        <!-- Provider Selection Cards -->
-        <div class="grid grid-cols-2 gap-2.5">
-          <div onclick="app.selectDbProvider('postgres')" id="providerCardPostgres" class="cursor-pointer p-3 rounded-xl border-2 border-sky-500 bg-sky-50/70 relative hover:border-sky-600 transition shadow-xs">
-            <span id="badgePostgresActive" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-600 text-white">ACTIVE MASTER</span>
-            <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
-              <i data-lucide="database" class="w-4 h-4 text-sky-600"></i>
-              <span>Neon Cloud DB</span>
-            </h4>
-            <p class="text-[10px] text-slate-500 mt-1">100% Full-Fledged Neon Lakebase Postgres with Multi-User RBAC & Realtime.</p>
-          </div>
-
-          <div onclick="app.selectDbProvider('google_sheets')" id="providerCardSheets" class="cursor-pointer p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative hover:border-emerald-400 transition">
-            <span id="badgeSheetsActive" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-700">STANDBY</span>
-            <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
-              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
-              <span>Google Sheets</span>
-            </h4>
-            <p class="text-[10px] text-slate-500 mt-1">Optional secondary backup source for viewing formula sheets.</p>
-          </div>
-        </div>
-
-        <!-- 1-Click Migration Card -->
-        <div class="p-3.5 rounded-2xl bg-sky-50/60 border border-sky-200 space-y-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-              <i data-lucide="download" class="w-4 h-4 text-sky-700"></i>
-              <h4 class="font-bold text-sky-950">1-Click PostgreSQL Migration Script</h4>
-            </div>
-            <div class="flex items-center space-x-1.5">
-              <button onclick="app.copySchemaSQL()" class="px-2.5 py-1 rounded-lg bg-white border border-sky-300 hover:bg-sky-100 text-sky-800 font-semibold text-xs flex items-center space-x-1 shadow-2xs">
-                <i data-lucide="copy" class="w-3 h-3"></i>
-                <span>Copy Schema</span>
-              </button>
-              <button onclick="app.downloadMigrationSQL()" class="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-xs flex items-center space-x-1">
-                <i data-lucide="download" class="w-3 h-3"></i>
-                <span>Download .SQL</span>
-              </button>
-            </div>
-          </div>
-          <p class="text-[11px] text-sky-800">
-            Exports your complete Google Sheets records into ready-to-run PostgreSQL <code class="bg-white px-1 border rounded font-mono">INSERT</code> statements matching <code class="bg-white px-1 border rounded font-mono">schema.sql</code>.
-          </p>
-        </div>
-
-        <!-- Connection Settings Accordion -->
-        <details open class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-2">
-          <summary class="font-semibold text-slate-800 cursor-pointer">Configure Free Cloud PostgreSQL (Supabase / Neon)</summary>
-          <div class="space-y-2.5 pt-2 text-xs">
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <label class="block font-medium text-slate-700">PostgreSQL Connection URI (Neon / Supabase / Vercel)</label>
-                <button type="button" onclick="app.togglePgPasswordVisibility()" class="text-[10px] text-sky-600 hover:text-sky-700 font-medium">Toggle Visibility</button>
-              </div>
-              <div class="flex items-center space-x-2">
-                <input type="password" id="pgConnInput" placeholder="postgres://user:password@ep-host.region.aws.neon.tech/neondb" class="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 font-mono text-xs text-slate-900 focus:outline-none focus:border-sky-500">
-                <button type="button" onclick="app.testAndSavePgConnection()" class="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs whitespace-nowrap shadow-xs">
-                  Test & Save
-                </button>
-              </div>
-            </div>
-            
-            <div id="pgConnStatusBanner" class="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] flex items-center space-x-2">
-              <span id="pgStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
-              <span id="pgStatusText" class="text-slate-600">No database connection configured yet.</span>
-            </div>
-
-            <div class="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1 text-[11px]">
-              <span class="font-semibold text-slate-800 block">How to connect with Free Cloud Postgres (Supabase / Neon):</span>
-              <ul class="list-disc pl-4 space-y-0.5 text-slate-600 text-[10px]">
-                <li><strong>Neon Serverless Postgres:</strong> Create project at <a href="https://neon.tech" target="_blank" class="text-sky-600 underline">neon.tech</a> (Free 500MB) &rarr; Copy connection URI.</li>
-                <li><strong>Supabase:</strong> Create project at <a href="https://supabase.com" target="_blank" class="text-sky-600 underline">supabase.com</a> &rarr; Project Settings &rarr; Database &rarr; Connection String URI.</li>
-                <li>Paste above, click <strong>Test & Save</strong>. Click <strong>Copy Schema</strong> to run table creation in their SQL editor!</li>
-              </ul>
-            </div>
-          </div>
-        </details>
-      </div>
-
-      <div class="flex justify-end pt-1 border-t border-slate-100">
-        <button onclick="app.closeDatabaseHubModal()" class="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- GOOGLE SHEETS SYNC MODAL -->
-  <div id="syncModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
-    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] overflow-y-auto">
-      <div class="android-sheet-handle sm:hidden"></div>
-
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-        <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
-          <i data-lucide="cloud" class="w-5 h-5 text-emerald-600"></i>
-          <span>Google Sheets Real-Time Sync</span>
-        </h3>
-        <button onclick="app.closeSyncModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="space-y-3.5 text-xs text-slate-700">
-        <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-          <div class="flex items-center justify-between">
-            <span class="font-medium text-slate-600">Sync Status:</span>
-            <span id="syncModalStatusBadge" class="px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">Checking...</span>
-          </div>
-          <p id="syncModalStatusDetail" class="text-[11px] text-slate-500">Every transaction added, edited, or deleted strictly syncs with your Google Sheet.</p>
-        </div>
-
-        <!-- Backend Configuration (Strictly Super Admin & Developer Only) -->
-        <div id="syncBackendConfigSection" class="space-y-3">
-          <div>
-            <label class="block font-medium mb-1 text-slate-700">Google Apps Script Web App URL</label>
-            <input type="url" id="syncWebhookInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
-            <p class="text-[10px] text-slate-500 mt-1">Generated from your Google Sheet via <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">Extensions &gt; Apps Script</code>.</p>
-          </div>
-
-          <details class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-1">
-            <summary class="font-semibold text-slate-800 cursor-pointer">How to get your Web App URL (3 quick steps)</summary>
-            <ol class="list-decimal pl-4 space-y-1 text-[11px] mt-2">
-              <li>Open your <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit" target="_blank" class="text-sky-600 underline font-medium">Google Sheet</a>.</li>
-              <li>Click <strong>Extensions &gt; Apps Script</strong> and paste the contents of <code class="bg-white px-1 border rounded text-slate-800">google-apps-script.js</code>.</li>
-              <li>Click <strong>Deploy &gt; New deployment &gt; Web app</strong>. Set <em>Execute as: Me</em> and <em>Who has access: Anyone</em>. Copy the URL and paste it above!</li>
-            </ol>
-          </details>
-
-          <div class="flex flex-wrap gap-2 pt-1">
-            <button onclick="app.saveWebhookUrl()" type="button" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-center transition shadow-xs">
-              Save Webhook URL
-            </button>
-            <button onclick="app.pullFromGoogleSheets()" type="button" class="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition">
-              Pull from Sheet
-            </button>
-            <button onclick="app.pushAllToGoogleSheets()" type="button" class="py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold transition shadow-xs">
-              Push All to Sheet
-            </button>
-          </div>
-        </div>
-
-        <!-- Non-Admin Read-Only View -->
-        <div id="syncStaffSection" class="hidden space-y-2">
-          <p class="text-[11px] text-slate-600">Company Google Sheets synchronization is active. All transaction records are synced directly.</p>
-          <button onclick="app.pullFromGoogleSheets()" type="button" class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center space-x-1.5">
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            <span>Refresh Latest Records</span>
-          </button>
+      <div class="modal-body">
+        <div id="docViewerContent">
+          <!-- Rendered dynamically -->
         </div>
       </div>
     </div>
   </div>
 
-  <!-- PARTY DETAIL MODAL -->
-  <div id="partyModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
-    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-2xl w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] flex flex-col">
-      <div class="android-sheet-handle sm:hidden"></div>
-
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-        <div>
-          <h3 id="partyModalName" class="text-base font-bold text-slate-900">Party Statement</h3>
-          <p id="partyModalSubtitle" class="text-xs text-slate-500">Transaction history and ledger balance</p>
-        </div>
-        <button onclick="app.closePartyModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
+  <!-- ==============================================================================
+       MODAL: VOID / DELETE CONFIRMATION (MANDATORY AUDIT REASON)
+       ============================================================================== -->
+  <div class="modal-overlay" id="voidModal">
+    <div class="modal-dialog" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3 style="color: var(--rose);">Confirm Void / Cancellation</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeVoidModal()">✕</button>
       </div>
-
-      <div class="grid grid-cols-3 gap-2.5 text-xs">
-        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-          <span class="text-slate-500 block mb-0.5 text-[10px]">Total Received</span>
-          <span id="partyModalReceived" class="font-mono text-emerald-700 font-bold text-xs sm:text-sm">₹ 0.00</span>
-        </div>
-        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-          <span class="text-slate-500 block mb-0.5 text-[10px]">Total Paid</span>
-          <span id="partyModalPaid" class="font-mono text-rose-700 font-bold text-xs sm:text-sm">₹ 0.00</span>
-        </div>
-        <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-          <span class="text-slate-500 block mb-0.5 text-[10px]">Net Standing</span>
-          <span id="partyModalNet" class="font-mono font-bold text-xs sm:text-sm">₹ 0.00</span>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; margin-bottom: 1rem; color: var(--text-main);">
+          Are you sure you want to void this record? This action will be permanently recorded in the <strong>finance_audit_logs</strong> table.
+        </p>
+        <input type="hidden" id="voidTargetType">
+        <input type="hidden" id="voidTargetId">
+        <div class="form-group">
+          <label class="form-label">Mandatory Audit Reason *</label>
+          <textarea id="voidReasonInput" class="form-textarea" placeholder="e.g. Client requested revised invoice; duplicate entry; payment terms updated..." required></textarea>
         </div>
       </div>
-
-      <div class="flex-1 overflow-y-auto">
-        <table class="w-full text-left text-xs text-slate-800">
-          <thead class="text-slate-600 uppercase bg-slate-100 sticky top-0 border-b border-slate-200">
-            <tr>
-              <th class="py-2 px-3">Date</th>
-              <th class="py-2 px-3">Type</th>
-              <th class="py-2 px-3">Mode</th>
-              <th class="py-2 px-3">Ref No.</th>
-              <th class="py-2 px-3 text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody id="partyModalTable" class="divide-y divide-slate-100 font-mono"></tbody>
-        </table>
-      </div>
-
-      <div class="pt-2 border-t border-slate-100 flex justify-end">
-        <button onclick="app.closePartyModal()" class="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 font-medium">Close</button>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeVoidModal()">Dismiss</button>
+        <button class="btn btn-danger" onclick="submitVoidAction()">Proceed & Void Record</button>
       </div>
     </div>
   </div>
 
-  <!-- Notification Toast Container -->
-  <div id="toastContainer" class="fixed bottom-20 md:bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
+  <!-- ==============================================================================
+       MODAL: LOGIN & ROLE SWITCHER
+       ============================================================================== -->
+  <div class="modal-overlay" id="loginModal">
+    <div class="modal-dialog" style="max-width: 420px;">
+      <div class="modal-header">
+        <h3>Executive Account Sign In</h3>
+        <button class="btn btn-secondary btn-sm" onclick="closeLoginModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label class="form-label">User ID / Email</label>
+            <input type="text" id="loginEmail" class="form-input" value="admin" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label class="form-label">Password</label>
+            <input type="password" id="loginPassword" class="form-input" value="admin@2026" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;">Authenticate & Connect</button>
+        </form>
 
-  <!-- Scripts -->
-  <script src="js/roles.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/database-hub.js"></script>
-  <script src="js/db.js"></script>
-  <script src="js/analytics.js"></script>
-  <script src="js/charts.js"></script>
-  <script src="js/export-import.js"></script>
-  <script src="js/google-sync.js"></script>
+        <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color); font-size: 0.76rem; color: var(--text-dim);">
+          <strong style="color: var(--text-muted);">Quick Role Profiles:</strong>
+          <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 6px;">
+            <span>👑 Super Admin: <code>admin</code> / <code>admin@2026</code></span>
+            <span>👔 Owner: <code>owner@dharshithan.com</code> / <code>owner@2026</code></span>
+            <span>💼 Finance: <code>finance@dharshithan.com</code> / <code>finance@2026</code></span>
+            <span>🔍 Auditor: <code>auditor@dharshithan.com</code> / <code>auditor@2026</code></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="js/app.js"></script>
-  
-  <!-- PWA Service Worker Registration -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW registration note:', err));
-      });
-    }
-  </script>
 </body>
 </html>
