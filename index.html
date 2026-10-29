@@ -104,54 +104,14 @@
         </button>
       </form>
 
-      <!-- Super Admin Credentials Banner -->
-      <div class="p-3 rounded-2xl bg-purple-50 border border-purple-200 space-y-1.5">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-purple-900 flex items-center space-x-1">
-            <span>👑 Super Admin Credentials:</span>
-          </span>
-          <button onclick="app.fillCredentials('admin', 'admin@2026')" class="text-[10px] font-bold text-purple-700 hover:text-purple-900 bg-white px-2 py-0.5 rounded-lg border border-purple-200 shadow-2xs">
-            1-Click Autofill
-          </button>
+      <!-- Enterprise Security Assurance Badge -->
+      <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center space-x-3 text-slate-600 text-xs">
+        <div class="w-8 h-8 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0 text-emerald-700">
+          <i data-lucide="shield-check" class="w-5 h-5"></i>
         </div>
-        <div class="font-mono text-[11px] text-purple-800 flex items-center justify-between">
-          <span>User ID: <strong class="text-purple-950 font-bold">admin</strong></span>
-          <span>Password: <strong class="text-purple-950 font-bold">admin@2026</strong></span>
-        </div>
-      </div>
-
-      <!-- Quick Role Personas Selector (For Testing All 6 Roles) -->
-      <div class="space-y-2 pt-2 border-t border-slate-100">
-        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block text-center">Test Other Role Personas</span>
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <button onclick="app.fillCredentials('owner', 'owner@2026')" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-left transition flex items-center space-x-2">
-            <span class="text-sm">👔</span>
-            <div>
-              <div class="font-bold text-slate-800 text-[11px]">Owner</div>
-              <div class="text-[9px] text-slate-400">owner / owner@2026</div>
-            </div>
-          </button>
-          <button onclick="app.fillCredentials('admin_finance', 'finance@2026')" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-left transition flex items-center space-x-2">
-            <span class="text-sm">🛡️</span>
-            <div>
-              <div class="font-bold text-slate-800 text-[11px]">Finance Admin</div>
-              <div class="text-[9px] text-slate-400">admin_finance</div>
-            </div>
-          </button>
-          <button onclick="app.fillCredentials('dev_lead', 'dev@2026')" class="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-left transition flex items-center space-x-2">
-            <span class="text-sm">💻</span>
-            <div>
-              <div class="font-bold text-slate-800 text-[11px]">Lead Developer</div>
-              <div class="text-[9px] text-slate-400">dev_lead</div>
-            </div>
-          </button>
-          <button onclick="app.fillCredentials('employee_david', 'david@2026')" class="p-2 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-left transition flex items-center space-x-2" title="Test First-Time Login Password Change!">
-            <span class="text-sm">👷</span>
-            <div>
-              <div class="font-bold text-amber-900 text-[11px]">Employee (1st Login)</div>
-              <div class="text-[9px] text-amber-700 font-semibold">Force Pass Change</div>
-            </div>
-          </button>
+        <div>
+          <span class="font-bold text-slate-800 text-[11px] block">256-Bit SSL Encrypted Enterprise Portal</span>
+          <p class="text-[10px] text-slate-500">Authorized personnel only. Protected under Company Financial Data Privacy.</p>
         </div>
       </div>
     </div>
@@ -300,8 +260,8 @@
         <i data-lucide="user-cog" class="w-4 h-4 text-purple-600"></i>
       </button>
 
-      <!-- Database Hub Button (Prime Database) -->
-      <button onclick="app.openDatabaseHubModal()" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition flex items-center justify-center shadow-2xs" title="Enterprise Database Hub & Cloud Migration (Supabase / Neon / Vercel Postgres)">
+      <!-- Database Hub Button (Prime Database - Restricted to Super Admin & Dev) -->
+      <button onclick="app.openDatabaseHubModal()" id="dbHubBtn" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition flex items-center justify-center shadow-2xs hidden" title="Enterprise Database Hub & Cloud Migration (Super Admin & Developer Only)">
         <i data-lucide="database" class="w-4 h-4 text-sky-600"></i>
       </button>
 
@@ -1164,7 +1124,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-medium text-slate-700 mb-1">User ID <span class="text-rose-500">*</span></label>
-            <input type="text" id="newUserId" required placeholder="e.g. david_site" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+            <input type="text" id="newUserId" required placeholder="e.g. employee1" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
           </div>
           <div>
             <label class="block font-medium text-slate-700 mb-1">Full Name <span class="text-rose-500">*</span></label>
@@ -1234,7 +1194,89 @@
     </div>
   </div>
 
-  <!-- ENTERPRISE DATABASE HUB & MIGRATION MODAL (FUTURE PRIME CLOUD DB) -->
+  <!-- EDIT USER MODAL -->
+  <div id="editUserModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="glass-card bg-white rounded-3xl border border-slate-200 max-w-lg w-full p-6 sm:p-7 space-y-4 shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+          <i data-lucide="user-check" class="w-5 h-5 text-sky-600"></i>
+          <span>Edit User & Permissions</span>
+        </h3>
+        <button onclick="app.closeEditUserModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="editUserForm" onsubmit="app.handleEditUser(event)" class="space-y-3 text-xs">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">User ID (Permanent)</label>
+            <input type="text" id="editUserId" disabled class="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-600 cursor-not-allowed">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Full Name <span class="text-rose-500">*</span></label>
+            <input type="text" id="editUserFullName" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Category</label>
+            <select id="editUserCategory" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+              <option value="Executive Management">Executive Management</option>
+              <option value="Accounts & Audit">Accounts & Audit</option>
+              <option value="Site Operations">Site Operations</option>
+              <option value="Field Technicians">Field Technicians</option>
+              <option value="Technology & Integrations">Technology & Integrations</option>
+              <option value="Board & Investors">Board & Investors</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Role & Permissions <span class="text-rose-500">*</span></label>
+            <select id="editUserRole" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+              <option value="employee">👷 Employee (Field Entry & View)</option>
+              <option value="admin">🛡️ Admin (Financial Operations)</option>
+              <option value="developer">💻 Developer (APIs & Maintenance)</option>
+              <option value="owner">👔 Owner (Executive Oversight)</option>
+              <option value="stakeholder">📈 Stakeholder (Read-Only)</option>
+              <option value="super_admin">👑 Super Admin (Full Control)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Mail ID <span class="text-rose-500">*</span></label>
+            <input type="email" id="editUserEmail" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block font-medium text-slate-700 mb-1">Phone Number</label>
+            <input type="tel" id="editUserPhone" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-medium text-slate-700 mb-1">Account Status</label>
+          <select id="editUserStatus" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+            <option value="active">Active & Authorized</option>
+            <option value="inactive">Inactive / Suspended (Access Blocked)</option>
+          </select>
+        </div>
+
+        <div class="flex space-x-2 pt-2">
+          <button type="submit" class="flex-1 py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-md transition flex items-center justify-center space-x-1.5">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Save User Changes</span>
+          </button>
+          <button type="button" onclick="app.closeEditUserModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ENTERPRISE DATABASE HUB & MIGRATION MODAL (SUPER ADMIN & DEV RESTRICTED) -->
   <div id="dbHubModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
     <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] overflow-y-auto">
       <div class="android-sheet-handle sm:hidden"></div>
@@ -1255,8 +1297,8 @@
       <div class="space-y-3.5 text-xs text-slate-700">
         <!-- Provider Selection Cards -->
         <div class="grid grid-cols-2 gap-2.5">
-          <div class="p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50/50 relative">
-            <span class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white">ACTIVE</span>
+          <div onclick="app.selectDbProvider('google_sheets')" id="providerCardSheets" class="cursor-pointer p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50/50 relative hover:border-emerald-600 transition">
+            <span id="badgeSheetsActive" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white">ACTIVE</span>
             <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
               <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
               <span>Google Sheets</span>
@@ -1264,8 +1306,8 @@
             <p class="text-[10px] text-slate-500 mt-1">Strict Master Source. Live formula updates on Dashboard Worksheet.</p>
           </div>
 
-          <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative">
-            <span class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-800">FREE TIER</span>
+          <div onclick="app.selectDbProvider('postgres')" id="providerCardPostgres" class="cursor-pointer p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative hover:border-sky-400 transition">
+            <span id="badgePostgresActive" class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-800">FREE TIER</span>
             <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
               <i data-lucide="server" class="w-4 h-4 text-sky-600"></i>
               <span>Supabase / Neon</span>
@@ -1281,9 +1323,16 @@
               <i data-lucide="download" class="w-4 h-4 text-sky-700"></i>
               <h4 class="font-bold text-sky-950">1-Click PostgreSQL Migration Script</h4>
             </div>
-            <button onclick="app.downloadMigrationSQL()" class="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-xs">
-              Download .SQL
-            </button>
+            <div class="flex items-center space-x-1.5">
+              <button onclick="app.copySchemaSQL()" class="px-2.5 py-1 rounded-lg bg-white border border-sky-300 hover:bg-sky-100 text-sky-800 font-semibold text-xs flex items-center space-x-1 shadow-2xs">
+                <i data-lucide="copy" class="w-3 h-3"></i>
+                <span>Copy Schema</span>
+              </button>
+              <button onclick="app.downloadMigrationSQL()" class="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-xs flex items-center space-x-1">
+                <i data-lucide="download" class="w-3 h-3"></i>
+                <span>Download .SQL</span>
+              </button>
+            </div>
           </div>
           <p class="text-[11px] text-sky-800">
             Exports your complete Google Sheets records into ready-to-run PostgreSQL <code class="bg-white px-1 border rounded font-mono">INSERT</code> statements matching <code class="bg-white px-1 border rounded font-mono">schema.sql</code>.
@@ -1291,14 +1340,35 @@
         </div>
 
         <!-- Connection Settings Accordion -->
-        <details class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-2">
+        <details open class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-2">
           <summary class="font-semibold text-slate-800 cursor-pointer">Configure Free Cloud PostgreSQL (Supabase / Neon)</summary>
           <div class="space-y-2.5 pt-2 text-xs">
             <div>
-              <label class="block font-medium text-slate-700 mb-0.5">PostgreSQL Connection URI (Neon / Supabase / Vercel)</label>
-              <input type="password" id="pgConnInput" placeholder="postgres://user:password@ep-host.region.aws.neon.tech/neondb" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 font-mono text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+              <div class="flex items-center justify-between mb-1">
+                <label class="block font-medium text-slate-700">PostgreSQL Connection URI (Neon / Supabase / Vercel)</label>
+                <button type="button" onclick="app.togglePgPasswordVisibility()" class="text-[10px] text-sky-600 hover:text-sky-700 font-medium">Toggle Visibility</button>
+              </div>
+              <div class="flex items-center space-x-2">
+                <input type="password" id="pgConnInput" placeholder="postgres://user:password@ep-host.region.aws.neon.tech/neondb" class="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-2 font-mono text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+                <button type="button" onclick="app.testAndSavePgConnection()" class="px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs whitespace-nowrap shadow-xs">
+                  Test & Save
+                </button>
+              </div>
             </div>
-            <p class="text-[10px] text-slate-500">Supported by Vercel's free PostgreSQL add-ons. Simply paste your connection string to enable prime cloud querying.</p>
+            
+            <div id="pgConnStatusBanner" class="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] flex items-center space-x-2">
+              <span id="pgStatusDot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+              <span id="pgStatusText" class="text-slate-600">No database connection configured yet.</span>
+            </div>
+
+            <div class="bg-white p-2.5 rounded-xl border border-slate-200 space-y-1 text-[11px]">
+              <span class="font-semibold text-slate-800 block">How to connect with Free Cloud Postgres (Supabase / Neon):</span>
+              <ul class="list-disc pl-4 space-y-0.5 text-slate-600 text-[10px]">
+                <li><strong>Neon Serverless Postgres:</strong> Create project at <a href="https://neon.tech" target="_blank" class="text-sky-600 underline">neon.tech</a> (Free 500MB) &rarr; Copy connection URI.</li>
+                <li><strong>Supabase:</strong> Create project at <a href="https://supabase.com" target="_blank" class="text-sky-600 underline">supabase.com</a> &rarr; Project Settings &rarr; Database &rarr; Connection String URI.</li>
+                <li>Paste above, click <strong>Test & Save</strong>. Click <strong>Copy Schema</strong> to run table creation in their SQL editor!</li>
+              </ul>
+            </div>
           </div>
         </details>
       </div>
@@ -1333,30 +1403,42 @@
           <p id="syncModalStatusDetail" class="text-[11px] text-slate-500">Every transaction added, edited, or deleted strictly syncs with your Google Sheet.</p>
         </div>
 
-        <div>
-          <label class="block font-medium mb-1 text-slate-700">Google Apps Script Web App URL</label>
-          <input type="url" id="syncWebhookInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
-          <p class="text-[10px] text-slate-500 mt-1">Generated from your Google Sheet via <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">Extensions &gt; Apps Script</code>.</p>
+        <!-- Backend Configuration (Strictly Super Admin & Developer Only) -->
+        <div id="syncBackendConfigSection" class="space-y-3">
+          <div>
+            <label class="block font-medium mb-1 text-slate-700">Google Apps Script Web App URL</label>
+            <input type="url" id="syncWebhookInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
+            <p class="text-[10px] text-slate-500 mt-1">Generated from your Google Sheet via <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">Extensions &gt; Apps Script</code>.</p>
+          </div>
+
+          <details class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-1">
+            <summary class="font-semibold text-slate-800 cursor-pointer">How to get your Web App URL (3 quick steps)</summary>
+            <ol class="list-decimal pl-4 space-y-1 text-[11px] mt-2">
+              <li>Open your <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit" target="_blank" class="text-sky-600 underline font-medium">Google Sheet</a>.</li>
+              <li>Click <strong>Extensions &gt; Apps Script</strong> and paste the contents of <code class="bg-white px-1 border rounded text-slate-800">google-apps-script.js</code>.</li>
+              <li>Click <strong>Deploy &gt; New deployment &gt; Web app</strong>. Set <em>Execute as: Me</em> and <em>Who has access: Anyone</em>. Copy the URL and paste it above!</li>
+            </ol>
+          </details>
+
+          <div class="flex flex-wrap gap-2 pt-1">
+            <button onclick="app.saveWebhookUrl()" type="button" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-center transition shadow-xs">
+              Save Webhook URL
+            </button>
+            <button onclick="app.pullFromGoogleSheets()" type="button" class="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition">
+              Pull from Sheet
+            </button>
+            <button onclick="app.pushAllToGoogleSheets()" type="button" class="py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold transition shadow-xs">
+              Push All to Sheet
+            </button>
+          </div>
         </div>
 
-        <details class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-1">
-          <summary class="font-semibold text-slate-800 cursor-pointer">How to get your Web App URL (3 quick steps)</summary>
-          <ol class="list-decimal pl-4 space-y-1 text-[11px] mt-2">
-            <li>Open your <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit" target="_blank" class="text-sky-600 underline font-medium">Google Sheet</a>.</li>
-            <li>Click <strong>Extensions &gt; Apps Script</strong> and paste the contents of <code class="bg-white px-1 border rounded text-slate-800">google-apps-script.js</code>.</li>
-            <li>Click <strong>Deploy &gt; New deployment &gt; Web app</strong>. Set <em>Execute as: Me</em> and <em>Who has access: Anyone</em>. Copy the URL and paste it above!</li>
-          </ol>
-        </details>
-
-        <div class="flex flex-wrap gap-2 pt-1">
-          <button onclick="app.saveWebhookUrl()" type="button" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-center transition shadow-xs">
-            Save Webhook URL
-          </button>
-          <button onclick="app.pullFromGoogleSheets()" type="button" class="py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition">
-            Pull from Sheet
-          </button>
-          <button onclick="app.pushAllToGoogleSheets()" type="button" class="py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold transition shadow-xs">
-            Push All to Sheet
+        <!-- Non-Admin Read-Only View -->
+        <div id="syncStaffSection" class="hidden space-y-2">
+          <p class="text-[11px] text-slate-600">Company Google Sheets synchronization is active. All transaction records are synced directly.</p>
+          <button onclick="app.pullFromGoogleSheets()" type="button" class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-xs transition flex items-center justify-center space-x-1.5">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Refresh Latest Records</span>
           </button>
         </div>
       </div>

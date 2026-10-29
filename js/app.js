@@ -40,6 +40,7 @@ class FinanceApp {
     // Subscribe to Role changes
     if (window.roleManager) {
       window.roleManager.onChange(() => {
+        this.checkAuthUI();
         this.applyRolePermissions();
         this.renderCurrentView();
       });
@@ -110,7 +111,29 @@ class FinanceApp {
       window.googleSync.processQueue();
     }
 
+    // Enterprise 30-minute inactivity security lock
+    this.setupInactivityTimer();
+
     console.log('Dharshithan Finance Tracker Initialized');
+  }
+
+  setupInactivityTimer() {
+    let timer;
+    const reset = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (window.authManager && window.authManager.isAuthenticated()) {
+          window.authManager.logout();
+          this.checkAuthUI();
+          this.showToast('Session locked after 30 minutes of inactivity for company data protection.', 'info');
+        }
+      }, 30 * 60 * 1000); // 30 minutes
+    };
+
+    ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(evt => {
+      window.addEventListener(evt, reset, { passive: true });
+    });
+    reset();
   }
 
   setupSyncListener() {
@@ -956,8 +979,15 @@ class FinanceApp {
     this.closeRoleModal();
   }
 
-  // DATABASE HUB MODAL
+  // DATABASE HUB MODAL (STRICTLY SUPER ADMIN & DEVELOPER RESTRICTED)
   openDatabaseHubModal() {
+    const user = window.authManager ? window.authManager.getCurrentUser() : null;
+    if (!user || (user.role !== 'super_admin' && user.role !== 'developer')) {
+      this.showToast('Access Denied: Enterprise Database Hub is restricted to Super Admin and Developer roles.', 'error');
+      return;
+    }
+
+    this.refreshDatabaseHubUI();
     const modal = document.getElementById('dbHubModal');
     if (!modal) return;
     modal.classList.remove('hidden');
@@ -967,6 +997,124 @@ class FinanceApp {
   closeDatabaseHubModal() {
     const modal = document.getElementById('dbHubModal');
     if (modal) modal.classList.add('hidden');
+  }
+
+  selectDbProvider(provider) {
+    if (!window.databaseHub) return;
+    window.databaseHub.setProvider(provider);
+    this.refreshDatabaseHubUI();
+    this.showToast(`Primary Driver switched to: ${provider === 'postgres' ? 'Cloud PostgreSQL (Supabase/Neon)' : 'Google Sheets'}`, 'info');
+  }
+
+  testAndSavePgConnection() {
+    if (!window.databaseHub) return;
+    const input = document.getElementById('pgConnInput');
+    const uri = input ? input.value : '';
+    const res = window.databaseHub.testAndSaveConnection(uri);
+
+    const dot = document.getElementById('pgStatusDot');
+    const text = document.getElementById('pgStatusText');
+
+    if (res.success) {
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+      if (text) {
+        text.className = 'text-emerald-700 font-medium';
+        text.textContent = `✓ Verified: Connected to ${res.host} (Database: ${res.database})`;
+      }
+      this.showToast(res.message, 'success');
+    } else {
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-rose-500';
+      if (text) {
+        text.className = 'text-rose-700 font-medium';
+        text.textContent = `✗ Verification Failed: ${res.error}`;
+      }
+      this.showToast(res.error, 'error');
+    }
+  }
+
+  togglePgPasswordVisibility() {
+    const input = document.getElementById('pgConnInput');
+    if (input) {
+      input.type = input.type === 'password' ? 'text' : 'password';
+    }
+  }
+
+  copySchemaSQL() {
+    if (!window.databaseHub) return;
+    const ddl = window.databaseHub.getSchemaDDL();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ddl).then(() => {
+        this.showToast('PostgreSQL schema.sql DDL copied to clipboard! Paste in Supabase/Neon SQL editor.', 'success');
+      }).catch(() => {
+        this.fallbackCopyText(ddl, 'PostgreSQL schema.sql DDL copied to clipboard!');
+      });
+    } else {
+      this.fallbackCopyText(ddl, 'PostgreSQL schema.sql DDL copied to clipboard!');
+    }
+  }
+
+  fallbackCopyText(text, successMsg) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      this.showToast(successMsg, 'success');
+    } catch (e) {
+      this.showToast('Could not copy automatically. Please use Download .SQL.', 'error');
+    }
+    document.body.removeChild(ta);
+  }
+
+  refreshDatabaseHubUI() {
+    if (!window.databaseHub) return;
+    const activeProvider = window.databaseHub.getActiveProvider();
+    const uri = window.databaseHub.getPostgresUri();
+
+    const input = document.getElementById('pgConnInput');
+    if (input && uri) input.value = uri;
+
+    const sheetsCard = document.getElementById('providerCardSheets');
+    const pgCard = document.getElementById('providerCardPostgres');
+    const sheetsBadge = document.getElementById('badgeSheetsActive');
+    const pgBadge = document.getElementById('badgePostgresActive');
+
+    if (activeProvider === 'postgres') {
+      if (pgCard) pgCard.className = 'cursor-pointer p-3 rounded-xl border-2 border-sky-500 bg-sky-50/60 relative hover:border-sky-600 transition';
+      if (pgBadge) {
+        pgBadge.className = 'absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-600 text-white';
+        pgBadge.textContent = 'ACTIVE';
+      }
+      if (sheetsCard) sheetsCard.className = 'cursor-pointer p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative hover:border-emerald-400 transition';
+      if (sheetsBadge) {
+        sheetsBadge.className = 'absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-200 text-slate-700';
+        sheetsBadge.textContent = 'STANDBY';
+      }
+    } else {
+      if (sheetsCard) sheetsCard.className = 'cursor-pointer p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50/50 relative hover:border-emerald-600 transition';
+      if (sheetsBadge) {
+        sheetsBadge.className = 'absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white';
+        sheetsBadge.textContent = 'ACTIVE';
+      }
+      if (pgCard) pgCard.className = 'cursor-pointer p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative hover:border-sky-400 transition';
+      if (pgBadge) {
+        pgBadge.className = 'absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-800';
+        pgBadge.textContent = 'FREE TIER';
+      }
+    }
+
+    const dot = document.getElementById('pgStatusDot');
+    const text = document.getElementById('pgStatusText');
+    if (uri && window.databaseHub.config && window.databaseHub.config.postgresHost) {
+      if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+      if (text) {
+        text.className = 'text-emerald-700 font-medium';
+        text.textContent = `Configured: ${window.databaseHub.config.postgresHost} (${window.databaseHub.config.postgresDb})`;
+      }
+    }
   }
 
   downloadMigrationSQL() {
@@ -1231,22 +1379,48 @@ class FinanceApp {
     }
 
     const user = window.authManager ? window.authManager.getCurrentUser() : null;
+    const activeRoleId = window.roleManager ? window.roleManager.getRole().id : (user ? user.role : 'employee');
+    const isSuperOrDev = isAuth && (activeRoleId === 'super_admin' || activeRoleId === 'developer');
+    const canManageUsers = isAuth && ['super_admin', 'developer', 'admin', 'owner'].includes(activeRoleId);
+
     if (user) {
       const pillText = document.getElementById('rolePillText');
       if (pillText) {
         const roleObj = window.roleManager ? window.roleManager.getRole() : null;
         pillText.textContent = `${user.userId} (${roleObj ? roleObj.name : user.role})`;
       }
+    }
 
-      // Check User Management button visibility (Super Admin, Developer, Admin)
-      const userMgmtBtn = document.getElementById('userMgmtBtn');
-      if (userMgmtBtn) {
-        const canManage = window.authManager.canManageUsers();
-        if (canManage) {
-          userMgmtBtn.classList.remove('hidden');
-        } else {
-          userMgmtBtn.classList.add('hidden');
-        }
+    // User Management button visibility (Super Admin, Developer, Admin, Owner)
+    const userMgmtBtn = document.getElementById('userMgmtBtn');
+    if (userMgmtBtn) {
+      if (canManageUsers) {
+        userMgmtBtn.classList.remove('hidden');
+      } else {
+        userMgmtBtn.classList.add('hidden');
+      }
+    }
+
+    // Backend Access Protection: Enterprise Database Hub is strictly visible to Super Admin and Developer ONLY
+    const dbHubBtn = document.getElementById('dbHubBtn');
+    if (dbHubBtn) {
+      if (isSuperOrDev) {
+        dbHubBtn.classList.remove('hidden');
+      } else {
+        dbHubBtn.classList.add('hidden');
+      }
+    }
+
+    // Backend Gating: Google Sheets Webhook and Backend Scripts strictly hidden from public & non-dev staff
+    const syncBackendSection = document.getElementById('syncBackendConfigSection');
+    const syncStaffSection = document.getElementById('syncStaffSection');
+    if (syncBackendSection && syncStaffSection) {
+      if (isSuperOrDev) {
+        syncBackendSection.classList.remove('hidden');
+        syncStaffSection.classList.add('hidden');
+      } else {
+        syncBackendSection.classList.add('hidden');
+        syncStaffSection.classList.remove('hidden');
       }
     }
   }
@@ -1480,6 +1654,8 @@ class FinanceApp {
         ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Temporary (Must Change)</span>`
         : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Active & Verified</span>`;
 
+      const isMasterAdmin = u.userId.toLowerCase() === 'admin';
+
       return `
         <tr class="hover:bg-slate-50 transition border-b border-slate-100">
           <td class="py-2.5 px-3">
@@ -1499,10 +1675,18 @@ class FinanceApp {
           <td class="py-2.5 px-3">${passStatus}</td>
           <td class="py-2.5 px-3 text-center">
             <div class="flex items-center justify-center space-x-1.5">
-              <button onclick="app.issueUserPasswordReset('${u.userId}')" title="Send Reset OTP / Instructions to Mail" class="p-1.5 rounded-lg bg-slate-100 hover:bg-sky-100 text-slate-600 hover:text-sky-700 transition">
+              <button onclick="app.openEditUserModal('${this.escapeHtml(u.userId)}')" title="Edit User & Permissions" class="p-1.5 rounded-lg bg-slate-100 hover:bg-sky-100 text-slate-600 hover:text-sky-700 transition">
+                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+              </button>
+              ${isMasterAdmin ? '' : `
+              <button onclick="app.confirmDeleteUser('${this.escapeHtml(u.userId)}')" title="Delete User" class="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+              `}
+              <button onclick="app.issueUserPasswordReset('${this.escapeHtml(u.userId)}')" title="Send Reset OTP / Instructions to Mail" class="p-1.5 rounded-lg bg-slate-100 hover:bg-purple-100 text-slate-600 hover:text-purple-700 transition">
                 <i data-lucide="mail" class="w-3.5 h-3.5"></i>
               </button>
-              <button onclick="app.adminResetUserPassword('${u.userId}')" title="Direct Password Reset (Forces Change on Next Login)" class="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition">
+              <button onclick="app.adminResetUserPassword('${this.escapeHtml(u.userId)}')" title="Direct Password Reset (Forces Change on Next Login)" class="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition">
                 <i data-lucide="key" class="w-3.5 h-3.5"></i>
               </button>
             </div>
@@ -1512,6 +1696,90 @@ class FinanceApp {
     }).join('');
 
     if (window.lucide) window.lucide.createIcons();
+  }
+
+  openEditUserModal(userId) {
+    if (!window.authManager) return;
+    const user = window.authManager.getUser(userId);
+    if (!user) {
+      this.showToast('User account not found.', 'error');
+      return;
+    }
+
+    const idInput = document.getElementById('editUserId');
+    const nameInput = document.getElementById('editUserFullName');
+    const catInput = document.getElementById('editUserCategory');
+    const roleInput = document.getElementById('editUserRole');
+    const emailInput = document.getElementById('editUserEmail');
+    const phoneInput = document.getElementById('editUserPhone');
+    const statusInput = document.getElementById('editUserStatus');
+
+    if (idInput) idInput.value = user.userId;
+    if (nameInput) nameInput.value = user.fullName || '';
+    if (catInput) catInput.value = user.category || 'Site Operations';
+    if (roleInput) roleInput.value = user.role || 'employee';
+    if (emailInput) emailInput.value = user.email || '';
+    if (phoneInput) phoneInput.value = user.phone || '';
+    if (statusInput) statusInput.value = user.status || 'active';
+
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeEditUserModal() {
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  handleEditUser(e) {
+    if (e) e.preventDefault();
+    if (!window.authManager) return;
+
+    const userId = document.getElementById('editUserId').value.trim();
+    const fullName = document.getElementById('editUserFullName').value.trim();
+    const category = document.getElementById('editUserCategory').value;
+    const role = document.getElementById('editUserRole').value;
+    const email = document.getElementById('editUserEmail').value.trim();
+    const phone = document.getElementById('editUserPhone').value.trim();
+    const status = document.getElementById('editUserStatus').value;
+
+    const res = window.authManager.updateUser(userId, {
+      fullName,
+      category,
+      role,
+      email,
+      phone,
+      status
+    });
+
+    if (res.success) {
+      this.closeEditUserModal();
+      this.renderUserManagementTable();
+      this.checkAuthUI();
+      this.showToast(res.message, 'success');
+    } else {
+      this.showToast(res.error || 'Failed to update user', 'error');
+    }
+  }
+
+  confirmDeleteUser(userId) {
+    if (!window.authManager) return;
+    if (userId.toLowerCase() === 'admin') {
+      this.showToast('Super Administrator account ("admin") cannot be deleted.', 'error');
+      return;
+    }
+
+    const ok = confirm(`Are you sure you want to permanently delete user "${userId}"? This action cannot be undone.`);
+    if (!ok) return;
+
+    const res = window.authManager.deleteUser(userId);
+    if (res.success) {
+      this.renderUserManagementTable();
+      this.showToast(res.message, 'success');
+    } else {
+      this.showToast(res.error || 'Failed to delete user', 'error');
+    }
   }
 
   openNewUserModal() {

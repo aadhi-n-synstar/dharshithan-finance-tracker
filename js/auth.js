@@ -1,7 +1,7 @@
 /**
  * Dharshithan Waterproofing - Finance Tracker
  * Enterprise Authentication, RBAC & User Management Engine
- * Controlled under Super Admin, Developer, and Admin RBAC policies.
+ * Controlled strictly under Super Admin, Developer, and Admin RBAC policies.
  */
 
 const AUTH_STORAGE_KEY = 'dharshithan_active_session';
@@ -13,7 +13,7 @@ class AuthManager {
     this.users = this.loadUsers();
     this.session = this.loadSession();
     this.authListeners = [];
-    this.activeOTP = null; // { userId, code, expiresAt, email }
+    this.activeOTP = null;
 
     // If session exists, sync with role manager
     if (this.session && window.roleManager) {
@@ -25,14 +25,17 @@ class AuthManager {
     const raw = localStorage.getItem(USERS_STORAGE_KEY);
     if (raw) {
       try {
-        const parsed = JSON.parse(raw);
+        let parsed = JSON.parse(raw);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Ensure default admin matches user's exact credentials: admin / admin@2026
+          // Remove old pre-seeded dummy accounts so only Super Admin and user-created accounts remain
+          const legacyDummies = ['owner', 'admin_finance', 'dev_lead', 'employee_david', 'stakeholder'];
+          parsed = parsed.filter(u => !legacyDummies.includes(u.userId) || u.userId === 'admin');
+
           const adminUser = parsed.find(u => u.userId === 'admin');
           if (!adminUser) {
             parsed.unshift(this.getDefaultAdmin());
-            localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(parsed));
           }
+          localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(parsed));
           return parsed;
         }
       } catch (e) {
@@ -40,7 +43,7 @@ class AuthManager {
       }
     }
 
-    // Default Seed Users
+    // Default: ONLY Super Admin initially. User adds all other accounts.
     const seeds = this.getInitialSeedUsers();
     localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(seeds));
     return seeds;
@@ -56,7 +59,7 @@ class AuthManager {
       email: 'admin@dharshithan.com',
       phone: '+91 98765 43210',
       emailVerified: true,
-      mustChangePassword: false, // Default super admin can log in directly
+      mustChangePassword: false, // Super admin default account
       createdAt: '2026-01-01T00:00:00Z',
       lastLogin: null,
       status: 'active'
@@ -65,77 +68,7 @@ class AuthManager {
 
   getInitialSeedUsers() {
     return [
-      this.getDefaultAdmin(),
-      {
-        userId: 'owner',
-        password: 'owner@2026',
-        fullName: 'Business Principal & Owner',
-        category: 'Executive Management',
-        role: 'owner',
-        email: 'owner@dharshithan.com',
-        phone: '+91 98765 43211',
-        emailVerified: true,
-        mustChangePassword: false,
-        createdAt: '2026-01-01T00:00:00Z',
-        lastLogin: null,
-        status: 'active'
-      },
-      {
-        userId: 'admin_finance',
-        password: 'finance@2026',
-        fullName: 'Ramesh Kumar (Accountant)',
-        category: 'Accounts & Audit',
-        role: 'admin',
-        email: 'finance@dharshithan.com',
-        phone: '+91 98765 43212',
-        emailVerified: true,
-        mustChangePassword: false,
-        createdAt: '2026-01-01T00:00:00Z',
-        lastLogin: null,
-        status: 'active'
-      },
-      {
-        userId: 'dev_lead',
-        password: 'dev@2026',
-        fullName: 'Aadhi (Lead Developer)',
-        category: 'Technology & Integrations',
-        role: 'developer',
-        email: 'developer@dharshithan.com',
-        phone: '+91 98765 43213',
-        emailVerified: true,
-        mustChangePassword: false,
-        createdAt: '2026-01-01T00:00:00Z',
-        lastLogin: null,
-        status: 'active'
-      },
-      {
-        userId: 'employee_david',
-        password: 'david@2026',
-        fullName: 'David (Site Supervisor)',
-        category: 'Site Operations',
-        role: 'employee',
-        email: 'david@dharshithan.com',
-        phone: '+91 98765 43214',
-        emailVerified: true,
-        mustChangePassword: true, // Demonstrates forced password change on first login!
-        createdAt: '2026-01-01T00:00:00Z',
-        lastLogin: null,
-        status: 'active'
-      },
-      {
-        userId: 'stakeholder',
-        password: 'investor@2026',
-        fullName: 'Board Investor / Stakeholder',
-        category: 'Board & Investors',
-        role: 'stakeholder',
-        email: 'stakeholder@dharshithan.com',
-        phone: '+91 98765 43215',
-        emailVerified: true,
-        mustChangePassword: false,
-        createdAt: '2026-01-01T00:00:00Z',
-        lastLogin: null,
-        status: 'active'
-      }
+      this.getDefaultAdmin()
     ];
   }
 
@@ -172,6 +105,10 @@ class AuthManager {
     return this.users.find(u => u.userId === this.session.userId) || this.session;
   }
 
+  getUser(userId) {
+    return this.users.find(u => u.userId.toLowerCase() === (userId || '').toLowerCase()) || null;
+  }
+
   onAuthChange(fn) {
     this.authListeners.push(fn);
   }
@@ -194,7 +131,7 @@ class AuthManager {
 
     const user = this.users.find(u => u.userId.toLowerCase() === cleanId);
     if (!user) {
-      return { success: false, error: 'User ID not found in system.' };
+      return { success: false, error: 'Invalid credentials. User ID not found.' };
     }
 
     if (user.status === 'inactive') {
@@ -202,7 +139,7 @@ class AuthManager {
     }
 
     if (user.password !== cleanPass) {
-      return { success: false, error: 'Incorrect password. Try again or use Forgot Password.' };
+      return { success: false, error: 'Incorrect password. Please verify and try again.' };
     }
 
     // Update last login
@@ -283,7 +220,7 @@ class AuthManager {
     user.lastPasswordChange = new Date().toISOString();
     this.saveUsers();
 
-    // Establish or refresh session
+    // Establish session
     const sessionData = {
       userId: user.userId,
       fullName: user.fullName,
@@ -339,7 +276,7 @@ class AuthManager {
       success: true,
       userId: user.userId,
       email: user.email,
-      code: code, // Surfaced for testing & immediate entry
+      code: code,
       expiresInMinutes: 10
     };
   }
@@ -382,9 +319,9 @@ class AuthManager {
   // =========================================================================
 
   canManageUsers() {
-    const user = this.getCurrentUser();
-    if (!user) return false;
-    return ['super_admin', 'developer', 'admin', 'owner'].includes(user.role);
+    const roleId = window.roleManager ? window.roleManager.getRole().id : (this.session ? this.session.role : null);
+    if (!roleId) return false;
+    return ['super_admin', 'developer', 'admin', 'owner'].includes(roleId);
   }
 
   getAllUsers() {
@@ -399,14 +336,12 @@ class AuthManager {
       status: u.status || 'active',
       createdAt: u.createdAt,
       lastLogin: u.lastLogin,
-      // Passwords only viewable/retrievable by Super Admin and Developer for governance
-      hasPassword: !!u.password,
-      passwordPreview: (this.getCurrentUser()?.role === 'super_admin' || this.getCurrentUser()?.role === 'developer') ? u.password : '••••••••'
+      hasPassword: !!u.password
     }));
   }
 
   /**
-   * Super Admin / Admin creates a new user
+   * Create New User (Super Admin / Admin)
    */
   createUser(userData) {
     if (!this.canManageUsers()) {
@@ -425,7 +360,6 @@ class AuthManager {
       return { success: false, error: 'User ID, Full Name, and Mail ID are required.' };
     }
 
-    // Check duplicate User ID or Email
     if (this.users.some(u => u.userId.toLowerCase() === userId)) {
       return { success: false, error: `User ID "${userId}" is already taken.` };
     }
@@ -443,7 +377,7 @@ class AuthManager {
       email: email,
       phone: phone,
       emailVerified: true,
-      mustChangePassword: true, // Forces password change on their first login!
+      mustChangePassword: true, // Forced password change on first login
       createdAt: new Date().toISOString(),
       lastLogin: null,
       status: 'active'
@@ -463,12 +397,90 @@ class AuthManager {
       success: true,
       user: newUser,
       tempPassword: tempPassword,
-      message: `User ${userId} created with temporary password. They must change password on first login.`
+      message: `User "${userId}" created with temporary password. They must change password on first login.`
     };
   }
 
   /**
-   * Super Admin, Developer or Admin issues password reset link / OTP
+   * Edit Existing User (Super Admin / Admin)
+   */
+  updateUser(userId, updates) {
+    if (!this.canManageUsers()) {
+      return { success: false, error: 'Unauthorized: Only Super Admin, Developer, and Admin can edit users.' };
+    }
+
+    const user = this.users.find(u => u.userId.toLowerCase() === (userId || '').toLowerCase());
+    if (!user) {
+      return { success: false, error: 'User not found.' };
+    }
+
+    if (updates.fullName) user.fullName = updates.fullName.trim();
+    if (updates.category) user.category = updates.category.trim();
+    if (updates.role) user.role = updates.role.trim().toLowerCase();
+    if (updates.email) {
+      const newEmail = updates.email.trim().toLowerCase();
+      if (this.users.some(u => u.email.toLowerCase() === newEmail && u.userId !== user.userId)) {
+        return { success: false, error: `Mail ID "${newEmail}" is already used by another user.` };
+      }
+      user.email = newEmail;
+    }
+    if (updates.phone !== undefined) user.phone = updates.phone.trim();
+    if (updates.status !== undefined) user.status = updates.status;
+
+    user.updatedAt = new Date().toISOString();
+    this.saveUsers();
+
+    // If edited user is the active user, refresh session
+    if (this.session && this.session.userId === user.userId) {
+      this.session.fullName = user.fullName;
+      this.session.category = user.category;
+      this.session.role = user.role;
+      this.session.email = user.email;
+      this.session.phone = user.phone;
+      this.saveSession(this.session);
+      if (window.roleManager) window.roleManager.setRole(user.role);
+    }
+
+    this.logAudit(this.getCurrentUser()?.userId || 'admin', 'USER_UPDATED', {
+      targetUserId: user.userId,
+      updates
+    });
+
+    return { success: true, message: `User "${user.userId}" updated successfully.` };
+  }
+
+  /**
+   * Delete User (Super Admin / Developer, cannot delete 'admin')
+   */
+  deleteUser(userId) {
+    const roleId = window.roleManager ? window.roleManager.getRole().id : (this.session ? this.session.role : null);
+    if (!roleId || (roleId !== 'super_admin' && roleId !== 'developer')) {
+      return { success: false, error: 'Unauthorized: Only Super Admin and Developer can delete users.' };
+    }
+
+    const cleanId = (userId || '').trim().toLowerCase();
+    if (cleanId === 'admin') {
+      return { success: false, error: 'The primary Super Administrator account ("admin") cannot be deleted.' };
+    }
+
+    const idx = this.users.findIndex(u => u.userId.toLowerCase() === cleanId);
+    if (idx === -1) {
+      return { success: false, error: 'User not found.' };
+    }
+
+    const removed = this.users.splice(idx, 1)[0];
+    this.saveUsers();
+
+    this.logAudit(caller.userId, 'USER_DELETED', {
+      deletedUserId: removed.userId,
+      deletedEmail: removed.email
+    });
+
+    return { success: true, message: `User "${removed.userId}" has been deleted.` };
+  }
+
+  /**
+   * Issue password reset link / OTP
    */
   issuePasswordReset(targetUserId) {
     if (!this.canManageUsers()) {
@@ -491,8 +503,7 @@ class AuthManager {
       userId: user.userId,
       email: user.email,
       otpCode: otpResult.code,
-      resetLink: `${window.location.origin}${window.location.pathname}?action=reset&user=${encodeURIComponent(user.userId)}&otp=${otpResult.code}`,
-      message: `Password reset instructions & OTP (${otpResult.code}) generated for ${user.email}.`
+      message: `Password reset OTP (${otpResult.code}) generated and dispatched to ${user.email}.`
     };
   }
 
