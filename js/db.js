@@ -1,10 +1,11 @@
 /**
  * Dharshithan Waterproofing - Finance Tracker
  * Storage Engine (IndexedDB + LocalStorage Fallback)
+ * Synced with Master Google Spreadsheet: 1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc
  */
 
 const DB_NAME = 'DharshithanFinanceDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'transactions';
 
 class FinanceDB {
@@ -55,11 +56,10 @@ class FinanceDB {
     });
   }
 
-  // Calculate Indian Financial Year & Quarter from date string YYYY-MM-DD
   static getFinancialMetadata(dateStr) {
     const d = new Date(dateStr);
     const year = d.getFullYear();
-    const month = d.getMonth() + 1; // 1 to 12
+    const month = d.getMonth() + 1;
 
     let fyStart, fyEnd, quarter;
     if (month >= 4) {
@@ -78,19 +78,42 @@ class FinanceDB {
     return { financialYear, quarter };
   }
 
+  /**
+   * Matches exact live rows from Dharshithan Waterproofing Google Sheet:
+   * 1. David | Given Weekly Salary | ₹ 1,200.00 | CASH | PYSL-001 | Q3 | -₹ 1,200.00
+   * 2. Synstar | Paid for Client Tracking | ₹ 20,000.00 | CASH | - | Q3 | -₹ 20,000.00
+   * 3. Raj Enterprises | Received for Client Work | ₹ 40,000.00 | NETBANKING | Q3 | ₹ 40,000.00
+   */
   getInitialSeed() {
     return [
       {
-        id: 'seed-1',
+        id: 'txn-seed-1',
         slNo: 1,
         date: '2026-11-01',
         type: 'Paid / Expense',
-        partyName: 'Synstar Staffing & Software Solutions',
-        category: 'Labor & Staffing',
-        description: 'Payment for Business Provided',
+        partyName: 'David',
+        category: 'Staff & Salary',
+        description: 'Given Weekly Salary',
+        amount: 1200.0,
+        mode: 'CASH',
+        refNumber: 'PYSL-001',
+        quarter: 'Q3',
+        financialYear: 'F.Y. 2026-27',
+        profitValue: -1200.0,
+        createdAt: new Date('2026-11-01T09:00:00Z').toISOString(),
+        updatedAt: new Date('2026-11-01T09:00:00Z').toISOString(),
+      },
+      {
+        id: 'txn-seed-2',
+        slNo: 2,
+        date: '2026-11-01',
+        type: 'Paid / Expense',
+        partyName: 'Synstar',
+        category: 'Software & Tracking',
+        description: 'Paid for Client Tracking',
         amount: 20000.0,
-        mode: 'NETBANKING',
-        refNumber: 'Paid Against Inv No: 001 from Synstar',
+        mode: 'CASH',
+        refNumber: '-',
         quarter: 'Q3',
         financialYear: 'F.Y. 2026-27',
         profitValue: -20000.0,
@@ -98,16 +121,16 @@ class FinanceDB {
         updatedAt: new Date('2026-11-01T10:00:00Z').toISOString(),
       },
       {
-        id: 'seed-2',
-        slNo: 2,
+        id: 'txn-seed-3',
+        slNo: 3,
         date: '2026-11-01',
         type: 'Received / Income',
         partyName: 'Raj Enterprises',
-        category: 'Client Waterproofing Project',
-        description: 'Received for Client Tracking',
+        category: 'Client Waterproofing',
+        description: 'Received for Client Work',
         amount: 40000.0,
-        mode: 'CASH',
-        refNumber: 'Received against Inv No:001 Generated',
+        mode: 'NETBANKING',
+        refNumber: '',
         quarter: 'Q3',
         financialYear: 'F.Y. 2026-27',
         profitValue: 40000.0,
@@ -159,7 +182,6 @@ class FinanceDB {
 
       request.onsuccess = () => {
         const list = request.result || [];
-        // Sort by date ascending, then slNo ascending
         list.sort((a, b) => {
           const dateDiff = new Date(a.date) - new Date(b.date);
           return dateDiff !== 0 ? dateDiff : (a.slNo || 0) - (b.slNo || 0);
@@ -191,7 +213,6 @@ class FinanceDB {
     const amount = Math.abs(parseFloat(item.amount) || 0);
     const isIncome = item.type.includes('Received') || item.type.includes('Income');
     
-    // Auto calculate sequential slNo if not provided
     const existing = await this.getAll();
     const nextSlNo = item.slNo || (existing.length > 0 ? Math.max(...existing.map(x => x.slNo || 0)) + 1 : 1);
 

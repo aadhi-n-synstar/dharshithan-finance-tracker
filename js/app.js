@@ -1,6 +1,6 @@
 /**
  * Dharshithan Waterproofing - Finance Tracker
- * Main Controller with Real-Time Google Sheets Live Sync & Android Native Mobile UI
+ * Main Controller: Executive Dashboard, Multi-Role RBAC & Google Sheets / Cloud Sync
  */
 
 class FinanceApp {
@@ -22,10 +22,18 @@ class FinanceApp {
   async init() {
     await window.financeDB.init();
 
-    // Subscribe to local DB changes
+    // Subscribe to DB changes
     window.financeDB.onChange(() => {
       this.refreshData();
     });
+
+    // Subscribe to Role changes
+    if (window.roleManager) {
+      window.roleManager.onChange(() => {
+        this.applyRolePermissions();
+        this.renderCurrentView();
+      });
+    }
 
     // Populate initial FY dropdown dynamically
     await this.refreshData();
@@ -37,6 +45,9 @@ class FinanceApp {
     const today = new Date().toISOString().slice(0, 10);
     const dateInput = document.getElementById('modalDate');
     if (dateInput) dateInput.value = today;
+
+    // Apply role-based visibility
+    this.applyRolePermissions();
 
     // Check URL parameters (e.g. for PWA shortcuts)
     const urlParams = new URLSearchParams(window.location.search);
@@ -57,16 +68,18 @@ class FinanceApp {
         this.closeAllModals();
       } else if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        this.openTransactionModal();
+        if (window.roleManager && window.roleManager.can('canAdd')) {
+          this.openTransactionModal();
+        }
       }
     });
 
-    // If Google Sheets webhook is configured, attempt initial sync in background
+    // If Google Sheets webhook is configured, process queue
     if (window.googleSync && window.googleSync.isConfigured()) {
       window.googleSync.processQueue();
     }
 
-    console.log('Dharshithan Finance Tracker Initialized with Android UI & Live Sheets Sync');
+    console.log('Dharshithan Finance Tracker Initialized');
   }
 
   setupSyncListener() {
@@ -76,7 +89,6 @@ class FinanceApp {
       this.updateSyncUI(status, detail);
     });
 
-    // Initial status display
     const isConfigured = window.googleSync.isConfigured();
     this.updateSyncUI(isConfigured ? 'connected' : 'unconfigured', isConfigured ? 'Ready to sync' : 'Configure webhook URL');
   }
@@ -110,7 +122,7 @@ class FinanceApp {
       }
     } else {
       if (dot) dot.className = 'w-2 h-2 rounded-full bg-slate-400';
-      if (text) text.textContent = 'Setup Sync';
+      if (text) text.textContent = 'Sheets Sync';
       if (badge) {
         badge.className = 'px-2 py-0.5 rounded-full font-semibold text-[10px] bg-slate-100 text-slate-600 border border-slate-300';
         badge.textContent = 'Unconfigured';
@@ -164,10 +176,57 @@ class FinanceApp {
     });
   }
 
+  // RBAC PERMISSION ENFORCEMENT
+  applyRolePermissions() {
+    if (!window.roleManager) return;
+    const role = window.roleManager.getRole();
+
+    // Update Top Role Pill
+    const pillText = document.getElementById('rolePillText');
+    const pillDot = document.getElementById('roleAvatarDot');
+    const pillBtn = document.getElementById('rolePillBtn');
+
+    if (pillText) pillText.textContent = role.name;
+    if (pillBtn) {
+      pillBtn.className = `flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition shadow-2xs ${role.badgeClass}`;
+    }
+    if (pillDot) {
+      pillDot.className = `w-2 h-2 rounded-full ${role.avatarBg}`;
+    }
+
+    // Add buttons visibility
+    const canAdd = window.roleManager.can('canAdd');
+    const headerBtn = document.getElementById('headerAddTxnBtn');
+    const fabBtn = document.getElementById('androidFabBtn');
+    const ledgerBtn = document.getElementById('ledgerNewEntryBtn');
+
+    if (headerBtn) headerBtn.style.display = canAdd ? 'flex' : 'none';
+    if (fabBtn) fabBtn.style.display = canAdd ? 'flex' : 'none';
+    if (ledgerBtn) ledgerBtn.style.display = canAdd ? 'flex' : 'none';
+
+    // Summary description in role modal
+    const summary = document.getElementById('rolePermissionsSummary');
+    if (summary) {
+      summary.textContent = `Active Role: ${role.name} (${role.title}). Permissions: ` +
+        [
+          role.permissions.canAdd ? 'Add Transactions' : null,
+          role.permissions.canEdit ? 'Edit Records' : null,
+          role.permissions.canDelete ? 'Delete Records' : null,
+          role.permissions.canManageDatabase ? 'Cloud Database Migration' : null,
+          role.permissions.canAdjustFloat ? 'Adjust Float' : null,
+          role.permissions.canViewReports ? 'View P&L' : 'Basic View Only'
+        ].filter(Boolean).join(', ');
+    }
+  }
+
   setActiveTab(tabName) {
+    if (tabName === 'reports' && window.roleManager && !window.roleManager.can('canViewReports')) {
+      this.showToast('Access restricted: P&L reports are hidden for Employee role.', 'error');
+      return;
+    }
+
     this.activeTab = tabName;
 
-    // Desktop nav buttons & Android bottom navigation items
     ['dashboard', 'transactions', 'parties', 'reports'].forEach(tab => {
       const btn = document.getElementById(`tab-${tab}`);
       const navItem = document.getElementById(`nav-${tab}`);
@@ -198,7 +257,6 @@ class FinanceApp {
       window.lucide.createIcons();
     }
 
-    // Scroll to top on view change
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -239,76 +297,118 @@ class FinanceApp {
     }
   }
 
+  /**
+   * Complete render mirroring the exact Dashboard Worksheet from Google Sheets:
+   * 1. 5 Top KPI Cards
+   * 2. Financial Summary Panel
+   * 3. Income by Mode Panel
+   * 4. Expenses by Mode Panel
+   * 5. Bank Account Position Panel
+   * 6. Cash Position & Float Panel
+   */
   renderDashboard() {
     const metrics = FinanceAnalytics.calculateDashboardMetrics(this.filteredTransactions);
 
-    // KPI 1: Turnover / Income
-    const elIncome = document.getElementById('kpi-total-income');
-    if (elIncome) elIncome.textContent = FinanceAnalytics.formatINR(metrics.totalIncome);
-    const elIncTxns = document.getElementById('kpi-income-txns');
-    const incTxnCnt = this.filteredTransactions.filter(t => t.type.includes('Received') || t.type.includes('Income')).length;
-    if (elIncTxns) elIncTxns.textContent = `${incTxnCnt} receipts`;
+    // 1. Top 5 KPI Cards
+    const elRev = document.getElementById('kpi-total-revenue');
+    if (elRev) elRev.textContent = FinanceAnalytics.formatINR(metrics.grossRevenue);
+    const elIncCnt = document.getElementById('kpi-income-txns');
+    const incCnt = this.filteredTransactions.filter(t => t.type.includes('Received') || t.type.includes('Income')).length;
+    if (elIncCnt) elIncCnt.textContent = `${incCnt} txns`;
 
-    // KPI 2: Total Expenses
-    const elExpenses = document.getElementById('kpi-total-expenses');
-    if (elExpenses) elExpenses.textContent = FinanceAnalytics.formatINR(metrics.totalExpenses);
-    const elExpTxns = document.getElementById('kpi-expense-txns');
-    const expTxnCnt = this.filteredTransactions.filter(t => t.type.includes('Paid') || t.type.includes('Expense')).length;
-    if (elExpTxns) elExpTxns.textContent = `${expTxnCnt} payouts`;
+    const elExp = document.getElementById('kpi-total-expenses');
+    if (elExp) elExp.textContent = FinanceAnalytics.formatINR(metrics.operatingCosts);
+    const elExpCnt = document.getElementById('kpi-expense-txns');
+    const expCnt = this.filteredTransactions.filter(t => t.type.includes('Paid') || t.type.includes('Expense')).length;
+    if (elExpCnt) elExpCnt.textContent = `${expCnt} txns`;
 
-    // KPI 3: Net Income in Stands
-    const elNet = document.getElementById('kpi-net-income');
-    if (elNet) {
-      elNet.textContent = FinanceAnalytics.formatINR(metrics.netIncome);
-      if (metrics.netIncome >= 0) {
-        elNet.className = 'text-lg md:text-2xl font-bold text-sky-700 font-mono tracking-tight';
-      } else {
-        elNet.className = 'text-lg md:text-2xl font-bold text-rose-600 font-mono tracking-tight';
-      }
-    }
+    const elNet = document.getElementById('kpi-net-profit');
+    if (elNet) elNet.textContent = FinanceAnalytics.formatINR(metrics.netProfit);
+
     const elMargin = document.getElementById('kpi-profit-margin');
-    if (elMargin) {
-      const margin = metrics.totalIncome > 0 ? ((metrics.netIncome / metrics.totalIncome) * 100).toFixed(1) : '0.0';
-      elMargin.textContent = `${margin}% margin`;
-    }
-
-    // KPI 4: Bank Balance & Cash in hand
-    const elBankBal = document.getElementById('kpi-bank-balance');
-    if (elBankBal) {
-      elBankBal.textContent = FinanceAnalytics.formatINR(metrics.bankSummary.currentBalance, { parenthesesNegative: true });
-      if (metrics.bankSummary.currentBalance < 0) {
-        elBankBal.className = 'text-lg md:text-2xl font-bold font-mono tracking-tight text-amber-600';
+    if (elMargin) elMargin.textContent = `${metrics.profitMargin.toFixed(1)}%`;
+    const elMarginBadge = document.getElementById('kpi-margin-health-badge');
+    if (elMarginBadge) {
+      if (metrics.isProfitHealthy) {
+        elMarginBadge.className = 'px-1.5 py-0.5 rounded font-semibold text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200';
+        elMarginBadge.textContent = 'Healthy (>20%)';
       } else {
-        elBankBal.className = 'text-lg md:text-2xl font-bold font-mono tracking-tight text-slate-900';
+        elMarginBadge.className = 'px-1.5 py-0.5 rounded font-semibold text-[9px] bg-amber-50 text-amber-700 border border-amber-200';
+        elMarginBadge.textContent = 'Under Target (<20%)';
       }
     }
-    const elCashBal = document.getElementById('kpi-cash-balance');
-    if (elCashBal) elCashBal.textContent = FinanceAnalytics.formatINR(metrics.cashSummary.currentBalance);
 
-    // Bank Liquidity Box
-    const elBankIn = document.getElementById('bank-total-in');
-    if (elBankIn) elBankIn.textContent = FinanceAnalytics.formatINR(metrics.bankSummary.totalIncome);
-    const elBankOut = document.getElementById('bank-total-out');
-    if (elBankOut) elBankOut.textContent = FinanceAnalytics.formatINR(metrics.bankSummary.totalExpenses);
-    const elBankCurrent = document.getElementById('bank-current-bal');
-    if (elBankCurrent) {
-      elBankCurrent.textContent = FinanceAnalytics.formatINR(metrics.bankSummary.currentBalance, { parenthesesNegative: true });
+    const elLiq = document.getElementById('kpi-total-liquidity');
+    if (elLiq) elLiq.textContent = FinanceAnalytics.formatINR(metrics.totalLiquidity);
+
+    // 2. Financial Summary Panel
+    const fsRev = document.getElementById('fs-gross-revenue');
+    if (fsRev) fsRev.textContent = FinanceAnalytics.formatINR(metrics.grossRevenue);
+    const fsCosts = document.getElementById('fs-operating-costs');
+    if (fsCosts) fsCosts.textContent = FinanceAnalytics.formatINR(metrics.operatingCosts);
+    const fsNet = document.getElementById('fs-net-profit');
+    if (fsNet) fsNet.textContent = FinanceAnalytics.formatINR(metrics.netProfit);
+    const fsMargin = document.getElementById('fs-profit-margin');
+    if (fsMargin) fsMargin.textContent = `${metrics.profitMargin.toFixed(1)}%`;
+    const fsLiq = document.getElementById('fs-total-liquidity');
+    if (fsLiq) fsLiq.textContent = FinanceAnalytics.formatINR(metrics.totalLiquidity);
+    const fsSplit = document.getElementById('fs-liquidity-split');
+    if (fsSplit) fsSplit.textContent = metrics.liquiditySplit;
+
+    // 3. Bank Account Position Panel
+    const bpIn = document.getElementById('bp-total-inflows');
+    if (bpIn) bpIn.textContent = FinanceAnalytics.formatINR(metrics.bankPosition.totalInflows);
+    const bpOut = document.getElementById('bp-total-outflows');
+    if (bpOut) bpOut.textContent = FinanceAnalytics.formatINR(metrics.bankPosition.totalOutflows);
+    const bpMov = document.getElementById('bp-operating-movement');
+    if (bpMov) bpMov.textContent = FinanceAnalytics.formatINR(metrics.bankPosition.operatingMovement);
+    const bpOpen = document.getElementById('bp-opening-balance');
+    if (bpOpen) bpOpen.textContent = FinanceAnalytics.formatINR(metrics.bankPosition.openingBalance);
+    const bpCur = document.getElementById('bp-current-balance');
+    if (bpCur) bpCur.textContent = FinanceAnalytics.formatINR(metrics.bankPosition.currentBalance);
+    const bpBadge = document.getElementById('bp-health-badge');
+    if (bpBadge) {
+      if (metrics.bankPosition.accountHealth === 'Reconciled') {
+        bpBadge.className = 'px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+        bpBadge.textContent = 'Reconciled';
+      } else {
+        bpBadge.className = 'px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-rose-50 text-rose-700 border border-rose-200';
+        bpBadge.textContent = 'Overdrawn';
+      }
     }
-    const elCashCurrent = document.getElementById('cash-current-bal');
-    if (elCashCurrent) elCashCurrent.textContent = FinanceAnalytics.formatINR(metrics.cashSummary.currentBalance);
 
-    // Mode rows
-    this.renderModeList('list-income-modes', metrics.incomeByMode, metrics.totalIncome, 'emerald');
-    this.renderModeList('list-expense-modes', metrics.expensesByMode, metrics.totalExpenses, 'rose');
+    // 4. Cash Position & Float Panel
+    const cpIn = document.getElementById('cp-total-inflows');
+    if (cpIn) cpIn.textContent = FinanceAnalytics.formatINR(metrics.cashPosition.totalInflows);
+    const cpExp = document.getElementById('cp-total-expenses');
+    if (cpExp) cpExp.textContent = FinanceAnalytics.formatINR(metrics.cashPosition.totalExpenses);
+    const cpMov = document.getElementById('cp-net-movement');
+    if (cpMov) cpMov.textContent = FinanceAnalytics.formatINR(metrics.cashPosition.netCashMovement);
+    const cpOpen = document.getElementById('cp-opening-float');
+    if (cpOpen) cpOpen.textContent = FinanceAnalytics.formatINR(metrics.cashPosition.openingCashFloat);
+    const cpAvail = document.getElementById('cp-available-cash');
+    if (cpAvail) cpAvail.textContent = FinanceAnalytics.formatINR(metrics.cashPosition.availableCashInHand);
+    const cpBadge = document.getElementById('cp-health-badge');
+    if (cpBadge) {
+      if (metrics.cashPosition.cashHealth === 'Sufficient Cash') {
+        cpBadge.className = 'px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+        cpBadge.textContent = 'Sufficient Cash';
+      } else {
+        cpBadge.className = 'px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-rose-50 text-rose-700 border border-rose-200';
+        cpBadge.textContent = 'Replenish Cash';
+      }
+    }
 
-    // Recent Transactions in Dashboard
+    // 5. Modes
+    this.renderModeList('list-income-modes', metrics.incomeByMode, metrics.grossRevenue, 'emerald');
+    this.renderModeList('list-expense-modes', metrics.expensesByMode, metrics.operatingCosts, 'rose');
+
+    // 6. Recent preview
     const recent = [...this.filteredTransactions].reverse().slice(0, 5);
-    
-    // Desktop Recent Table
     const recentTbody = document.getElementById('dashboard-recent-table');
     if (recentTbody) {
       if (recent.length === 0) {
-        recentTbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-400">No transactions recorded for this period</td></tr>`;
+        recentTbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-400">No transactions recorded</td></tr>`;
       } else {
         recentTbody.innerHTML = recent.map(t => {
           const isIncome = t.type.includes('Received') || t.type.includes('Income');
@@ -319,20 +419,19 @@ class FinanceApp {
           const profitClass = (t.profitValue || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600';
           return `
             <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-              <td class="py-2.5 px-3 text-slate-500">#${t.slNo}</td>
-              <td class="py-2.5 px-3 text-slate-600 font-sans">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
-              <td class="py-2.5 px-3 font-sans font-medium text-slate-900">${this.escapeHtml(t.partyName)}</td>
-              <td class="py-2.5 px-3 font-sans">${typeBadge}</td>
-              <td class="py-2.5 px-3 font-sans">${this.getModeBadge(t.mode)}</td>
-              <td class="py-2.5 px-3 text-right text-slate-800">${FinanceAnalytics.formatINR(t.amount)}</td>
-              <td class="py-2.5 px-3 text-right ${profitClass} font-semibold">${FinanceAnalytics.formatINR(t.profitValue)}</td>
+              <td class="py-2 px-3 text-slate-500">#${t.slNo}</td>
+              <td class="py-2 px-3 text-slate-600 font-sans">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+              <td class="py-2 px-3 font-sans font-medium text-slate-900">${this.escapeHtml(t.partyName)}</td>
+              <td class="py-2 px-3 font-sans">${typeBadge}</td>
+              <td class="py-2 px-3 font-sans">${this.getModeBadge(t.mode)}</td>
+              <td class="py-2 px-3 text-right text-slate-800">${FinanceAnalytics.formatINR(t.amount)}</td>
+              <td class="py-2 px-3 text-right ${profitClass} font-semibold">${FinanceAnalytics.formatINR(t.profitValue)}</td>
             </tr>
           `;
         }).join('');
       }
     }
 
-    // Android Mobile Recent List
     const recentMobile = document.getElementById('dashboard-recent-mobile');
     if (recentMobile) {
       if (recent.length === 0) {
@@ -350,7 +449,7 @@ class FinanceApp {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const modes = ['CASH', 'NETBANKING', 'UPI', 'DEBIT CARD / CREDIT CARD', 'CHEQUE', 'OTHERS'];
+    const modes = ['UPI', 'NETBANKING', 'CASH', 'DEBIT CARD / CREDIT CARD', 'CHEQUE', 'OTHERS'];
     const barColors = {
       emerald: 'bg-emerald-500',
       rose: 'bg-rose-500'
@@ -358,19 +457,11 @@ class FinanceApp {
 
     const html = modes.map(m => {
       const amount = modeMap[m] || 0;
-      const pct = total > 0 ? ((amount / total) * 100).toFixed(1) : 0;
+      const displayLabel = m === 'DEBIT CARD / CREDIT CARD' ? 'DEBIT / CREDIT' : m;
       return `
-        <div class="space-y-1">
-          <div class="flex items-center justify-between">
-            <span class="text-slate-600 font-medium">${m}</span>
-            <div class="flex items-center space-x-2 font-mono">
-              <span class="text-slate-900 font-semibold">${FinanceAnalytics.formatINR(amount)}</span>
-              <span class="text-slate-400 text-[10px]">(${pct}%)</span>
-            </div>
-          </div>
-          <div class="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-            <div class="h-full ${barColors[themeColor] || 'bg-sky-500'} rounded-full transition-all duration-500" style="width: ${pct}%"></div>
-          </div>
+        <div class="flex items-center justify-between py-0.5">
+          <span class="text-slate-500 text-[11px]">${displayLabel}</span>
+          <span class="font-mono font-semibold text-slate-800">${FinanceAnalytics.formatINR(amount)}</span>
         </div>
       `;
     }).join('');
@@ -392,6 +483,9 @@ class FinanceApp {
     const isIncome = t.type.includes('Received') || t.type.includes('Income');
     const profitClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
     const initial = (t.partyName || 'P').trim().charAt(0).toUpperCase();
+
+    const canEdit = window.roleManager ? window.roleManager.can('canEdit') : true;
+    const canDelete = window.roleManager ? window.roleManager.can('canDelete') : true;
 
     return `
       <div class="p-3 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-2">
@@ -416,8 +510,8 @@ class FinanceApp {
         <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px] text-slate-500">
           <span class="truncate max-w-[180px]">${t.refNumber ? `Ref: ${this.escapeHtml(t.refNumber)}` : `#${t.slNo}`}</span>
           <div class="flex items-center space-x-2">
-            <button onclick="app.editTransaction('${t.id}')" class="text-sky-600 font-semibold p-1">Edit</button>
-            <button onclick="app.deleteTransaction('${t.id}')" class="text-rose-600 font-semibold p-1">Delete</button>
+            ${canEdit ? `<button onclick="app.editTransaction('${t.id}')" class="text-sky-600 font-semibold p-1">Edit</button>` : ''}
+            ${canDelete ? `<button onclick="app.deleteTransaction('${t.id}')" class="text-rose-600 font-semibold p-1">Delete</button>` : ''}
           </div>
         </div>
       </div>
@@ -449,7 +543,9 @@ class FinanceApp {
     let sumIncome = 0;
     let sumExpense = 0;
 
-    // Desktop Table
+    const canEdit = window.roleManager ? window.roleManager.can('canEdit') : true;
+    const canDelete = window.roleManager ? window.roleManager.can('canDelete') : true;
+
     if (tbody) {
       tbody.innerHTML = this.filteredTransactions.map(t => {
         const isIncome = t.type.includes('Received') || t.type.includes('Income');
@@ -480,12 +576,17 @@ class FinanceApp {
             <td class="py-2.5 px-3 text-right font-mono font-semibold ${profitClass}">${FinanceAnalytics.formatINR(t.profitValue)}</td>
             <td class="py-2.5 px-3 text-center">
               <div class="flex items-center justify-center space-x-1.5">
-                <button onclick="app.editTransaction('${t.id}')" title="Edit" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-sky-600 transition">
-                  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
-                </button>
-                <button onclick="app.deleteTransaction('${t.id}')" title="Delete" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition">
-                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-                </button>
+                ${canEdit ? `
+                  <button onclick="app.editTransaction('${t.id}')" title="Edit" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-sky-600 transition">
+                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                  </button>
+                ` : ''}
+                ${canDelete ? `
+                  <button onclick="app.deleteTransaction('${t.id}')" title="Delete" class="p-1 rounded hover:bg-slate-100 text-slate-400 hover:text-rose-600 transition">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                  </button>
+                ` : ''}
+                ${!canEdit && !canDelete ? `<span class="text-[10px] text-slate-400">View</span>` : ''}
               </div>
             </td>
           </tr>
@@ -493,7 +594,6 @@ class FinanceApp {
       }).join('');
     }
 
-    // Android Mobile Card Feed
     if (mobileCards) {
       mobileCards.innerHTML = this.filteredTransactions.map(t => this.renderMobileCardHtml(t)).join('');
     }
@@ -511,7 +611,6 @@ class FinanceApp {
     const elNet = document.getElementById('table-sum-net');
     if (elNet) elNet.textContent = FinanceAnalytics.formatINR(net);
 
-    // Mobile Summary Bar
     const mCount = document.getElementById('m-record-count');
     if (mCount) mCount.textContent = count;
     const mInc = document.getElementById('m-sum-income');
@@ -574,7 +673,6 @@ class FinanceApp {
       `;
     }).join('');
 
-    // Trigger party chart
     window.financeCharts.renderPartyChart(this.filteredTransactions);
   }
 
@@ -635,7 +733,6 @@ class FinanceApp {
             </div>
           </div>
 
-          <!-- Quarters Breakdown -->
           <div>
             <h4 class="text-xs uppercase font-semibold text-slate-500 mb-2">Quarterly Breakdown (Sheet1 Pivot)</h4>
             <div class="overflow-x-auto rounded-xl border border-slate-200">
@@ -656,7 +753,6 @@ class FinanceApp {
             </div>
           </div>
 
-          <!-- Monthly Breakdown -->
           <div>
             <h4 class="text-xs uppercase font-semibold text-slate-500 mb-2">Monthly Trajectory</h4>
             <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-56 overflow-y-auto">
@@ -681,8 +777,33 @@ class FinanceApp {
     }).join('');
   }
 
+  // FLOAT ADJUSTMENTS
+  promptOpeningFloat(type) {
+    if (!window.roleManager || !window.roleManager.can('canAdjustFloat')) {
+      this.showToast('Float adjustments require Admin or Owner permissions.', 'error');
+      return;
+    }
+
+    const isBank = type === 'bank';
+    const key = isBank ? 'dharshithan_opening_bank' : 'dharshithan_opening_cash';
+    const label = isBank ? 'Opening Bank Balance' : 'Opening Cash Float';
+    const current = localStorage.getItem(key) || '0';
+
+    const newVal = prompt(`Enter ${label} (₹):`, current);
+    if (newVal !== null && !isNaN(parseFloat(newVal))) {
+      localStorage.setItem(key, parseFloat(newVal).toString());
+      this.showToast(`${label} updated to ${FinanceAnalytics.formatINR(parseFloat(newVal))}`, 'success');
+      this.renderCurrentView();
+    }
+  }
+
   // MODAL HANDLERS
   openTransactionModal(editId = null) {
+    if (window.roleManager && !window.roleManager.can('canAdd') && !editId) {
+      this.showToast('Your role does not have permission to add new transactions.', 'error');
+      return;
+    }
+
     this.editingId = editId;
     const modal = document.getElementById('txnModal');
     const title = document.getElementById('modalTitle');
@@ -725,9 +846,6 @@ class FinanceApp {
     this.editingId = null;
   }
 
-  /**
-   * Save Transaction: Updates Local DB AND Syncs Live to Google Sheets immediately!
-   */
   async saveTransaction(e) {
     e.preventDefault();
 
@@ -764,7 +882,7 @@ class FinanceApp {
         savedRecord = await window.financeDB.update(id, payload);
         this.showToast('Transaction updated', 'success');
         
-        // Immediate Google Sheets Live Sync
+        // Strictly sync to Google Sheets
         if (window.googleSync) {
           window.googleSync.update(savedRecord);
         }
@@ -772,7 +890,7 @@ class FinanceApp {
         savedRecord = await window.financeDB.add(payload);
         this.showToast('Transaction saved', 'success');
 
-        // Immediate Google Sheets Live Sync
+        // Strictly sync to Google Sheets
         if (window.googleSync) {
           window.googleSync.add(savedRecord);
         }
@@ -784,10 +902,12 @@ class FinanceApp {
     }
   }
 
-  /**
-   * Delete Transaction: Removes from Local DB AND Deletes from Google Sheets immediately!
-   */
   async deleteTransaction(id) {
+    if (window.roleManager && !window.roleManager.can('canDelete')) {
+      this.showToast('Your role does not have permission to delete transactions.', 'error');
+      return;
+    }
+
     const item = this.transactions.find(t => t.id === id);
     if (!item) return;
 
@@ -795,7 +915,7 @@ class FinanceApp {
       await window.financeDB.delete(id);
       this.showToast('Transaction deleted', 'info');
 
-      // Immediate Google Sheets Live Delete
+      // Strictly sync delete to Google Sheets
       if (window.googleSync) {
         window.googleSync.delete(item.slNo);
       }
@@ -806,7 +926,74 @@ class FinanceApp {
     this.openTransactionModal(id);
   }
 
-  // SYNC MODAL & REAL-TIME WEBHOOK CONTROLS
+  // ROLES & RBAC MODAL
+  openRoleModal() {
+    const modal = document.getElementById('roleModal');
+    if (!modal || !window.roleManager) return;
+
+    const container = document.getElementById('rolesListContainer');
+    const active = window.roleManager.getRole();
+    const allRoles = window.roleManager.getAllRoles();
+
+    if (container) {
+      container.innerHTML = allRoles.map(r => {
+        const isSelected = r.id === active.id;
+        return `
+          <div onclick="app.selectRole('${r.id}')" class="p-3 rounded-2xl border transition cursor-pointer flex items-center justify-between ${isSelected ? 'border-purple-500 bg-purple-50/50 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300'}">
+            <div class="flex items-center space-x-3">
+              <div class="w-8 h-8 rounded-full ${r.avatarBg} text-white font-bold flex items-center justify-center text-xs">
+                ${r.name.charAt(0)}
+              </div>
+              <div>
+                <h4 class="font-bold text-slate-900 leading-tight">${r.name}</h4>
+                <p class="text-[10px] text-slate-500 mt-0.5">${r.title}</p>
+              </div>
+            </div>
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border ${r.badgeClass}">${r.name}</span>
+              ${isSelected ? `<i data-lucide="check-circle" class="w-4 h-4 text-purple-600"></i>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeRoleModal() {
+    const modal = document.getElementById('roleModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  selectRole(roleId) {
+    if (!window.roleManager) return;
+    window.roleManager.setRole(roleId);
+    this.showToast(`Switched active role to: ${window.roleManager.getRole().name}`, 'info');
+    this.closeRoleModal();
+  }
+
+  // DATABASE HUB MODAL
+  openDatabaseHubModal() {
+    const modal = document.getElementById('dbHubModal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeDatabaseHubModal() {
+    const modal = document.getElementById('dbHubModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  downloadMigrationSQL() {
+    if (!window.databaseHub) return;
+    window.databaseHub.downloadSQLMigration(this.transactions);
+    this.showToast('PostgreSQL Migration Script Downloaded!', 'success');
+  }
+
+  // SYNC MODAL
   openSyncModal() {
     const modal = document.getElementById('syncModal');
     if (!modal) return;
@@ -843,9 +1030,9 @@ class FinanceApp {
     }
 
     try {
-      this.showToast('Syncing all entries to Google Sheets...', 'info');
+      this.showToast('Syncing all entries strictly to Google Sheets...', 'info');
       await window.googleSync.syncAll(this.transactions);
-      this.showToast('All transactions synced to Google Sheets successfully!', 'success');
+      this.showToast('All transactions strictly synced to Google Sheets!', 'success');
     } catch (e) {
       this.showToast('Failed to sync to Google Sheets: ' + e.message, 'error');
     }
@@ -871,7 +1058,7 @@ class FinanceApp {
         await window.financeDB.add(item, true);
       }
       window.financeDB.notify();
-      this.showToast(`Fetched & updated ${remoteItems.length} transactions from Google Sheets!`, 'success');
+      this.showToast(`Fetched & updated ${remoteItems.length} transactions strictly from Google Sheets!`, 'success');
       this.closeSyncModal();
     } catch (e) {
       this.showToast('Pull failed: ' + e.message, 'error');
@@ -921,86 +1108,6 @@ class FinanceApp {
     if (modal) modal.classList.add('hidden');
   }
 
-  // IMPORT / EXPORT
-  openImportModal() {
-    const modal = document.getElementById('importModal');
-    modal.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  closeImportModal() {
-    const modal = document.getElementById('importModal');
-    if (modal) modal.classList.add('hidden');
-    document.getElementById('importTextInput').value = '';
-    document.getElementById('importFileInput').value = '';
-    document.getElementById('importPreview').classList.add('hidden');
-  }
-
-  handleFileSelect(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      document.getElementById('importTextInput').value = event.target.result;
-      this.previewImportData(event.target.result);
-    };
-    reader.readAsText(file);
-  }
-
-  previewImportData(text) {
-    const items = FinanceDataTransfer.parseCSV(text);
-    const previewBox = document.getElementById('importPreview');
-    if (items.length > 0) {
-      previewBox.classList.remove('hidden');
-      previewBox.innerHTML = `
-        <span class="text-emerald-700 font-bold block mb-1">Found ${items.length} valid transactions to import:</span>
-        <ul class="list-disc pl-4 space-y-0.5 text-[11px] text-slate-700">
-          ${items.slice(0, 3).map(x => `<li>${FinanceAnalytics.formatDateDisplay(x.date)}: ${x.partyName} (${FinanceAnalytics.formatINR(x.amount)}) [${x.type}]</li>`).join('')}
-          ${items.length > 3 ? `<li class="text-slate-400 font-italic">...and ${items.length - 3} more</li>` : ''}
-        </ul>
-      `;
-    } else {
-      previewBox.classList.remove('hidden');
-      previewBox.innerHTML = `<span class="text-amber-700">Could not parse tabular rows from text. Check headers or paste directly.</span>`;
-    }
-  }
-
-  async executeImport() {
-    const text = document.getElementById('importTextInput').value;
-    if (!text.trim()) {
-      this.showToast('Please paste CSV or select a file first', 'error');
-      return;
-    }
-
-    const items = FinanceDataTransfer.parseCSV(text);
-    if (items.length === 0) {
-      this.showToast('No valid transactions could be parsed', 'error');
-      return;
-    }
-
-    for (const item of items) {
-      await window.financeDB.add(item, true);
-    }
-
-    window.financeDB.notify();
-    this.closeImportModal();
-    this.showToast(`Imported ${items.length} transactions!`, 'success');
-
-    // Sync all imported items to Google Sheets
-    if (window.googleSync && window.googleSync.isConfigured()) {
-      window.googleSync.syncAll(await window.financeDB.getAll());
-    }
-  }
-
-  async resetToSampleData() {
-    if (confirm('Reset tracker back to the default Google Sheet records (Synstar Staffing & Raj Enterprises)?')) {
-      await window.financeDB.resetToSample();
-      this.closeImportModal();
-      this.showToast('Data reset to original spreadsheet records', 'info');
-    }
-  }
-
   exportCSV() {
     FinanceDataTransfer.exportToCSV(this.filteredTransactions);
     this.showToast('CSV downloaded', 'success');
@@ -1019,8 +1126,9 @@ class FinanceApp {
   closeAllModals() {
     this.closeTransactionModal();
     this.closePartyModal();
-    this.closeImportModal();
     this.closeSyncModal();
+    this.closeRoleModal();
+    this.closeDatabaseHubModal();
   }
 
   showToast(message, type = 'info') {
@@ -1067,7 +1175,6 @@ class FinanceApp {
   }
 }
 
-// Start application when DOM loads
 window.app = new FinanceApp();
 document.addEventListener('DOMContentLoaded', () => {
   window.app.init();

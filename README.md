@@ -3,26 +3,47 @@
 <p align="center">
   <img src="assets/logo.webp" alt="Dharshithan Waterproofing Logo" width="130" style="border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
   <br>
-  <strong>Enterprise Financial Management & Live Cashflow Software</strong><br>
+  <strong>Enterprise Financial Management, Live Sheet Sync & Cloud Database Software</strong><br>
   <em>Built for Dharshithan Waterproofing & Complete Solutions</em>
 </p>
 
 ---
 
-## 🌟 What's New: Real-Time Google Sheets Sync & Android App Mode
+## 🌟 Key Architecture & Capabilities
 
-### 1. 🔄 Immediate 2-Way Google Sheets Sync
-- **Instant Reflection**: Any transaction you **Add**, **Edit**, or **Delete** inside the software is immediately updated in your [Google Sheet](https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing) in real time!
-- **Dashboard & Formulas Updated**: Updates `Sheet1` rows and recalculates the `Dashboard` sheet metrics (Turnover, Expenses, Net Standing, Payment Modes, Bank Balance, Cash in Hand).
-- **Offline Resilient Queue**: If internet drops on a mobile site, changes are queued locally in IndexedDB and automatically synced as soon as internet is restored.
-- **Pull & Push Controls**: One-click buttons to pull remote changes from Google Sheets or push your entire local database.
+### 1. 📊 Complete Google Sheets "Dashboard" Worksheet Mirroring
+The system accurately computes and displays all executive KPI cards and operational panels directly modeled after the master Google Spreadsheet (`Dashboard` worksheet):
+- **Top 5 KPI Metrics**: Total Revenue, Total Expenses, Net Profit/Loss, Profit Margin % (with healthy/alert badges), and Total Available Liquidity.
+- **Financial Summary & Liquidity Split**: Clear breakdown of Bank balance vs. Physical Cash in Hand.
+- **Income & Expense by Mode**: Netbanking vs. Cash vs. Cheque vs. UPI breakdown.
+- **Bank Position Panel**: Inflows, Outflows, Net Movement, Opening Balance, Current Bank Balance, and Auto-Reconciliation health badge (`Reconciled` / `Deficit`).
+- **Cash Position & Float Panel**: Physical Cash Receipts, Cash Expenses, Net Cash Movement, Opening Float (editable directly on screen), Available Physical Cash, and Cash Health alert (`Healthy` or `Replenish Cash`).
 
-### 2. 📱 Native Android App Experience
-- **PWA (Progressive Web App)**: Installable directly on any Android phone without needing Google Play Store!
+### 2. 👥 Multi-Role Access Control (RBAC)
+Enterprise user governance with quick-switch role simulation and permission gating:
+- **👑 Super Admin**: Full control (Add, Edit, Delete, Float Adjustment, DB Migration & Backups, Full Audit Access).
+- **👔 Owner**: Strategic & operational control (Add, Edit, Delete, Float Adjustment, Reports & Export, DB Setup).
+- **🛡️ Admin**: Daily management (Add, Edit, Delete, Adjust Opening Balances, View Reports).
+- **💻 Developer**: System maintenance, API endpoints, migration testing, schema DDL generation.
+- **👷 Employee**: Field & site entry mode (Add transactions, view records — Edit/Delete/Config locked).
+- **📈 Stakeholder**: Read-only oversight (View KPIs, charts, and export summary reports — modification locked).
+
+### 3. ☁️ Enterprise Cloud Database Hub (Vercel / Supabase / Neon PostgreSQL Ready)
+Seamlessly scale from Google Sheets to a production cloud database:
+- **`schema.sql` Included**: Production PostgreSQL DDL schema with typed ENUMs (`user_role`), tables (`users`, `transactions`, `liquidity_settings`, `audit_logs`), performance indexes, and Row-Level Security (RLS) policies.
+- **1-Click SQL Migration**: Export all live transactions as PostgreSQL-ready `INSERT` statements with a single click in the Database Hub.
+- **Provider Switching**: Toggle effortlessly between **Google Sheets Master** mode and **PostgreSQL (Supabase/Neon/Vercel)** with connection health verification.
+
+### 4. 🔄 Immediate 2-Way Google Sheets Sync
+- **Strict Real-Time Reflection**: Any entry added, edited, or deleted inside the application is immediately synced with the master Google Sheet.
+- **Offline Resilient Queue**: If internet drops on-site, changes are queued locally in IndexedDB and automatically synced as soon as internet connectivity returns.
+- **Bidirectional Pull & Push**: Synchronize existing spreadsheet rows or push full local state to remote sheets on demand.
+
+### 5. 📱 Native Android App Experience (PWA)
+- **Installable PWA**: Runs full-screen as an app on any Android device via Google Chrome.
 - **Android Bottom Navigation Bar**: Quick navigation for Home, Ledger, Parties, P&L Reports, and Sync.
-- **Android Floating Action Button (FAB)**: Quick-entry `+` button anchored at the bottom-right for rapid on-site receipt/voucher entry.
-- **Touch-Friendly Mobile Cards**: Responsive transaction feed with colorful party avatars, bold INR amounts, and quick touch actions (Edit/Delete).
-- **Mobile Bottom Sheets**: Modals glide up smoothly from the bottom with native Android drag handles.
+- **Android Floating Action Button (FAB)**: Rapid entry button anchored at bottom-right for instant voucher recording on-site.
+- **Touch-Optimized Cards & Bottom Sheets**: Modern Material Design 3 inspired touch controls with crisp White/Light aesthetics.
 
 ---
 
@@ -42,7 +63,18 @@
    - Open your Finance Tracker app.
    - Click the **"Sheets Sync"** button in the top bar.
    - Paste the Web App URL and click **"Save Webhook URL"**!
-   - That's it! Every change you make in the software will now immediately reflect in your Google Sheet!
+   - Every transaction will now immediately reflect in your Google Sheet!
+
+---
+
+## 🗄️ Migrating to Cloud Database (Supabase / Neon / Vercel Postgres)
+
+When you're ready to migrate from Google Sheets to a dedicated cloud database:
+1. Create a free PostgreSQL project on [Supabase](https://supabase.com), [Neon](https://neon.tech), or Vercel Postgres.
+2. In the Supabase/Neon SQL Editor, run the contents of [`schema.sql`](./schema.sql) to create the schema and security policies.
+3. In the Dharshithan Finance Tracker app, click **"Cloud DB"** in the top navigation bar.
+4. Click **"Generate PostgreSQL SQL Migration Script"** to download all existing data as ready-to-run `INSERT` queries.
+5. Paste the generated SQL into your database SQL Editor to complete data migration!
 
 ---
 
@@ -60,14 +92,15 @@
 
 ```
 Dharshithan Finance Tracker/
-├── index.html            # Light theme, mobile-first Android app UI
+├── index.html            # Crisp White Light theme, mobile-first Android app UI
 ├── manifest.json         # Android PWA Web App Manifest
 ├── sw.js                 # Service worker for offline caching & Android installability
 ├── google-apps-script.js # Google Sheets Webhook Backend for real-time 2-way sync
+├── schema.sql            # Enterprise PostgreSQL DDL schema with RBAC and RLS
 ├── vercel.json           # Vercel deployment configuration & caching rules
 ├── start-app.bat         # 1-click Windows launcher
 ├── push-to-github.bat    # 1-click GitHub push script
-├── README.md             # Documentation
+├── README.md             # Complete project documentation
 ├── assets/
 │   ├── logo.webp         # Official company logo
 │   └── favicon.webp      # Branded browser favicon & app icon
@@ -75,9 +108,11 @@ Dharshithan Finance Tracker/
 │   └── styles.css        # Material Design 3 inspired Android UI & Light Theme
 └── js/
     ├── app.js            # Main application controller & Android view orchestrator
+    ├── roles.js          # Role-Based Access Control (RBAC) governance system
+    ├── database-hub.js   # Cloud database provider abstraction & SQL migration engine
     ├── google-sync.js    # Real-time Google Sheets Live Sync engine
     ├── db.js             # IndexedDB & LocalStorage persistent storage
-    ├── analytics.js      # Indian FY, Quarters, and INR calculations
+    ├── analytics.js      # Indian FY, Quarters, and INR calculations mirroring Dashboard sheet
     ├── charts.js         # Interactive Chart.js visualizations
     └── export-import.js  # CSV/TSV Google Sheets exporter & importer
 ```

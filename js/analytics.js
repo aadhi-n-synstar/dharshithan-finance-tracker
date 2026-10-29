@@ -1,6 +1,14 @@
 /**
  * Dharshithan Waterproofing - Finance Tracker
  * Financial Computation & Analytics Engine
+ * Directly implements all metrics from the master "Dashboard" Worksheet:
+ * - Gross Revenue & Operating Costs
+ * - Net Profit & Profit Margin % ("Healthy >20%")
+ * - Total Liquidity & Liquidity Split
+ * - Bank Account Position & Reconciled Health
+ * - Cash Position & Float Health ("Replenish Cash" vs "Sufficient Cash")
+ * - Channel Turnover & Disbursement Mix
+ * - Historical Profit Trends (Monthly & Quarterly)
  */
 
 const MODES = [
@@ -20,12 +28,8 @@ const BANK_MODES = [
 ];
 
 class FinanceAnalytics {
-  /**
-   * Format number as Indian Currency (INR)
-   * Example: 40000 -> ₹ 40,000.00, -20000 -> -₹ 20,000.00 or ₹ (20,000.00)
-   */
   static formatINR(val, options = {}) {
-    if (val === undefined || val === null || isNaN(val)) return '₹ 0.00';
+    if (val === undefined || val === null || isNaN(val)) return '₹0.00';
     const num = Number(val);
     const isNegative = num < 0;
     const absVal = Math.abs(num);
@@ -34,7 +38,6 @@ class FinanceAnalytics {
     let integerPart = parts[0];
     const decimalPart = parts[1];
 
-    // Indian numbering format: 3 digits, then groups of 2 digits
     let lastThree = integerPart.substring(integerPart.length - 3);
     const otherNumbers = integerPart.substring(0, integerPart.length - 3);
     if (otherNumbers !== '') {
@@ -44,9 +47,19 @@ class FinanceAnalytics {
     const formattedString = `${formattedInteger}.${decimalPart}`;
 
     if (options.parenthesesNegative && isNegative) {
-      return `₹ (${formattedString})`;
+      return `₹(${formattedString})`;
     }
-    return isNegative ? `-₹ ${formattedString}` : `₹ ${formattedString}`;
+    return isNegative ? `-₹${formattedString}` : `₹${formattedString}`;
+  }
+
+  static formatK(val) {
+    const num = Number(val) || 0;
+    const abs = Math.abs(num);
+    const sign = num < 0 ? '-' : '';
+    if (abs >= 10000000) return `${sign}₹${(abs / 10000000).toFixed(1)}Cr`;
+    if (abs >= 100000) return `${sign}₹${(abs / 100000).toFixed(1)}L`;
+    if (abs >= 1000) return `${sign}₹${Math.round(abs / 1000)}k`;
+    return `${sign}₹${Math.round(abs)}`;
   }
 
   static formatDateDisplay(dateStr) {
@@ -64,9 +77,6 @@ class FinanceAnalytics {
     }
   }
 
-  /**
-   * Filter transactions by FY, Quarter, Date Range, Party, Mode, Search query
-   */
   static filterTransactions(transactions, filters = {}) {
     return transactions.filter(t => {
       if (filters.financialYear && filters.financialYear !== 'ALL') {
@@ -106,11 +116,11 @@ class FinanceAnalytics {
   }
 
   /**
-   * Calculate top-level dashboard metrics (matching Dashboard sheet structure)
+   * Complete calculation matching the master "Dashboard" Worksheet in Google Sheets
    */
   static calculateDashboardMetrics(transactions) {
-    let totalIncome = 0;
-    let totalExpenses = 0;
+    let grossRevenue = 0;
+    let operatingCosts = 0;
 
     const incomeByMode = {};
     const expensesByMode = {};
@@ -119,9 +129,9 @@ class FinanceAnalytics {
       expensesByMode[m] = 0;
     });
 
-    let bankIncome = 0;
-    let bankExpenses = 0;
-    let cashIncome = 0;
+    let bankInflows = 0;
+    let bankOutflows = 0;
+    let cashInflows = 0;
     let cashExpenses = 0;
 
     for (const t of transactions) {
@@ -131,41 +141,69 @@ class FinanceAnalytics {
       const cleanMode = MODES.includes(mode) ? mode : 'OTHERS';
 
       if (isIncome) {
-        totalIncome += amount;
+        grossRevenue += amount;
         incomeByMode[cleanMode] = (incomeByMode[cleanMode] || 0) + amount;
-        if (BANK_MODES.includes(cleanMode)) {
-          bankIncome += amount;
-        } else if (cleanMode === 'CASH') {
-          cashIncome += amount;
+        if (cleanMode === 'CASH') {
+          cashInflows += amount;
+        } else {
+          bankInflows += amount;
         }
       } else {
-        totalExpenses += amount;
+        operatingCosts += amount;
         expensesByMode[cleanMode] = (expensesByMode[cleanMode] || 0) + amount;
-        if (BANK_MODES.includes(cleanMode)) {
-          bankExpenses += amount;
-        } else if (cleanMode === 'CASH') {
+        if (cleanMode === 'CASH') {
           cashExpenses += amount;
+        } else {
+          bankOutflows += amount;
         }
       }
     }
 
-    const netIncome = totalIncome - totalExpenses;
-    const currentBankBalance = bankIncome - bankExpenses;
-    const currentCashBalance = cashIncome - cashExpenses;
+    const netProfit = grossRevenue - operatingCosts;
+    const profitMargin = grossRevenue > 0 ? (netProfit / grossRevenue) * 100 : 0;
+    
+    // Float values from localStorage or default to 0
+    const openingBankBalance = parseFloat(localStorage.getItem('dharshithan_opening_bank') || '0');
+    const openingCashFloat = parseFloat(localStorage.getItem('dharshithan_opening_cash') || '0');
+
+    const bankMovement = bankInflows - bankOutflows;
+    const currentBankBalance = openingBankBalance + bankMovement;
+
+    const netCashMovement = cashInflows - cashExpenses;
+    const availableCashInHand = openingCashFloat + netCashMovement;
+
+    const totalLiquidity = currentBankBalance + availableCashInHand;
+
+    // Health indicators exactly matching Google Sheet
+    const isProfitHealthy = profitMargin >= 20.0;
+    const accountHealth = currentBankBalance >= 0 ? 'Reconciled' : 'Overdrawn';
+    const cashHealth = availableCashInHand >= 0 ? 'Sufficient Cash' : 'Replenish Cash';
+
+    const liquiditySplit = `${FinanceAnalytics.formatK(currentBankBalance)} Bank / ${FinanceAnalytics.formatK(availableCashInHand)} Cash`;
 
     return {
-      totalIncome,
-      totalExpenses,
-      netIncome,
-      bankSummary: {
-        totalIncome: bankIncome,
-        totalExpenses: bankExpenses,
-        currentBalance: currentBankBalance
+      grossRevenue,
+      operatingCosts,
+      netProfit,
+      profitMargin,
+      isProfitHealthy,
+      totalLiquidity,
+      liquiditySplit,
+      bankPosition: {
+        totalInflows: bankInflows,
+        totalOutflows: bankOutflows,
+        operatingMovement: bankMovement,
+        openingBalance: openingBankBalance,
+        currentBalance: currentBankBalance,
+        accountHealth
       },
-      cashSummary: {
-        totalIncome: cashIncome,
+      cashPosition: {
+        totalInflows: cashInflows,
         totalExpenses: cashExpenses,
-        currentBalance: currentCashBalance
+        netCashMovement,
+        openingCashFloat,
+        availableCashInHand,
+        cashHealth
       },
       incomeByMode,
       expensesByMode,
@@ -173,9 +211,6 @@ class FinanceAnalytics {
     };
   }
 
-  /**
-   * Aggregate by Financial Year and Quarter (matches Sheet1 right-side pivots)
-   */
   static getFYQuarterSummary(transactions) {
     const fyMap = {};
 
@@ -216,7 +251,6 @@ class FinanceAnalytics {
         fyMap[fy].quarters[q].count += 1;
       }
 
-      // Month key YYYY-MMM e.g. 2026-Nov
       const d = new Date(t.date);
       const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const monthKey = !isNaN(d.getTime()) ? `${d.getFullYear()}-${monthNames[d.getMonth()]}` : 'Unknown';
@@ -233,9 +267,6 @@ class FinanceAnalytics {
     return fyMap;
   }
 
-  /**
-   * Aggregate by Parties (Clients & Vendors)
-   */
   static getPartySummary(transactions) {
     const partyMap = {};
 
@@ -275,9 +306,6 @@ class FinanceAnalytics {
     return Object.values(partyMap).sort((a, b) => (b.totalReceived + b.totalPaid) - (a.totalReceived + a.totalPaid));
   }
 
-  /**
-   * Monthly trend for charts
-   */
   static getMonthlyTrend(transactions) {
     const monthMap = {};
 
@@ -285,7 +313,7 @@ class FinanceAnalytics {
       if (!t.date) return;
       const parts = t.date.split('-');
       if (parts.length < 2) return;
-      const key = `${parts[0]}-${parts[1]}`; // YYYY-MM
+      const key = `${parts[0]}-${parts[1]}`;
 
       if (!monthMap[key]) {
         monthMap[key] = { key, income: 0, expense: 0, profit: 0 };
@@ -301,7 +329,6 @@ class FinanceAnalytics {
       monthMap[key].profit = monthMap[key].income - monthMap[key].expense;
     });
 
-    // Sort chronologically
     return Object.keys(monthMap).sort().map(k => {
       const [year, month] = k.split('-');
       const d = new Date(Number(year), Number(month) - 1, 1);

@@ -17,10 +17,10 @@
   <link rel="shortcut icon" href="assets/favicon.webp">
   <link rel="apple-touch-icon" href="assets/logo.webp">
   
-  <!-- Inter Google Font -->
+  <!-- Google Fonts: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -74,13 +74,25 @@
       </div>
     </div>
 
-    <!-- Header Actions & Sync Status Indicator -->
+    <!-- Header Actions, Role Selector & Sync Status -->
     <div class="flex items-center space-x-2 md:space-x-3">
-      <!-- Live Sync Pill Button -->
+      <!-- Role / User Persona Pill Switcher -->
+      <button onclick="app.openRoleModal()" id="rolePillBtn" class="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 transition shadow-2xs" title="Switch User Role & Permissions">
+        <span id="roleAvatarDot" class="w-2 h-2 rounded-full bg-purple-600"></span>
+        <span id="rolePillText">Super Admin</span>
+        <i data-lucide="chevron-down" class="w-3 h-3 text-purple-600"></i>
+      </button>
+
+      <!-- Google Sheets Live Sync Pill Button -->
       <button onclick="app.openSyncModal()" id="sheetSyncPill" class="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition shadow-2xs" title="Google Sheets Real-Time Sync Status">
         <span id="syncStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span id="syncStatusText" class="hidden sm:inline">Sheets Sync</span>
+        <span id="syncStatusText" class="hidden sm:inline">Sheets Live</span>
         <i data-lucide="refresh-cw" class="w-3 h-3 text-emerald-600"></i>
+      </button>
+
+      <!-- Database Hub Button (Prime Database) -->
+      <button onclick="app.openDatabaseHubModal()" class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 transition flex items-center justify-center shadow-2xs" title="Enterprise Database Hub & Cloud Migration (Supabase / Neon / Vercel Postgres)">
+        <i data-lucide="database" class="w-4 h-4 text-sky-600"></i>
       </button>
 
       <!-- Desktop Nav Tabs -->
@@ -91,11 +103,11 @@
         </button>
         <button onclick="app.setActiveTab('transactions')" id="tab-transactions" class="px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 flex items-center space-x-1.5">
           <i data-lucide="receipt" class="w-3.5 h-3.5"></i>
-          <span>Transactions</span>
+          <span>Ledger</span>
         </button>
         <button onclick="app.setActiveTab('parties')" id="tab-parties" class="px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 flex items-center space-x-1.5">
           <i data-lucide="users" class="w-3.5 h-3.5"></i>
-          <span>Parties / Clients</span>
+          <span>Parties</span>
         </button>
         <button onclick="app.setActiveTab('reports')" id="tab-reports" class="px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 flex items-center space-x-1.5">
           <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
@@ -104,7 +116,7 @@
       </nav>
 
       <!-- Add Transaction Button (Desktop Header) -->
-      <button onclick="app.openTransactionModal()" class="hidden sm:flex px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs items-center space-x-1.5 transition-all transform active:scale-95">
+      <button onclick="app.openTransactionModal()" id="headerAddTxnBtn" class="hidden sm:flex px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs items-center space-x-1.5 transition-all transform active:scale-95">
         <i data-lucide="plus-circle" class="w-4 h-4"></i>
         <span>Add Transaction</span>
       </button>
@@ -141,11 +153,11 @@
     <div class="flex items-center space-x-1.5 text-xs">
       <button onclick="app.pullFromGoogleSheets()" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Pull latest updates from Google Sheets">
         <i data-lucide="download-cloud" class="w-3.5 h-3.5 text-emerald-600"></i>
-        <span class="font-medium text-[11px]">Pull</span>
+        <span class="font-medium text-[11px]">Pull Sheet</span>
       </button>
       <button onclick="app.pushAllToGoogleSheets()" class="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 shadow-2xs transition flex items-center space-x-1" title="Sync all local entries to Google Sheets immediately">
         <i data-lucide="upload-cloud" class="w-3.5 h-3.5 text-sky-600"></i>
-        <span class="font-medium text-[11px]">Push All</span>
+        <span class="font-medium text-[11px]">Push Sheet</span>
       </button>
       <button onclick="app.copyForGoogleSheets()" class="hidden md:flex px-2.5 py-1 rounded-lg bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 shadow-2xs transition items-center space-x-1" title="Copy table for pasting directly into Google Sheets">
         <i data-lucide="clipboard-copy" class="w-3.5 h-3.5 text-emerald-600"></i>
@@ -161,142 +173,249 @@
   <!-- Main Content Body -->
   <main class="flex-1 p-3.5 md:p-6 lg:p-8 max-w-7xl w-full mx-auto space-y-5 md:space-y-6">
 
-    <!-- VIEW 1: DASHBOARD -->
+    <!-- VIEW 1: EXECUTIVE FINANCIAL DASHBOARD (EXACT MATCH WITH DASHBOARD WORKSHEET) -->
     <div id="view-dashboard" class="space-y-5 md:space-y-6">
 
-      <!-- Top KPI Metric Cards -->
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+      <!-- Section Title Banner -->
+      <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+        <div>
+          <h2 class="text-sm md:text-base font-bold text-slate-900 uppercase tracking-wide flex items-center space-x-2">
+            <i data-lucide="shield-check" class="w-4 h-4 text-sky-600"></i>
+            <span>Executive Financial Dashboard</span>
+          </h2>
+          <p class="text-[11px] text-slate-500">Live reflection of master Google Sheet Dashboard Worksheet</p>
+        </div>
+        <div class="text-[11px] font-mono text-slate-500 flex items-center space-x-2">
+          <span>Active Driver:</span>
+          <span id="activeDriverBadge" class="px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">Google Sheets Master</span>
+        </div>
+      </div>
+
+      <!-- 5 Top KPI Metric Cards (Matching Rows 2-4 of Google Sheet Dashboard) -->
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 md:gap-3.5">
         
-        <!-- Turnover / Income -->
-        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-5 bg-white border border-slate-200 hover:border-emerald-300 relative overflow-hidden">
-          <div class="flex items-center justify-between text-slate-500 mb-1 md:mb-2">
-            <span class="text-[10px] md:text-xs font-semibold uppercase tracking-wider text-slate-500">Turnover / Income</span>
-            <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 flex-shrink-0">
-              <i data-lucide="trending-up" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
+        <!-- 1. TOTAL REVENUE -->
+        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-4 bg-white border border-slate-200 hover:border-emerald-300 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-1">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Revenue</span>
+            <div class="w-6 h-6 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100 flex-shrink-0">
+              <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
             </div>
           </div>
-          <div id="kpi-total-income" class="text-lg md:text-2xl font-bold text-emerald-600 font-mono tracking-tight">₹ 0.00</div>
-          <div class="mt-1.5 md:mt-2 text-[10px] md:text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1.5">
-            <span class="hidden sm:inline">Receipts</span>
+          <div id="kpi-total-revenue" class="text-base md:text-xl font-bold text-emerald-600 font-mono tracking-tight">₹40,000.00</div>
+          <div class="mt-1 text-[10px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1">
+            <span>Turnover / Inflows</span>
             <span id="kpi-income-txns" class="font-semibold text-emerald-700">0 txns</span>
           </div>
         </div>
 
-        <!-- Total Expenses -->
-        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-5 bg-white border border-slate-200 hover:border-rose-300 relative overflow-hidden">
-          <div class="flex items-center justify-between text-slate-500 mb-1 md:mb-2">
-            <span class="text-[10px] md:text-xs font-semibold uppercase tracking-wider text-slate-500">Total Expenses</span>
-            <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 flex-shrink-0">
-              <i data-lucide="trending-down" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
+        <!-- 2. TOTAL EXPENSES -->
+        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-4 bg-white border border-slate-200 hover:border-rose-300 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-1">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Expenses</span>
+            <div class="w-6 h-6 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100 flex-shrink-0">
+              <i data-lucide="trending-down" class="w-3.5 h-3.5"></i>
             </div>
           </div>
-          <div id="kpi-total-expenses" class="text-lg md:text-2xl font-bold text-rose-600 font-mono tracking-tight">₹ 0.00</div>
-          <div class="mt-1.5 md:mt-2 text-[10px] md:text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1.5">
-            <span class="hidden sm:inline">Disbursements</span>
+          <div id="kpi-total-expenses" class="text-base md:text-xl font-bold text-rose-600 font-mono tracking-tight">₹21,200.00</div>
+          <div class="mt-1 text-[10px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1">
+            <span>Operating Outflows</span>
             <span id="kpi-expense-txns" class="font-semibold text-rose-700">0 txns</span>
           </div>
         </div>
 
-        <!-- Net Income In Stands (Net Profit) -->
-        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-5 bg-white border border-slate-200 hover:border-sky-300 relative overflow-hidden">
-          <div class="flex items-center justify-between text-slate-500 mb-1 md:mb-2">
-            <span class="text-[10px] md:text-xs font-semibold uppercase tracking-wider text-slate-500">Net Standing</span>
-            <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100 flex-shrink-0">
-              <i data-lucide="wallet" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
+        <!-- 3. NET PROFIT -->
+        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-4 bg-white border border-slate-200 hover:border-sky-300 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-1">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Net Profit</span>
+            <div class="w-6 h-6 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center border border-sky-100 flex-shrink-0">
+              <i data-lucide="wallet" class="w-3.5 h-3.5"></i>
             </div>
           </div>
-          <div id="kpi-net-income" class="text-lg md:text-2xl font-bold text-sky-700 font-mono tracking-tight">₹ 0.00</div>
-          <div class="mt-1.5 md:mt-2 text-[10px] md:text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1.5">
-            <span class="hidden sm:inline">Margin</span>
-            <span id="kpi-profit-margin" class="font-semibold text-sky-700">0.0%</span>
-          </div>
-        </div>
-
-        <!-- Bank Balance (Reconciliation) -->
-        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-5 bg-white border border-slate-200 hover:border-indigo-300 relative overflow-hidden">
-          <div class="flex items-center justify-between text-slate-500 mb-1 md:mb-2">
-            <span class="text-[10px] md:text-xs font-semibold uppercase tracking-wider text-slate-500">Bank Balance</span>
-            <div class="w-7 h-7 md:w-8 md:h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 flex-shrink-0">
-              <i data-lucide="landmark" class="w-3.5 h-3.5 md:w-4 md:h-4"></i>
-            </div>
-          </div>
-          <div id="kpi-bank-balance" class="text-lg md:text-2xl font-bold font-mono tracking-tight text-slate-900">₹ 0.00</div>
-          <div class="mt-1.5 md:mt-2 text-[10px] md:text-[11px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1.5">
-            <span>Cash in Hand:</span>
-            <span id="kpi-cash-balance" class="font-mono text-emerald-700 font-semibold">₹ 0.00</span>
+          <div id="kpi-net-profit" class="text-base md:text-xl font-bold text-sky-700 font-mono tracking-tight">₹18,800.00</div>
+          <div class="mt-1 text-[10px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1">
+            <span>Retained Earnings</span>
           </div>
         </div>
 
-      </div>
-
-      <!-- Mode Breakdown Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-
-        <!-- Income by Payment Mode -->
-        <div class="glass-card rounded-2xl p-4 md:p-5 space-y-3.5 bg-white border border-slate-200">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-            <div class="flex items-center space-x-2">
-              <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-              <h3 class="text-sm font-semibold text-slate-900">Income by Mode</h3>
+        <!-- 4. PROFIT MARGIN -->
+        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-4 bg-white border border-slate-200 hover:border-amber-300 relative overflow-hidden">
+          <div class="flex items-center justify-between text-slate-500 mb-1">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Profit Margin</span>
+            <div class="w-6 h-6 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-100 flex-shrink-0">
+              <i data-lucide="percent" class="w-3.5 h-3.5"></i>
             </div>
-            <span class="text-xs text-slate-400 font-mono">Turnover Channels</span>
           </div>
-          <div id="list-income-modes" class="space-y-2.5 text-xs"></div>
+          <div id="kpi-profit-margin" class="text-base md:text-xl font-bold text-amber-700 font-mono tracking-tight">47.0%</div>
+          <div class="mt-1 text-[10px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1">
+            <span id="kpi-margin-health-badge" class="px-1.5 py-0.5 rounded font-semibold text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200">Healthy (&gt;20%)</span>
+          </div>
         </div>
 
-        <!-- Expenses by Payment Mode -->
-        <div class="glass-card rounded-2xl p-4 md:p-5 space-y-3.5 bg-white border border-slate-200">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-            <div class="flex items-center space-x-2">
-              <div class="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-              <h3 class="text-sm font-semibold text-slate-900">Expenses by Mode</h3>
+        <!-- 5. TOTAL LIQUIDITY -->
+        <div class="glass-card glass-card-hover rounded-2xl p-3.5 md:p-4 bg-white border border-slate-200 hover:border-indigo-300 relative overflow-hidden col-span-2 md:col-span-1">
+          <div class="flex items-center justify-between text-slate-500 mb-1">
+            <span class="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total Liquidity</span>
+            <div class="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 flex-shrink-0">
+              <i data-lucide="landmark" class="w-3.5 h-3.5"></i>
             </div>
-            <span class="text-xs text-slate-400 font-mono">Disbursements</span>
           </div>
-          <div id="list-expense-modes" class="space-y-2.5 text-xs"></div>
-        </div>
-
-        <!-- Bank & Liquidity Summary -->
-        <div class="glass-card rounded-2xl p-4 md:p-5 space-y-3.5 bg-white border border-slate-200">
-          <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-            <div class="flex items-center space-x-2">
-              <div class="w-2.5 h-2.5 rounded-full bg-sky-500"></div>
-              <h3 class="text-sm font-semibold text-slate-900">Bank Liquidity Position</h3>
-            </div>
-            <span class="text-xs text-slate-400 font-mono">Reconciliation</span>
-          </div>
-          
-          <div class="space-y-2.5 text-xs pt-1">
-            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-              <span class="text-slate-600 font-medium">TOTAL BANK IN</span>
-              <span id="bank-total-in" class="font-mono text-emerald-700 font-semibold">₹ 0.00</span>
-            </div>
-            <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-200">
-              <span class="text-slate-600 font-medium">TOTAL BANK OUT</span>
-              <span id="bank-total-out" class="font-mono text-rose-700 font-semibold">₹ 0.00</span>
-            </div>
-            <div class="flex items-center justify-between p-2.5 rounded-xl bg-sky-50 border border-sky-200">
-              <span class="text-sky-900 font-semibold">CURRENT BANK BALANCE</span>
-              <span id="bank-current-bal" class="font-mono font-bold text-sm text-sky-800">₹ 0.00</span>
-            </div>
-            <div class="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200">
-              <span class="text-emerald-800 font-semibold">CASH IN HAND (LIQUID)</span>
-              <span id="cash-current-bal" class="font-mono font-semibold text-emerald-700">₹ 0.00</span>
-            </div>
+          <div id="kpi-total-liquidity" class="text-base md:text-xl font-bold font-mono tracking-tight text-slate-900">₹18,800.00</div>
+          <div class="mt-1 text-[10px] text-slate-500 flex items-center justify-between border-t border-slate-100 pt-1">
+            <span>Bank + Cash Position</span>
           </div>
         </div>
 
       </div>
 
-      <!-- Financial Visualizations & Charts -->
+      <!-- 5 Structured Panels (Matching Rows 6-13 of Google Sheet Dashboard) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3.5 md:gap-4">
+
+        <!-- Panel 1: FINANCIAL SUMMARY -->
+        <div class="glass-card rounded-2xl p-4 space-y-3 bg-white border border-slate-200 flex flex-col justify-between">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex items-center space-x-1.5">
+              <div class="w-2 h-2 rounded-full bg-sky-600"></div>
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Financial Summary</h3>
+            </div>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Gross Revenue</span>
+              <span id="fs-gross-revenue" class="font-mono font-semibold text-emerald-700">₹40,000.00</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Operating Costs</span>
+              <span id="fs-operating-costs" class="font-mono font-semibold text-rose-700">₹21,200.00</span>
+            </div>
+            <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+              <span class="text-slate-700 font-medium">Net Profit</span>
+              <span id="fs-net-profit" class="font-mono font-bold text-sky-800">₹18,800.00</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Profit Margin</span>
+              <span id="fs-profit-margin" class="font-mono font-semibold text-amber-700">47.0%</span>
+            </div>
+            <div class="flex items-center justify-between pt-1 border-t border-slate-100">
+              <span class="text-slate-700 font-medium">Total Liquidity</span>
+              <span id="fs-total-liquidity" class="font-mono font-bold text-slate-900">₹18,800.00</span>
+            </div>
+          </div>
+          <div class="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[10px] text-slate-600 flex items-center justify-between">
+            <span class="font-medium">Liquidity Split:</span>
+            <span id="fs-liquidity-split" class="font-mono font-semibold text-slate-800">₹40k Bank / ₹-21k Cash</span>
+          </div>
+        </div>
+
+        <!-- Panel 2: INCOME BY MODE -->
+        <div class="glass-card rounded-2xl p-4 space-y-3 bg-white border border-slate-200">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex items-center space-x-1.5">
+              <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Income by Mode</h3>
+            </div>
+          </div>
+          <div id="list-income-modes" class="space-y-1.5 text-xs">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Panel 3: EXPENSES BY MODE -->
+        <div class="glass-card rounded-2xl p-4 space-y-3 bg-white border border-slate-200">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex items-center space-x-1.5">
+              <div class="w-2 h-2 rounded-full bg-rose-500"></div>
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Expenses by Mode</h3>
+            </div>
+          </div>
+          <div id="list-expense-modes" class="space-y-1.5 text-xs">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+
+        <!-- Panel 4: BANK ACCOUNT POSITION -->
+        <div class="glass-card rounded-2xl p-4 space-y-3 bg-white border border-slate-200 flex flex-col justify-between">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex items-center space-x-1.5">
+              <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Bank Position</h3>
+            </div>
+            <span id="bp-health-badge" class="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Reconciled</span>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Total Inflows</span>
+              <span id="bp-total-inflows" class="font-mono font-semibold text-emerald-700">₹40,000.00</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Total Outflows</span>
+              <span id="bp-total-outflows" class="font-mono font-semibold text-rose-700">₹0.00</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Operating Movement</span>
+              <span id="bp-operating-movement" class="font-mono font-semibold text-indigo-700">₹40,000.00</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500 flex items-center space-x-1">
+                <span>Opening Balance</span>
+                <button onclick="app.promptOpeningFloat('bank')" class="text-slate-400 hover:text-sky-600" title="Edit Opening Float"><i data-lucide="edit-2" class="w-3 h-3"></i></button>
+              </span>
+              <span id="bp-opening-balance" class="font-mono text-slate-600">₹0.00</span>
+            </div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-sky-50 border border-sky-200 flex items-center justify-between text-xs">
+            <span class="text-sky-900 font-semibold text-[11px]">Current Bank:</span>
+            <span id="bp-current-balance" class="font-mono font-bold text-sm text-sky-800">₹40,000.00</span>
+          </div>
+        </div>
+
+        <!-- Panel 5: CASH POSITION & FLOAT -->
+        <div class="glass-card rounded-2xl p-4 space-y-3 bg-white border border-slate-200 flex flex-col justify-between">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex items-center space-x-1.5">
+              <div class="w-2 h-2 rounded-full bg-amber-500"></div>
+              <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Cash Position</h3>
+            </div>
+            <span id="cp-health-badge" class="px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Replenish Cash</span>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Total Inflows</span>
+              <span id="cp-total-inflows" class="font-mono font-semibold text-emerald-700">₹0.00</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Total Expenses</span>
+              <span id="cp-total-expenses" class="font-mono font-semibold text-rose-700">₹21,200.00</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500">Net Movement</span>
+              <span id="cp-net-movement" class="font-mono font-semibold text-rose-700">-₹21,200.00</span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-slate-500 flex items-center space-x-1">
+                <span>Opening Cash Float</span>
+                <button onclick="app.promptOpeningFloat('cash')" class="text-slate-400 hover:text-sky-600" title="Edit Cash Float"><i data-lucide="edit-2" class="w-3 h-3"></i></button>
+              </span>
+              <span id="cp-opening-float" class="font-mono text-slate-600">₹0.00</span>
+            </div>
+          </div>
+          <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between text-xs">
+            <span class="text-amber-900 font-semibold text-[11px]">Available Cash:</span>
+            <span id="cp-available-cash" class="font-mono font-bold text-sm text-amber-800">-₹21,200.00</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Historical Profit Trends & Channel Visualizations -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         <div class="glass-card rounded-2xl p-4 md:p-5 lg:col-span-2 space-y-3 bg-white border border-slate-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-semibold text-slate-900">Revenue, Expense & Profit Trend</h3>
-              <p class="text-[11px] text-slate-500">Monthly fiscal trajectory for waterproofing projects</p>
+              <h3 class="text-sm font-semibold text-slate-900">Historical Profit Trends — Monthly & Quarterly Analysis</h3>
+              <p class="text-[11px] text-slate-500">Dynamic comparative trajectory directly reflecting Google Sheet formulas</p>
             </div>
-            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono font-medium">Live Sync</span>
+            <span class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-mono font-medium">Real-Time</span>
           </div>
           <div class="h-60 md:h-64 relative">
             <canvas id="trendChart"></canvas>
@@ -306,8 +425,8 @@
         <div class="glass-card rounded-2xl p-4 md:p-5 space-y-3 bg-white border border-slate-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-semibold text-slate-900">Channel Mix</h3>
-              <p class="text-[11px] text-slate-500">Payment instrument distribution</p>
+              <h3 class="text-sm font-semibold text-slate-900">Channel Turnover & Disbursements</h3>
+              <p class="text-[11px] text-slate-500">Banking vs Cash vs UPI instrument mix</p>
             </div>
           </div>
           <div class="h-60 md:h-64 relative">
@@ -324,17 +443,13 @@
             <h3 class="text-sm font-semibold text-slate-900">Recent Transactions</h3>
           </div>
           <button onclick="app.setActiveTab('transactions')" class="text-xs text-sky-600 hover:text-sky-700 font-semibold flex items-center space-x-1">
-            <span>View All</span>
+            <span>View Full Ledger</span>
             <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
           </button>
         </div>
         
-        <!-- Mobile Card List for Dashboard Recent -->
-        <div id="dashboard-recent-mobile" class="md:hidden divide-y divide-slate-100">
-          <!-- Rendered via JS -->
-        </div>
+        <div id="dashboard-recent-mobile" class="md:hidden divide-y divide-slate-100"></div>
 
-        <!-- Desktop Table for Dashboard Recent -->
         <div class="hidden md:block overflow-x-auto">
           <table class="w-full text-left text-xs text-slate-700">
             <thead class="text-slate-600 uppercase bg-slate-100 border-b border-slate-200 font-semibold">
@@ -348,9 +463,7 @@
                 <th class="py-2.5 px-3 text-right">Profit Value</th>
               </tr>
             </thead>
-            <tbody id="dashboard-recent-table" class="divide-y divide-slate-100 font-mono">
-              <!-- Rendered via JS -->
-            </tbody>
+            <tbody id="dashboard-recent-table" class="divide-y divide-slate-100 font-mono"></tbody>
           </table>
         </div>
       </div>
@@ -359,8 +472,6 @@
 
     <!-- VIEW 2: TRANSACTIONS LEDGER -->
     <div id="view-transactions" class="space-y-4 hidden">
-      
-      <!-- Toolbar & Filters -->
       <div class="glass-card rounded-2xl p-3.5 md:p-4 flex flex-wrap items-center justify-between gap-2.5 bg-white border border-slate-200">
         <div class="flex flex-wrap items-center gap-2 flex-1 min-w-[260px]">
           <div class="relative flex-1 min-w-[180px]">
@@ -383,16 +494,14 @@
           </select>
         </div>
 
-        <button onclick="app.openTransactionModal()" class="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs">
+        <button onclick="app.openTransactionModal()" id="ledgerNewEntryBtn" class="px-3.5 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-xs">
           <i data-lucide="plus" class="w-3.5 h-3.5"></i>
           <span>New Entry</span>
         </button>
       </div>
 
       <!-- Android Mobile Transaction Card Stream (<768px) -->
-      <div id="transactions-mobile-cards" class="md:hidden space-y-2.5">
-        <!-- Rendered via JS -->
-      </div>
+      <div id="transactions-mobile-cards" class="md:hidden space-y-2.5"></div>
 
       <!-- Desktop Ledger Table Container (>=768px) -->
       <div class="hidden md:block glass-card rounded-2xl overflow-hidden bg-white border border-slate-200">
@@ -413,19 +522,16 @@
                 <th class="py-3 px-3 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody id="transactions-table-body" class="divide-y divide-slate-100 font-sans">
-              <!-- Dynamically populated -->
-            </tbody>
+            <tbody id="transactions-table-body" class="divide-y divide-slate-100 font-sans"></tbody>
           </table>
         </div>
 
-        <!-- Table Footer Summary -->
         <div class="bg-slate-50 border-t border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between text-xs text-slate-600">
           <div id="table-record-count" class="font-medium">Showing 0 entries</div>
           <div class="flex items-center space-x-6 font-mono">
-            <div>Income: <span id="table-sum-income" class="text-emerald-700 font-semibold">₹ 0.00</span></div>
-            <div>Expense: <span id="table-sum-expense" class="text-rose-700 font-semibold">₹ 0.00</span></div>
-            <div>Net: <span id="table-sum-net" class="text-sky-800 font-bold">₹ 0.00</span></div>
+            <div>Revenue: <span id="table-sum-income" class="text-emerald-700 font-semibold">₹ 0.00</span></div>
+            <div>Expenses: <span id="table-sum-expense" class="text-rose-700 font-semibold">₹ 0.00</span></div>
+            <div>Net Standing: <span id="table-sum-net" class="text-sky-800 font-bold">₹ 0.00</span></div>
           </div>
         </div>
       </div>
@@ -439,7 +545,6 @@
           <span class="text-sky-800 font-bold" id="m-sum-net">₹ 0.00</span>
         </div>
       </div>
-
     </div>
 
     <!-- VIEW 3: PARTIES & CLIENTS DIRECTORY -->
@@ -469,11 +574,11 @@
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-base md:text-lg font-bold text-slate-900">Profit & Loss / Quarterly Reports</h2>
-          <p class="text-[11px] md:text-xs text-slate-500">Financial summary breakdown matching Sheet1 pivot structure</p>
+          <p class="text-[11px] md:text-xs text-slate-500">Dynamic breakdown matching Sheet1 pivot structure</p>
         </div>
         <button onclick="window.print()" class="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center space-x-1.5 shadow-2xs">
           <i data-lucide="printer" class="w-3.5 h-3.5"></i>
-          <span>Print</span>
+          <span>Print Statement</span>
         </button>
       </div>
 
@@ -483,7 +588,7 @@
   </main>
 
   <!-- ANDROID FLOATING ACTION BUTTON (FAB) -->
-  <button onclick="app.openTransactionModal()" class="android-fab md:hidden" aria-label="Add Transaction">
+  <button onclick="app.openTransactionModal()" id="androidFabBtn" class="android-fab md:hidden" aria-label="Add Transaction">
     <i data-lucide="plus" class="w-7 h-7 stroke-[2.5]"></i>
   </button>
 
@@ -505,16 +610,15 @@
       <div class="nav-pill"><i data-lucide="pie-chart" class="w-5 h-5"></i></div>
       <span>P&L</span>
     </button>
-    <button onclick="app.openSyncModal()" id="nav-sync" class="android-nav-item">
-      <div class="nav-pill"><i data-lucide="cloud" class="w-5 h-5"></i></div>
-      <span>Sync</span>
+    <button onclick="app.openRoleModal()" id="nav-role" class="android-nav-item">
+      <div class="nav-pill"><i data-lucide="shield" class="w-5 h-5"></i></div>
+      <span>Role</span>
     </button>
   </nav>
 
   <!-- TRANSACTION MODAL (Android Bottom Sheet on mobile) -->
   <div id="txnModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-0 sm:p-4 android-modal-container hidden">
     <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet">
-      <!-- Android drag handle for mobile -->
       <div class="android-sheet-handle sm:hidden"></div>
 
       <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
@@ -530,7 +634,6 @@
       <form id="txnForm" onsubmit="app.saveTransaction(event)" class="space-y-3.5 text-xs">
         <input type="hidden" id="txnId">
 
-        <!-- Type Selector -->
         <div>
           <label class="block text-slate-700 font-medium mb-1">Transaction Type</label>
           <div class="grid grid-cols-2 gap-2">
@@ -549,7 +652,6 @@
           </div>
         </div>
 
-        <!-- Date & Mode Row -->
         <div class="grid grid-cols-2 gap-2.5">
           <div>
             <label class="block text-slate-700 font-medium mb-1">Date</label>
@@ -568,7 +670,6 @@
           </div>
         </div>
 
-        <!-- Party Name & Amount Row -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label class="block text-slate-700 font-medium mb-1">Party Name (Client/Vendor)</label>
@@ -584,7 +685,6 @@
           </div>
         </div>
 
-        <!-- Category & Ref -->
         <div class="grid grid-cols-2 gap-2.5">
           <div>
             <label class="block text-slate-700 font-medium mb-1">Category</label>
@@ -592,7 +692,7 @@
             <datalist id="categorySuggestions">
               <option value="Client Waterproofing Project"></option>
               <option value="Material & Chemical Supply"></option>
-              <option value="Labor & Staffing"></option>
+              <option value="Staff & Salary"></option>
               <option value="Subcontracting Services"></option>
               <option value="Tools & Equipment"></option>
               <option value="Transportation & Logistics"></option>
@@ -601,25 +701,133 @@
           </div>
           <div>
             <label class="block text-slate-700 font-medium mb-1">Invoice / Ref No.</label>
-            <input type="text" id="modalRef" placeholder="e.g. Inv No: 001" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
+            <input type="text" id="modalRef" placeholder="e.g. PYSL-001" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
           </div>
         </div>
 
         <div>
           <label class="block text-slate-700 font-medium mb-1">Work Description / Details</label>
-          <textarea id="modalDesc" rows="2" placeholder="e.g. Received for Client Tracking" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500"></textarea>
+          <textarea id="modalDesc" rows="2" placeholder="e.g. Payment for waterproofing materials" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500"></textarea>
         </div>
 
-        <!-- Footer Actions -->
         <div class="flex items-center justify-end space-x-2.5 pt-2 border-t border-slate-100">
           <button type="button" onclick="app.closeTransactionModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Cancel</button>
-          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-xs">Save & Sync to Sheet</button>
+          <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold transition shadow-xs">Save & Strictly Sync to Sheet</button>
         </div>
       </form>
     </div>
   </div>
 
-  <!-- GOOGLE SHEETS LIVE SYNC SETTINGS MODAL -->
+  <!-- ROLE & USER PERSONA DRAWER/MODAL (RBAC) -->
+  <div id="roleModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
+    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] overflow-y-auto">
+      <div class="android-sheet-handle sm:hidden"></div>
+
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+            <i data-lucide="shield" class="w-5 h-5 text-purple-600"></i>
+            <span>User & Role Governance (RBAC)</span>
+          </h3>
+          <p class="text-xs text-slate-500">Select active role to test permissions and workflow access</p>
+        </div>
+        <button onclick="app.closeRoleModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Roles Grid -->
+      <div class="space-y-2.5 text-xs" id="rolesListContainer">
+        <!-- Rendered via JS -->
+      </div>
+
+      <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 space-y-1">
+        <span class="font-semibold text-slate-800">Permissions Enforcement:</span>
+        <p id="rolePermissionsSummary">Full administrative rights. Can add, edit, delete entries, manage database, and configure roles.</p>
+      </div>
+
+      <div class="flex justify-end pt-1 border-t border-slate-100">
+        <button onclick="app.closeRoleModal()" class="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENTERPRISE DATABASE HUB & MIGRATION MODAL (FUTURE PRIME CLOUD DB) -->
+  <div id="dbHubModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
+    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-xl w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] overflow-y-auto">
+      <div class="android-sheet-handle sm:hidden"></div>
+
+      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+        <div>
+          <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
+            <i data-lucide="database" class="w-5 h-5 text-sky-600"></i>
+            <span>Enterprise Cloud Database Hub</span>
+          </h3>
+          <p class="text-xs text-slate-500">Migrate beyond Google Sheets to Free Vercel-supported PostgreSQL (Supabase / Neon)</p>
+        </div>
+        <button onclick="app.closeDatabaseHubModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3.5 text-xs text-slate-700">
+        <!-- Provider Selection Cards -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="p-3 rounded-xl border-2 border-emerald-500 bg-emerald-50/50 relative">
+            <span class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white">ACTIVE</span>
+            <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
+              <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+              <span>Google Sheets</span>
+            </h4>
+            <p class="text-[10px] text-slate-500 mt-1">Strict Master Source. Live formula updates on Dashboard Worksheet.</p>
+          </div>
+
+          <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/80 relative">
+            <span class="absolute top-2 right-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-800">FREE TIER</span>
+            <h4 class="font-bold text-slate-900 flex items-center space-x-1.5">
+              <i data-lucide="server" class="w-4 h-4 text-sky-600"></i>
+              <span>Supabase / Neon</span>
+            </h4>
+            <p class="text-[10px] text-slate-500 mt-1">Free 500MB PostgreSQL with Vercel integration & multi-user RBAC.</p>
+          </div>
+        </div>
+
+        <!-- 1-Click Migration Card -->
+        <div class="p-3.5 rounded-2xl bg-sky-50/60 border border-sky-200 space-y-2">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <i data-lucide="download" class="w-4 h-4 text-sky-700"></i>
+              <h4 class="font-bold text-sky-950">1-Click PostgreSQL Migration Script</h4>
+            </div>
+            <button onclick="app.downloadMigrationSQL()" class="px-3 py-1 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-xs">
+              Download .SQL
+            </button>
+          </div>
+          <p class="text-[11px] text-sky-800">
+            Exports your complete Google Sheets records into ready-to-run PostgreSQL <code class="bg-white px-1 border rounded font-mono">INSERT</code> statements matching <code class="bg-white px-1 border rounded font-mono">schema.sql</code>.
+          </p>
+        </div>
+
+        <!-- Connection Settings Accordion -->
+        <details class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-2">
+          <summary class="font-semibold text-slate-800 cursor-pointer">Configure Free Cloud PostgreSQL (Supabase / Neon)</summary>
+          <div class="space-y-2.5 pt-2 text-xs">
+            <div>
+              <label class="block font-medium text-slate-700 mb-0.5">PostgreSQL Connection URI (Neon / Supabase / Vercel)</label>
+              <input type="password" id="pgConnInput" placeholder="postgres://user:password@ep-host.region.aws.neon.tech/neondb" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-1.5 font-mono text-xs text-slate-900 focus:outline-none focus:border-sky-500">
+            </div>
+            <p class="text-[10px] text-slate-500">Supported by Vercel's free PostgreSQL add-ons. Simply paste your connection string to enable prime cloud querying.</p>
+          </div>
+        </details>
+      </div>
+
+      <div class="flex justify-end pt-1 border-t border-slate-100">
+        <button onclick="app.closeDatabaseHubModal()" class="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GOOGLE SHEETS SYNC MODAL -->
   <div id="syncModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
     <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet max-h-[90vh] overflow-y-auto">
       <div class="android-sheet-handle sm:hidden"></div>
@@ -635,32 +843,29 @@
       </div>
 
       <div class="space-y-3.5 text-xs text-slate-700">
-        <!-- Live Status Pill -->
         <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
           <div class="flex items-center justify-between">
             <span class="font-medium text-slate-600">Sync Status:</span>
-            <span id="syncModalStatusBadge" class="px-2 py-0.5 rounded-full font-semibold text-[10px] bg-amber-50 text-amber-700 border border-amber-200">Checking...</span>
+            <span id="syncModalStatusBadge" class="px-2 py-0.5 rounded-full font-semibold text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200">Checking...</span>
           </div>
-          <p id="syncModalStatusDetail" class="text-[11px] text-slate-500">Every transaction added or deleted in this app is pushed to your Google Sheet in real time.</p>
+          <p id="syncModalStatusDetail" class="text-[11px] text-slate-500">Every transaction added, edited, or deleted strictly syncs with your Google Sheet.</p>
         </div>
 
         <div>
           <label class="block font-medium mb-1 text-slate-700">Google Apps Script Web App URL</label>
           <input type="url" id="syncWebhookInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500">
-          <p class="text-[10px] text-slate-500 mt-1">Generated from your Google Spreadsheet via <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">Extensions &gt; Apps Script</code>.</p>
+          <p class="text-[10px] text-slate-500 mt-1">Generated from your Google Sheet via <code class="bg-slate-100 px-1 py-0.5 rounded text-slate-800">Extensions &gt; Apps Script</code>.</p>
         </div>
 
-        <!-- 3-Step Setup Instructions Accordion -->
         <details class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 space-y-1">
           <summary class="font-semibold text-slate-800 cursor-pointer">How to get your Web App URL (3 quick steps)</summary>
           <ol class="list-decimal pl-4 space-y-1 text-[11px] mt-2">
             <li>Open your <a href="https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit" target="_blank" class="text-sky-600 underline font-medium">Google Sheet</a>.</li>
-            <li>Click <strong>Extensions &gt; Apps Script</strong> and paste the contents of <code class="bg-white px-1 border rounded text-slate-800">google-apps-script.js</code> (bundled in your repository).</li>
-            <li>Click <strong>Deploy &gt; New deployment &gt; Web app</strong>. Set <em>Execute as: Me</em> and <em>Who has access: Anyone</em>. Copy the resulting URL and paste it above!</li>
+            <li>Click <strong>Extensions &gt; Apps Script</strong> and paste the contents of <code class="bg-white px-1 border rounded text-slate-800">google-apps-script.js</code>.</li>
+            <li>Click <strong>Deploy &gt; New deployment &gt; Web app</strong>. Set <em>Execute as: Me</em> and <em>Who has access: Anyone</em>. Copy the URL and paste it above!</li>
           </ol>
         </details>
 
-        <!-- Action Buttons -->
         <div class="flex flex-wrap gap-2 pt-1">
           <button onclick="app.saveWebhookUrl()" type="button" class="flex-1 py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-center transition shadow-xs">
             Save Webhook URL
@@ -671,47 +876,6 @@
           <button onclick="app.pushAllToGoogleSheets()" type="button" class="py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold transition shadow-xs">
             Push All to Sheet
           </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- IMPORT MODAL -->
-  <div id="importModal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 android-modal-container hidden">
-    <div class="glass-card bg-white rounded-t-3xl sm:rounded-2xl border border-slate-200 max-w-lg w-full p-5 sm:p-6 space-y-4 shadow-2xl android-bottom-sheet">
-      <div class="android-sheet-handle sm:hidden"></div>
-
-      <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
-        <h3 class="text-base font-bold text-slate-900 flex items-center space-x-2">
-          <i data-lucide="upload-cloud" class="w-5 h-5 text-sky-600"></i>
-          <span>Import CSV or Spreadsheet</span>
-        </h3>
-        <button onclick="app.closeImportModal()" class="text-slate-400 hover:text-slate-600 p-1">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <div class="space-y-3 text-xs text-slate-700">
-        <div>
-          <label class="block font-medium mb-1 text-slate-700">Choose CSV File</label>
-          <input type="file" id="importFileInput" accept=".csv,.txt" onchange="app.handleFileSelect(event)" class="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500 cursor-pointer">
-        </div>
-
-        <div>
-          <label class="block font-medium mb-1 text-slate-700">Or Paste Tab / CSV Data</label>
-          <textarea id="importTextInput" rows="5" placeholder="Paste data copied from Google Sheets..." class="w-full bg-white border border-slate-300 rounded-xl p-3 text-xs font-mono text-slate-900 placeholder-slate-400 focus:outline-none focus:border-sky-500"></textarea>
-        </div>
-
-        <div id="importPreview" class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 hidden"></div>
-
-        <div class="flex items-center justify-between pt-2 border-t border-slate-100">
-          <button onclick="app.resetToSampleData()" type="button" class="text-xs text-amber-700 font-medium hover:underline">
-            Reset to Sample
-          </button>
-          <div class="flex space-x-2">
-            <button type="button" onclick="app.closeImportModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Cancel</button>
-            <button type="button" onclick="app.executeImport()" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold transition">Execute Import</button>
-          </div>
         </div>
       </div>
     </div>
@@ -772,6 +936,8 @@
   <div id="toastContainer" class="fixed bottom-20 md:bottom-4 right-4 z-50 space-y-2 pointer-events-none"></div>
 
   <!-- Scripts -->
+  <script src="js/roles.js"></script>
+  <script src="js/database-hub.js"></script>
   <script src="js/db.js"></script>
   <script src="js/analytics.js"></script>
   <script src="js/charts.js"></script>
