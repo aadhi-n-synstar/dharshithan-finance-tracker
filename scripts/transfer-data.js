@@ -130,15 +130,24 @@ async function transferData() {
   }
 
   // STEP 4: Also update local offline backup cache
-  const dataDir = path.join(__dirname, '..', 'data');
-  const localDb = path.join(dataDir, 'local-db.json');
-  fs.writeFileSync(localDb, JSON.stringify({
-    lastTransferredAt: new Date().toISOString(),
-    users,
-    transactions,
-    liquidity: liquidity.length ? liquidity[0] : { opening_bank_balance: 150000, opening_cash_float: 25000 }
-  }, null, 2), 'utf8');
-  console.log('4. ✓ Synchronized local active JSON store at data/local-db.json');
+  try {
+    const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+    const os = require('os');
+    const dataDir = isServerless ? path.join(os.tmpdir(), 'dharshithan-data') : path.join(__dirname, '..', 'data');
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    const localDb = path.join(dataDir, 'local-db.json');
+    fs.writeFileSync(localDb, JSON.stringify({
+      lastTransferredAt: new Date().toISOString(),
+      users,
+      transactions,
+      liquidity: liquidity.length ? liquidity[0] : { opening_bank_balance: 150000, opening_cash_float: 25000 }
+    }, null, 2), 'utf8');
+    console.log('4. ✓ Synchronized local active JSON store at ' + localDb);
+  } catch (e) {
+    console.log('4. ℹ Skipped local file sync on read-only serverless filesystem.');
+  }
 
   console.log('\n===============================================================');
   console.log('  SUCCESS! Data Transfer Pipeline is Active and Verified.');

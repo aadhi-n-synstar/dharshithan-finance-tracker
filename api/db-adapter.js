@@ -12,11 +12,15 @@ const { neon } = require('@neondatabase/serverless');
 const { MongoClient } = require('mongodb');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 
-// Ensure data directory exists
-const DATA_DIR = path.join(__dirname, '..', 'data');
+// Detect serverless environment (Vercel / AWS Lambda) where root is read-only
+const isServerless = !!(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const DATA_DIR = isServerless ? path.join(os.tmpdir(), 'dharshithan-data') : path.join(__dirname, '..', 'data');
 if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (e) {}
 }
 const LOCAL_DB_FILE = path.join(DATA_DIR, 'local-db.json');
 
@@ -141,9 +145,12 @@ let localStore = loadInitialStore();
 
 function saveLocalStore() {
   try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
     fs.writeFileSync(LOCAL_DB_FILE, JSON.stringify(localStore, null, 2), 'utf8');
   } catch (e) {
-    console.error('Error saving local store:', e.message);
+    // EROFS or permissions on serverless: non-blocking memory update
   }
 }
 
