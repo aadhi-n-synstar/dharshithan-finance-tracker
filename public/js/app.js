@@ -1,6 +1,8 @@
 /**
- * Dharshithan Waterproofing - Finance Tracker
- * Main Controller: Executive Dashboard, Multi-Role RBAC & Neon Serverless PostgreSQL
+ * Dharshithan Waterproofing and Concrete Solutions
+ * Enterprise Financial, Billing, Voucher & Tax Management Platform
+ * Authentic Zoho ERP / Zoho Books Corporate Architecture
+ * Powered by Neon Serverless PostgreSQL Native Engine
  */
 
 class FinanceApp {
@@ -9,17 +11,38 @@ class FinanceApp {
     this.transactions = [];
     this.filteredTransactions = [];
     this.editingId = null;
+    this.currentDetailId = null;
 
+    // Table Pagination
+    this.currentPage = 1;
+    this.pageSize = 15;
+
+    // Column Sorting
+    this.sortColumn = 'date';
+    this.sortOrder = 'desc';
+
+    // Bulk Row Selection
+    this.selectedTxnIds = new Set();
+
+    // Party Segmentation
+    this.partySegment = 'ALL';
+
+    // Global Filters
     this.filters = {
-      financialYear: 'F.Y. 2026-27',
+      financialYear: 'ALL',
       quarter: 'ALL',
       type: 'ALL',
       mode: 'ALL',
       search: ''
     };
+
+    // Cached lists for dedicated corporate views
+    this.salesList = [];
+    this.expensesList = [];
   }
 
   async init() {
+    console.log('Initializing Dharshithan Enterprise Finance ERP...');
     await window.financeDB.init();
 
     // Initialize Auth state
@@ -46,10 +69,10 @@ class FinanceApp {
       });
     }
 
-    // Populate initial FY dropdown dynamically
+    // Initial data load
     await this.refreshData();
 
-    // Refresh when user returns to window/tab
+    // Real-time synchronization when user returns to window/tab
     window.addEventListener('focus', () => {
       this.refreshFromNeon({ silent: true });
     });
@@ -59,15 +82,21 @@ class FinanceApp {
       }
     });
 
-    // Set today's date in transaction modal
-    const today = new Date().toISOString().slice(0, 10);
-    const dateInput = document.getElementById('modalDate');
-    if (dateInput) dateInput.value = today;
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        this.closeAllModals();
+      } else if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        const searchInput = document.getElementById('globalSearchInput');
+        if (searchInput) searchInput.focus();
+      } else if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        this.openTransactionModal();
+      }
+    });
 
-    // Apply role-based visibility
-    this.applyRolePermissions();
-
-    // Check URL parameters (e.g. for PWA shortcuts)
+    // URL Routing
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('action') === 'add') {
       setTimeout(() => this.openTransactionModal(), 300);
@@ -75,27 +104,15 @@ class FinanceApp {
       this.setActiveTab(urlParams.get('tab'));
     }
 
-    // Initialize Lucide icons
+    // Enterprise 30-minute inactivity security lock
+    this.setupInactivityTimer();
+
+    // Lucide Icons
     if (window.lucide) {
       window.lucide.createIcons();
     }
 
-    // Keyboard shortcuts
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
-        this.closeAllModals();
-      } else if (e.key === 'n' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        this.openTransactionModal();
-      }
-    });
-
-    
-
-    // Enterprise 30-minute inactivity security lock
-    this.setupInactivityTimer();
-
-    console.log('Dharshithan Finance Tracker Initialized');
+    console.log('Dharshithan Finance ERP Initialized Successfully.');
   }
 
   setupInactivityTimer() {
@@ -106,7 +123,7 @@ class FinanceApp {
         if (window.authManager && window.authManager.isAuthenticated()) {
           window.authManager.logout();
           this.checkAuthUI();
-          this.showToast('Session locked after 30 minutes of inactivity for company data protection.', 'info');
+          this.showToast('Session locked after 30 minutes of inactivity for security.', 'info');
         }
       }, 30 * 60 * 1000); // 30 minutes
     };
@@ -117,13 +134,49 @@ class FinanceApp {
     reset();
   }
 
-  
+  // =========================================================================
+  // DATA REFRESHING, FILTERING & METRICS
+  // =========================================================================
 
   async refreshData() {
     this.transactions = await window.financeDB.getAll();
     this.updateFYDropdown();
     this.updatePartyDatalist();
     this.applyFilters();
+  }
+
+  async refreshFromNeon(options = {}) {
+    const isSilent = options.silent === true;
+    const syncBtn = document.getElementById('headerSyncBtn');
+    const syncIcon = document.getElementById('headerSyncIcon');
+
+    if (syncIcon) syncIcon.classList.add('animate-spin');
+
+    try {
+      this.transactions = await window.financeDB.getAll();
+      this.updateFYDropdown();
+      this.updatePartyDatalist();
+      this.applyFilters();
+
+      const bannerText = document.getElementById('lastSyncBannerText');
+      if (bannerText) {
+        const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        bannerText.textContent = `Neon DB Connected • Synced ${timeStr}`;
+      }
+
+      if (!isSilent) {
+        this.showToast('Synchronized with Neon PostgreSQL Cloud Database', 'success');
+      }
+    } catch (err) {
+      console.error('Neon sync error:', err);
+      if (!isSilent) {
+        this.showToast('Sync error: ' + err.message, 'error');
+      }
+    } finally {
+      if (syncIcon) {
+        setTimeout(() => syncIcon.classList.remove('animate-spin'), 600);
+      }
+    }
   }
 
   updateFYDropdown() {
@@ -136,7 +189,7 @@ class FinanceApp {
     if (!select) return;
 
     const currentVal = select.value || this.filters.financialYear;
-    select.innerHTML = '<option value="ALL">All FY</option>';
+    select.innerHTML = '<option value="ALL">All Financial Years</option>';
     Array.from(fySet).sort().reverse().forEach(fy => {
       const opt = document.createElement('option');
       opt.value = fy;
@@ -147,165 +200,19 @@ class FinanceApp {
   }
 
   updatePartyDatalist() {
-    const datalist = document.getElementById('partySuggestions');
-    if (!datalist) return;
-    const parties = new Set();
-    this.transactions.forEach(t => {
-      if (t.partyName) parties.add(t.partyName.trim());
-    });
-    datalist.innerHTML = '';
-    parties.forEach(p => {
-      const opt = document.createElement('option');
-      opt.value = p;
-      datalist.appendChild(opt);
-    });
-  }
-
-  // RBAC PERMISSION ENFORCEMENT
-  applyRolePermissions() {
-    if (!window.roleManager) return;
-    const role = window.roleManager.getRole();
-
-    // Update Top Role Pill
-    const pillText = document.getElementById('rolePillText');
-    const pillDot = document.getElementById('roleAvatarDot');
-    const pillBtn = document.getElementById('rolePillBtn');
-
-    if (pillText) pillText.textContent = role.name;
-    if (pillBtn) {
-      pillBtn.className = `flex items-center space-x-1.5 px-2.5 py-1.5 rounded-full text-[11px] font-semibold border transition shadow-2xs ${role.badgeClass}`;
+    let datalist = document.getElementById('parties-datalist');
+    if (!datalist) {
+      datalist = document.createElement('datalist');
+      datalist.id = 'parties-datalist';
+      document.body.appendChild(datalist);
     }
-    if (pillDot) {
-      pillDot.className = `w-2 h-2 rounded-full ${role.avatarBg}`;
+    const parties = Array.from(new Set(this.transactions.map(t => t.partyName).filter(Boolean))).sort();
+    datalist.innerHTML = parties.map(p => `<option value="${this.escapeHtml(p)}"></option>`).join('');
+
+    const modalParty = document.getElementById('modalParty');
+    if (modalParty && !modalParty.getAttribute('list')) {
+      modalParty.setAttribute('list', 'parties-datalist');
     }
-
-    // Add buttons visibility
-    const canAdd = window.roleManager.can('canAdd');
-    const headerBtn = document.getElementById('headerAddTxnBtn');
-    const fabBtn = document.getElementById('androidFabBtn');
-    const ledgerBtn = document.getElementById('ledgerNewEntryBtn');
-
-    if (headerBtn) headerBtn.style.display = canAdd ? 'flex' : 'none';
-    if (fabBtn) fabBtn.style.display = canAdd ? 'flex' : 'none';
-    if (ledgerBtn) ledgerBtn.style.display = canAdd ? 'flex' : 'none';
-
-    // Summary description in role modal
-    const summary = document.getElementById('rolePermissionsSummary');
-    if (summary) {
-      summary.textContent = `Active Role: ${role.name} (${role.title}). Permissions: ` +
-        [
-          role.permissions.canAdd ? 'Add Transactions' : null,
-          role.permissions.canEdit ? 'Edit Records' : null,
-          role.permissions.canDelete ? 'Delete Records' : null,
-          role.permissions.canManageDatabase ? 'Cloud Database Migration' : null,
-          role.permissions.canAdjustFloat ? 'Adjust Float' : null,
-          role.permissions.canViewReports ? 'View P&L' : 'Basic View Only'
-        ].filter(Boolean).join(', ');
-    }
-  }
-
-  
-  toggleSidebar() {
-    const sidebar = document.getElementById('erpSidebar');
-    const backdrop = document.getElementById('sidebarBackdrop');
-    if (sidebar) {
-      sidebar.classList.toggle('-translate-x-full');
-      if (backdrop) backdrop.classList.toggle('hidden');
-    }
-  }
-
-  closeSidebar() {
-    const sidebar = document.getElementById('erpSidebar');
-    const backdrop = document.getElementById('sidebarBackdrop');
-    if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
-      sidebar.classList.add('-translate-x-full');
-    }
-    if (backdrop && !backdrop.classList.contains('hidden')) {
-      backdrop.classList.add('hidden');
-    }
-  }
-
-  handleGlobalSearch(query) {
-    const q = (query || '').toLowerCase().trim();
-    const searchInput = document.getElementById('txnSearch');
-    if (searchInput) searchInput.value = q;
-    
-    this.filters.search = q;
-    if (q && this.activeTab === 'dashboard') {
-      this.setActiveTab('transactions');
-    } else {
-      this.handleFilterChange();
-    }
-  }
-
-  setActiveTab(tabName) {
-    if (tabName === 'reports' && window.roleManager && !window.roleManager.can('canViewReports')) {
-      this.showToast('Access restricted: P&L reports are restricted for your role.', 'error');
-      return;
-    }
-
-    this.activeTab = tabName;
-    const allTabs = ['dashboard', 'transactions', 'sales', 'expenses', 'banking', 'parties', 'reports'];
-
-    // Update Top Bar Breadcrumb
-    const breadcrumbEl = document.getElementById('topBarBreadcrumb');
-    const titles = {
-      dashboard: 'Executive Dashboard',
-      transactions: 'Master General Ledger',
-      sales: 'Sales & Customer Invoices',
-      expenses: 'Purchases & Operating Expenses',
-      banking: 'Banking & Cash Reserves',
-      parties: 'Clients & Vendors Directory',
-      reports: 'Profit & Loss Statement'
-    };
-    if (breadcrumbEl && titles[tabName]) {
-      breadcrumbEl.textContent = titles[tabName];
-    }
-
-    allTabs.forEach(tab => {
-      const sideItem = document.getElementById(`side-tab-${tab}`);
-      const desktopBtn = document.getElementById(`tab-${tab}`);
-      const view = document.getElementById(`view-${tab}`);
-      const isActive = tab === tabName;
-
-      // Zoho Sidebar Item
-      if (sideItem) {
-        if (isActive) {
-          sideItem.className = 'erp-sidebar-item w-full active';
-        } else {
-          sideItem.className = 'erp-sidebar-item w-full';
-        }
-      }
-
-      // Legacy desktop tab if present
-      if (desktopBtn) {
-        if (isActive) {
-          desktopBtn.className = 'px-3 py-1.5 rounded-lg text-white bg-sky-600 font-bold';
-        } else {
-          desktopBtn.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900';
-        }
-      }
-
-      // View container
-      if (view) {
-        if (isActive) {
-          view.classList.remove('hidden');
-        } else {
-          view.classList.add('hidden');
-        }
-      }
-    });
-
-    this.closeSidebar();
-    this.renderCurrentView();
-
-    if (window.lucide) {
-      window.lucide.createIcons();
-    }
-
-    const mainScroll = document.getElementById('erpMainScroll');
-    if (mainScroll) mainScroll.scrollTo({ top: 0, behavior: 'smooth' });
-    else window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   handleFilterChange() {
@@ -319,13 +226,42 @@ class FinanceApp {
     this.filters.quarter = qSelect ? qSelect.value : 'ALL';
     this.filters.type = typeSelect ? typeSelect.value : 'ALL';
     this.filters.mode = modeSelect ? modeSelect.value : 'ALL';
-    this.filters.search = searchInput ? searchInput.value : '';
+    this.filters.search = searchInput ? searchInput.value.trim() : '';
 
     this.applyFilters();
   }
 
   applyFilters() {
-    this.filteredTransactions = FinanceAnalytics.filterTransactions(this.transactions, this.filters);
+    this.filteredTransactions = this.transactions.filter(t => {
+      if (this.filters.financialYear !== 'ALL' && t.financialYear !== this.filters.financialYear) return false;
+      if (this.filters.quarter !== 'ALL' && t.quarter !== this.filters.quarter) return false;
+      
+      if (this.filters.type !== 'ALL') {
+        const isIncome = t.type.includes('Received') || t.type.includes('Income');
+        if (this.filters.type === 'Received / Income' && !isIncome) return false;
+        if (this.filters.type === 'Paid / Expense' && isIncome) return false;
+      }
+
+      if (this.filters.mode !== 'ALL') {
+        const tMode = (t.mode || '').toUpperCase();
+        if (tMode !== this.filters.mode.toUpperCase()) return false;
+      }
+
+      if (this.filters.search) {
+        const q = this.filters.search.toLowerCase();
+        const inParty = (t.partyName || '').toLowerCase().includes(q);
+        const inDesc = (t.description || '').toLowerCase().includes(q);
+        const inRef = (t.refNumber || '').toLowerCase().includes(q);
+        const inCat = (t.category || '').toLowerCase().includes(q);
+        const inAmt = String(t.amount || '').includes(q);
+        const inSl = String(t.slNo || '').includes(q);
+        if (!inParty && !inDesc && !inRef && !inCat && !inAmt && !inSl) return false;
+      }
+
+      return true;
+    });
+
+    this.currentPage = 1;
     this.renderCurrentView();
   }
 
@@ -351,18 +287,518 @@ class FinanceApp {
     }
   }
 
-  /**
-   * Complete render mirroring financial analytics from Neon PostgreSQL:
-   * 1. 5 Top KPI Cards
-   * 2. Financial Summary Panel
-   * 3. Income by Mode Panel
-   * 4. Expenses by Mode Panel
-   * 5. Bank Account Position Panel
-   * 6. Cash Position & Float Panel
-   */
-  
   // =========================================================================
-  // CORPORATE VIEWS: SALES (RECEIVABLES), EXPENSES (PAYABLES) & BANKING
+  // NAVIGATION & COLLAPSIBLE SIDEBAR
+  // =========================================================================
+
+  toggleSidebar() {
+    const sidebar = document.getElementById('erpSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (!sidebar) return;
+
+    if (sidebar.classList.contains('-translate-x-full')) {
+      sidebar.classList.remove('-translate-x-full');
+      if (backdrop) backdrop.classList.remove('hidden');
+    } else {
+      sidebar.classList.add('-translate-x-full');
+      if (backdrop) backdrop.classList.add('hidden');
+    }
+  }
+
+  closeSidebar() {
+    const sidebar = document.getElementById('erpSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (sidebar) sidebar.classList.add('-translate-x-full');
+    if (backdrop) backdrop.classList.add('hidden');
+  }
+
+  setActiveTab(tabName) {
+    this.activeTab = tabName;
+
+    // Breadcrumb updates
+    const breadcrumbEl = document.getElementById('topBarBreadcrumb');
+    const titles = {
+      dashboard: 'Dashboard',
+      transactions: 'General Ledger',
+      sales: 'Sales & Invoices',
+      expenses: 'Purchases & Expenses',
+      banking: 'Banking & Liquidity',
+      parties: 'Parties & Contacts',
+      reports: 'Financial Reports'
+    };
+    if (breadcrumbEl && titles[tabName]) {
+      breadcrumbEl.textContent = titles[tabName];
+    }
+
+    // Sidebar active item styling
+    const tabs = ['dashboard', 'transactions', 'sales', 'expenses', 'banking', 'parties', 'reports'];
+    tabs.forEach(t => {
+      const sideItem = document.getElementById(`side-tab-${t}`);
+      const isActive = t === tabName;
+      if (sideItem) {
+        if (isActive) {
+          sideItem.classList.add('erp-sidebar-item-active');
+        } else {
+          sideItem.classList.remove('erp-sidebar-item-active');
+        }
+      }
+
+      const view = document.getElementById(`view-${t}`);
+      if (view) {
+        if (isActive) {
+          view.classList.remove('hidden');
+        } else {
+          view.classList.add('hidden');
+        }
+      }
+    });
+
+    this.closeSidebar();
+    this.renderCurrentView();
+
+    // Scroll to top of content
+    const mainScroll = document.getElementById('erpMainScroll');
+    if (mainScroll) mainScroll.scrollTop = 0;
+  }
+
+  handleGlobalSearch(query) {
+    const q = (query || '').toLowerCase().trim();
+    if (!q) {
+      this.filters.search = '';
+      this.applyFilters();
+      return;
+    }
+
+    this.filters.search = q;
+    if (this.activeTab === 'dashboard') {
+      this.setActiveTab('transactions');
+    } else {
+      this.applyFilters();
+    }
+  }
+
+  toggleQuickCreateMenu() {
+    const menu = document.getElementById('quickCreateMenu');
+    if (menu) menu.classList.toggle('hidden');
+  }
+
+  closeQuickCreateMenu() {
+    const menu = document.getElementById('quickCreateMenu');
+    if (menu) menu.classList.add('hidden');
+  }
+
+  openOrgDetailsModal() {
+    const modal = document.getElementById('orgDetailsModal');
+    if (modal) modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeOrgDetailsModal() {
+    const modal = document.getElementById('orgDetailsModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  // =========================================================================
+  // VIEW 1: DASHBOARD CONTROLLER
+  // =========================================================================
+
+  renderDashboard() {
+    const metrics = FinanceAnalytics.calculateDashboardMetrics(this.filteredTransactions);
+
+    // 4 Top Executive KPI Cards
+    const elRev = document.getElementById('kpi-total-revenue');
+    if (elRev) elRev.textContent = FinanceAnalytics.formatINR(metrics.totalIncome);
+
+    const elExp = document.getElementById('kpi-total-expenses');
+    if (elExp) elExp.textContent = FinanceAnalytics.formatINR(metrics.totalExpense);
+
+    const elProf = document.getElementById('kpi-net-profit');
+    if (elProf) {
+      elProf.textContent = FinanceAnalytics.formatINR(metrics.netProfit);
+      elProf.className = `font-mono text-lg sm:text-2xl font-bold ${metrics.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+    }
+
+    const elLiq = document.getElementById('kpi-total-liquidity');
+    if (elLiq) elLiq.textContent = FinanceAnalytics.formatINR(metrics.totalLiquidity);
+
+    // Bank & Cash Position Cards
+    const elBankBal = document.getElementById('cardBankBalance');
+    if (elBankBal) elBankBal.textContent = FinanceAnalytics.formatINR(metrics.bankPosition);
+
+    const elCashBal = document.getElementById('cardCashBalance');
+    if (elCashBal) elCashBal.textContent = FinanceAnalytics.formatINR(metrics.cashBalance);
+
+    const elTotLiq = document.getElementById('cardTotalLiquidity');
+    if (elTotLiq) elTotLiq.textContent = FinanceAnalytics.formatINR(metrics.totalLiquidity);
+
+    // Cashflow Chart
+    if (window.FinanceCharts) {
+      const summary = FinanceAnalytics.getFYQuarterSummary(this.transactions);
+      window.FinanceCharts.renderCashflowChart('cashflowChart', summary);
+    }
+
+    // Recent Transactions Table (Latest 8 entries)
+    const recentBody = document.getElementById('dashboardRecentTableBody');
+    if (recentBody) {
+      const recentTxns = [...this.filteredTransactions]
+        .sort((a, b) => new Date(b.date) - new Date(a.date) || (b.slNo || 0) - (a.slNo || 0))
+        .slice(0, 8);
+
+      if (recentTxns.length === 0) {
+        recentBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="p-8 text-center text-slate-400 font-medium">
+              No recent transactions recorded in this period.
+            </td>
+          </tr>
+        `;
+      } else {
+        recentBody.innerHTML = recentTxns.map(t => {
+          const isIncome = t.type && (t.type.includes('Received') || t.type.includes('Income'));
+          const typeBadge = isIncome
+            ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Invoice</span>'
+            : '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Voucher</span>';
+
+          const amtClass = isIncome ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
+          const amtPrefix = isIncome ? '+' : '-';
+
+          return `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-xs">
+              <td class="py-2.5 px-3 font-mono text-slate-500 font-semibold">#${t.slNo}</td>
+              <td class="py-2.5 px-3 whitespace-nowrap text-slate-600 font-mono">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+              <td class="py-2.5 px-3">${typeBadge}</td>
+              <td class="py-2.5 px-3 font-bold text-slate-900 cursor-pointer hover:text-sky-600 transition" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">
+                ${this.escapeHtml(t.partyName)}
+              </td>
+              <td class="py-2.5 px-3 text-right font-mono ${amtClass}">
+                ${amtPrefix}${FinanceAnalytics.formatINR(t.amount)}
+              </td>
+              <td class="py-2.5 px-3 text-center">
+                <button onclick="app.printTaxInvoice('${t.id}')" title="Print Commercial Tax Invoice / Voucher" class="p-1 rounded-lg text-sky-600 hover:bg-sky-50 transition cursor-pointer">
+                  <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+  }
+
+  // =========================================================================
+  // VIEW 2: GENERAL LEDGER (TABLE WITH SORTING, BULK ACTIONS & PAGINATION)
+  // =========================================================================
+
+  sortByColumn(column) {
+    if (this.sortColumn === column) {
+      this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortColumn = column;
+      this.sortOrder = (column === 'date' || column === 'slNo') ? 'desc' : 'asc';
+    }
+    this.updateSortIcons();
+    this.renderTransactionsTable();
+  }
+
+  updateSortIcons() {
+    ['slNo', 'date', 'partyName', 'amount'].forEach(col => {
+      const icon = document.getElementById(`sort-icon-${col}`);
+      if (icon) {
+        if (this.sortColumn === col) {
+          icon.textContent = this.sortOrder === 'asc' ? '▲' : '▼';
+          icon.className = 'text-sky-600 font-bold';
+        } else {
+          icon.textContent = '⇅';
+          icon.className = 'text-slate-400';
+        }
+      }
+    });
+  }
+
+  setPageSize(size) {
+    this.pageSize = (size === 'ALL') ? 999999 : parseInt(size, 10);
+    this.currentPage = 1;
+    this.renderTransactionsTable();
+  }
+
+  prevPage() {
+    if (this.currentPage > 1) {
+      this.currentPage--;
+      this.renderTransactionsTable();
+    }
+  }
+
+  nextPage() {
+    const totalPages = Math.ceil(this.filteredTransactions.length / this.pageSize) || 1;
+    if (this.currentPage < totalPages) {
+      this.currentPage++;
+      this.renderTransactionsTable();
+    }
+  }
+
+  toggleSelectAll(checked) {
+    const pageItems = this.getPagedTransactions();
+    pageItems.forEach(t => {
+      if (checked) {
+        this.selectedTxnIds.add(t.id);
+      } else {
+        this.selectedTxnIds.delete(t.id);
+      }
+    });
+
+    const checkboxes = document.querySelectorAll('.txn-row-checkbox');
+    checkboxes.forEach(cb => { cb.checked = checked; });
+
+    this.updateBulkActionBar();
+  }
+
+  handleRowSelect(id, checked) {
+    if (checked) {
+      this.selectedTxnIds.add(id);
+    } else {
+      this.selectedTxnIds.delete(id);
+    }
+    this.updateBulkActionBar();
+  }
+
+  updateBulkActionBar() {
+    const bar = document.getElementById('bulkActionBar');
+    const countEl = document.getElementById('bulkSelectedCount');
+    const selectAllCb = document.getElementById('selectAllTxns');
+
+    const count = this.selectedTxnIds.size;
+    if (countEl) countEl.textContent = `${count} transaction${count === 1 ? '' : 's'} selected`;
+
+    if (bar) {
+      if (count > 0) {
+        bar.classList.remove('hidden');
+      } else {
+        bar.classList.add('hidden');
+      }
+    }
+
+    if (selectAllCb) {
+      const pageItems = this.getPagedTransactions();
+      const allSelected = pageItems.length > 0 && pageItems.every(t => this.selectedTxnIds.has(t.id));
+      selectAllCb.checked = allSelected;
+    }
+  }
+
+  clearRowSelection() {
+    this.selectedTxnIds.clear();
+    const selectAllCb = document.getElementById('selectAllTxns');
+    if (selectAllCb) selectAllCb.checked = false;
+
+    const checkboxes = document.querySelectorAll('.txn-row-checkbox');
+    checkboxes.forEach(cb => { cb.checked = false; });
+
+    this.updateBulkActionBar();
+  }
+
+  bulkExportCSV() {
+    const selected = this.transactions.filter(t => this.selectedTxnIds.has(t.id));
+    if (selected.length === 0) {
+      this.showToast('Please select transactions to export', 'info');
+      return;
+    }
+    FinanceDataTransfer.exportToCSV(selected);
+    this.showToast(`Exported ${selected.length} transactions as CSV`, 'success');
+  }
+
+  async bulkDeleteSelected() {
+    if (window.roleManager && !window.roleManager.can('canDelete')) {
+      this.showToast('Your role does not have permission to delete transactions.', 'error');
+      return;
+    }
+
+    const count = this.selectedTxnIds.size;
+    if (count === 0) return;
+
+    if (!confirm(`Are you sure you want to permanently delete ${count} selected transactions from Neon Cloud Database? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const idsToDelete = Array.from(this.selectedTxnIds);
+      for (const id of idsToDelete) {
+        await window.financeDB.delete(id);
+      }
+      this.clearRowSelection();
+      this.showToast(`Successfully deleted ${count} transactions from Neon DB`, 'info');
+      await this.refreshData();
+    } catch (err) {
+      console.error(err);
+      this.showToast('Error during bulk delete: ' + err.message, 'error');
+    }
+  }
+
+  getPagedTransactions() {
+    const list = [...this.filteredTransactions];
+
+    // Sorting
+    list.sort((a, b) => {
+      let valA = a[this.sortColumn];
+      let valB = b[this.sortColumn];
+
+      if (this.sortColumn === 'slNo' || this.sortColumn === 'amount') {
+        valA = Number(valA) || 0;
+        valB = Number(valB) || 0;
+      } else if (this.sortColumn === 'date') {
+        valA = new Date(valA).getTime() || 0;
+        valB = new Date(valB).getTime() || 0;
+      } else {
+        valA = String(valA || '').toLowerCase();
+        valB = String(valB || '').toLowerCase();
+      }
+
+      if (valA < valB) return this.sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return this.sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    // Pagination
+    const startIndex = (this.currentPage - 1) * this.pageSize;
+    return list.slice(startIndex, startIndex + this.pageSize);
+  }
+
+  renderTransactionsTable() {
+    const tbody = document.getElementById('txnTableBody');
+    const emptyState = document.getElementById('txnEmptyState');
+    if (!tbody) return;
+
+    if (this.filteredTransactions.length === 0) {
+      tbody.innerHTML = '';
+      if (emptyState) emptyState.classList.remove('hidden');
+      this.updateTableFooters(0, 0, 0);
+      return;
+    }
+
+    if (emptyState) emptyState.classList.add('hidden');
+
+    const pageItems = this.getPagedTransactions();
+    const canEdit = window.roleManager ? window.roleManager.can('canEdit') : false;
+    const canDelete = window.roleManager ? window.roleManager.can('canDelete') : false;
+
+    tbody.innerHTML = pageItems.map(t => {
+      const isIncome = t.type && (t.type.includes('Received') || t.type.includes('Income'));
+      const typeBadge = isIncome
+        ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">Received</span>'
+        : '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">Paid</span>';
+
+      const amtClass = isIncome ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold';
+      const amtPrefix = isIncome ? '+' : '-';
+      const isChecked = this.selectedTxnIds.has(t.id);
+
+      // Extract human-readable description if packed as JSON
+      let displayDesc = t.description || '';
+      if (displayDesc.startsWith('{') && displayDesc.endsWith('}')) {
+        try {
+          const p = JSON.parse(displayDesc);
+          displayDesc = p.remarks || (p.items && p.items[0] ? p.items[0].description : '') || 'GST Tax Invoice';
+        } catch (e) {}
+      }
+
+      return `
+        <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 text-xs">
+          <td class="py-2.5 px-3 text-center">
+            <input type="checkbox" onchange="app.handleRowSelect('${t.id}', this.checked)" ${isChecked ? 'checked' : ''} class="txn-row-checkbox rounded text-sky-600 focus:ring-sky-500 cursor-pointer">
+          </td>
+          <td class="py-2.5 px-3 font-mono text-slate-500 font-semibold whitespace-nowrap">#${t.slNo}</td>
+          <td class="py-2.5 px-3 font-mono text-slate-700 whitespace-nowrap">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+          <td class="py-2.5 px-3">${typeBadge}</td>
+          <td class="py-2.5 px-3.5 font-bold text-slate-900 cursor-pointer hover:text-sky-600 transition" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">
+            <div>${this.escapeHtml(t.partyName)}</div>
+            ${displayDesc ? `<div class="text-[10px] font-normal text-slate-400 truncate max-w-xs">${this.escapeHtml(displayDesc)}</div>` : ''}
+          </td>
+          <td class="py-2.5 px-3 text-slate-600">
+            <span class="px-2 py-0.5 rounded-md text-[10px] bg-slate-100 text-slate-700 font-medium">
+              ${this.escapeHtml(t.category || 'General')}
+            </span>
+          </td>
+          <td class="py-2.5 px-3 text-slate-700 font-semibold text-[11px]">${t.mode || 'CASH'}</td>
+          <td class="py-2.5 px-3 font-mono text-slate-500 text-[11px] whitespace-nowrap">${this.escapeHtml(t.refNumber || '-')}</td>
+          <td class="py-2.5 px-3.5 text-right font-mono ${amtClass} whitespace-nowrap">
+            ${amtPrefix}${FinanceAnalytics.formatINR(t.amount)}
+          </td>
+          <td class="py-2.5 px-3 text-center whitespace-nowrap">
+            <div class="inline-flex items-center space-x-1">
+              <button onclick="app.printTaxInvoice('${t.id}')" title="Print Commercial Tax Invoice / Voucher" class="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 transition cursor-pointer">
+                <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+              </button>
+              ${canEdit ? `
+                <button onclick="app.openTransactionModal('${t.id}')" title="Edit Transaction" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+                </button>
+              ` : ''}
+              ${canDelete ? `
+                <button onclick="app.deleteTransaction('${t.id}')" title="Delete Transaction" class="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                </button>
+              ` : ''}
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    // Update Totals and Pagination Bar
+    let totalIn = 0;
+    let totalOut = 0;
+    this.filteredTransactions.forEach(t => {
+      const isInc = t.type && (t.type.includes('Received') || t.type.includes('Income'));
+      const val = Number(t.amount) || 0;
+      if (isInc) totalIn += val;
+      else totalOut += val;
+    });
+
+    this.updateTableFooters(totalIn, totalOut, totalIn - totalOut);
+    this.updatePaginationUI();
+    this.updateSortIcons();
+    this.updateBulkActionBar();
+  }
+
+  updateTableFooters(inflow, outflow, net) {
+    const elCount = document.getElementById('txnFilteredCount');
+    if (elCount) elCount.textContent = this.filteredTransactions.length;
+
+    const elIn = document.getElementById('txnFooterInflow');
+    if (elIn) elIn.textContent = FinanceAnalytics.formatINR(inflow);
+
+    const elOut = document.getElementById('txnFooterOutflow');
+    if (elOut) elOut.textContent = FinanceAnalytics.formatINR(outflow);
+
+    const elNet = document.getElementById('txnFooterNet');
+    if (elNet) {
+      elNet.textContent = FinanceAnalytics.formatINR(net);
+      elNet.className = `font-bold ${net >= 0 ? 'text-emerald-700' : 'text-rose-700'}`;
+    }
+  }
+
+  updatePaginationUI() {
+    const totalPages = Math.ceil(this.filteredTransactions.length / this.pageSize) || 1;
+    const pageIndicator = document.getElementById('pageIndicator');
+    if (pageIndicator) {
+      pageIndicator.textContent = `Page ${this.currentPage} of ${totalPages}`;
+    }
+
+    const btnPrev = document.getElementById('btnPrevPage');
+    if (btnPrev) btnPrev.disabled = this.currentPage <= 1;
+
+    const btnNext = document.getElementById('btnNextPage');
+    if (btnNext) btnNext.disabled = this.currentPage >= totalPages;
+  }
+
+  exportCSV() {
+    if (this.filteredTransactions.length === 0) {
+      this.showToast('No transactions to export', 'info');
+      return;
+    }
+    FinanceDataTransfer.exportToCSV(this.filteredTransactions);
+    this.showToast(`Exported ${this.filteredTransactions.length} transactions as CSV`, 'success');
+  }
+
+  // =========================================================================
+  // VIEW 3: SALES & CUSTOMER INVOICES
   // =========================================================================
 
   renderSalesView() {
@@ -421,35 +857,35 @@ class FinanceApp {
     const canDelete = window.roleManager ? window.roleManager.can('canDelete') : false;
 
     tbody.innerHTML = list.map((t, idx) => `
-      <tr class="hover:bg-slate-50/80 transition-colors">
-        <td class="py-3 px-3.5 font-mono text-slate-500 font-semibold text-xs">#${t.slNo || (idx + 1)}</td>
+      <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 text-xs">
+        <td class="py-3 px-3.5 font-mono text-slate-500 font-semibold">#${t.slNo || (idx + 1)}</td>
         <td class="py-3 px-3.5 font-mono text-slate-700 whitespace-nowrap">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
-        <td class="py-3 px-3.5 font-bold text-slate-900">
-          <div>${t.partyName}</div>
-          ${t.description ? `<div class="text-[10px] font-normal text-slate-400 truncate max-w-xs">${t.description}</div>` : ''}
+        <td class="py-3 px-3.5 font-bold text-slate-900 cursor-pointer hover:text-sky-600 transition" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">
+          <div>${this.escapeHtml(t.partyName)}</div>
+          ${t.description ? `<div class="text-[10px] font-normal text-slate-400 truncate max-w-xs">${this.escapeHtml(t.description)}</div>` : ''}
         </td>
         <td class="py-3 px-3.5">
           <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-            ${t.category || 'General Invoicing'}
+            ${this.escapeHtml(t.category || 'General Invoicing')}
           </span>
         </td>
         <td class="py-3 px-3.5 font-semibold text-slate-700 text-[11px]">${t.mode || 'CASH'}</td>
-        <td class="py-3 px-3.5 font-mono text-slate-500 text-[11px]">${t.refNumber || '-'}</td>
+        <td class="py-3 px-3.5 font-mono text-slate-500 text-[11px] whitespace-nowrap">${this.escapeHtml(t.refNumber || '-')}</td>
         <td class="py-3 px-3.5 text-right font-mono font-bold text-emerald-600 whitespace-nowrap">
           +${FinanceAnalytics.formatINR(t.amount)}
         </td>
         <td class="py-3 px-3.5 text-center whitespace-nowrap">
           <div class="inline-flex items-center space-x-1">
-            <button onclick="app.showTransactionDetail('${t.id}')" class="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer" title="View Full Receipt">
-              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+            <button onclick="app.printTaxInvoice('${t.id}')" title="Print Commercial Tax Invoice" class="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 transition cursor-pointer">
+              <i data-lucide="printer" class="w-3.5 h-3.5"></i>
             </button>
             ${canEdit ? `
-              <button onclick="app.openTransactionModal('${t.id}')" class="p-1 rounded-lg hover:bg-sky-50 text-sky-600 hover:text-sky-700 transition cursor-pointer" title="Edit Receipt">
+              <button onclick="app.openTransactionModal('${t.id}')" title="Edit Invoice" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer">
                 <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
               </button>
             ` : ''}
             ${canDelete ? `
-              <button onclick="app.deleteTransaction('${t.id}')" class="p-1 rounded-lg hover:bg-rose-50 text-rose-500 hover:text-rose-600 transition cursor-pointer" title="Permanently Delete">
+              <button onclick="app.deleteTransaction('${t.id}')" title="Delete Invoice" class="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
               </button>
             ` : ''}
@@ -461,6 +897,10 @@ class FinanceApp {
     if (window.lucide) window.lucide.createIcons();
   }
 
+  // =========================================================================
+  // VIEW 4: PURCHASES & OPERATING EXPENSES
+  // =========================================================================
+
   renderExpensesView() {
     const rawExpenses = (this.filteredTransactions || []).filter(t => 
       t.type && (t.type.toLowerCase().includes('paid') || t.type.toLowerCase().includes('expense'))
@@ -471,7 +911,7 @@ class FinanceApp {
     const count = rawExpenses.length;
     const avg = count > 0 ? (totalExpenses / count) : 0;
 
-    // Find top category
+    // Find top cost category
     const catMap = {};
     rawExpenses.forEach(t => {
       const c = t.category || 'General';
@@ -532,35 +972,35 @@ class FinanceApp {
     const canDelete = window.roleManager ? window.roleManager.can('canDelete') : false;
 
     tbody.innerHTML = list.map((t, idx) => `
-      <tr class="hover:bg-slate-50/80 transition-colors">
-        <td class="py-3 px-3.5 font-mono text-slate-500 font-semibold text-xs">#${t.slNo || (idx + 1)}</td>
+      <tr class="hover:bg-slate-50/80 transition-colors border-b border-slate-100 text-xs">
+        <td class="py-3 px-3.5 font-mono text-slate-500 font-semibold">#${t.slNo || (idx + 1)}</td>
         <td class="py-3 px-3.5 font-mono text-slate-700 whitespace-nowrap">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
-        <td class="py-3 px-3.5 font-bold text-slate-900">
-          <div>${t.partyName}</div>
-          ${t.description ? `<div class="text-[10px] font-normal text-slate-400 truncate max-w-xs">${t.description}</div>` : ''}
+        <td class="py-3 px-3.5 font-bold text-slate-900 cursor-pointer hover:text-sky-600 transition" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">
+          <div>${this.escapeHtml(t.partyName)}</div>
+          ${t.description ? `<div class="text-[10px] font-normal text-slate-400 truncate max-w-xs">${this.escapeHtml(t.description)}</div>` : ''}
         </td>
         <td class="py-3 px-3.5">
           <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">
-            ${t.category || 'Site Overhead'}
+            ${this.escapeHtml(t.category || 'Site Overhead')}
           </span>
         </td>
         <td class="py-3 px-3.5 font-semibold text-slate-700 text-[11px]">${t.mode || 'CASH'}</td>
-        <td class="py-3 px-3.5 font-mono text-slate-500 text-[11px]">${t.refNumber || '-'}</td>
+        <td class="py-3 px-3.5 font-mono text-slate-500 text-[11px] whitespace-nowrap">${this.escapeHtml(t.refNumber || '-')}</td>
         <td class="py-3 px-3.5 text-right font-mono font-bold text-rose-600 whitespace-nowrap">
           -${FinanceAnalytics.formatINR(t.amount)}
         </td>
         <td class="py-3 px-3.5 text-center whitespace-nowrap">
           <div class="inline-flex items-center space-x-1">
-            <button onclick="app.showTransactionDetail('${t.id}')" class="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer" title="View Full Voucher">
-              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+            <button onclick="app.printTaxInvoice('${t.id}')" title="Print Payment Voucher" class="p-1.5 rounded-lg text-sky-600 hover:bg-sky-50 transition cursor-pointer">
+              <i data-lucide="printer" class="w-3.5 h-3.5"></i>
             </button>
             ${canEdit ? `
-              <button onclick="app.openTransactionModal('${t.id}')" class="p-1 rounded-lg hover:bg-sky-50 text-sky-600 hover:text-sky-700 transition cursor-pointer" title="Edit Voucher">
+              <button onclick="app.openTransactionModal('${t.id}')" title="Edit Voucher" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition cursor-pointer">
                 <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
               </button>
             ` : ''}
             ${canDelete ? `
-              <button onclick="app.deleteTransaction('${t.id}')" class="p-1 rounded-lg hover:bg-rose-50 text-rose-500 hover:text-rose-600 transition cursor-pointer" title="Permanently Delete">
+              <button onclick="app.deleteTransaction('${t.id}')" title="Delete Voucher" class="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 hover:text-rose-700 transition cursor-pointer">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
               </button>
             ` : ''}
@@ -571,6 +1011,10 @@ class FinanceApp {
 
     if (window.lucide) window.lucide.createIcons();
   }
+
+  // =========================================================================
+  // VIEW 5: BANKING & LIQUIDITY RECONCILIATION
+  // =========================================================================
 
   renderBankingView() {
     const metrics = FinanceAnalytics.calculateDashboardMetrics(this.filteredTransactions);
@@ -600,24 +1044,22 @@ class FinanceApp {
         const netAmt = inAmt - outAmt;
 
         return `
-          <div class="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white transition shadow-xs space-y-1.5">
-            <div class="flex items-center justify-between">
-              <span class="text-[11px] font-bold text-slate-800 truncate">${ch.name}</span>
-              <div class="w-6 h-6 rounded-lg bg-${ch.color}-100 text-${ch.color}-700 flex items-center justify-center">
-                <i data-lucide="${ch.icon}" class="w-3.5 h-3.5"></i>
-              </div>
+          <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white transition shadow-xs space-y-2">
+            <div class="flex items-center space-x-2 text-slate-700">
+              <i data-lucide="${ch.icon}" class="w-4 h-4 text-${ch.color}-600"></i>
+              <span class="text-xs font-bold truncate">${ch.name}</span>
             </div>
-            <div class="space-y-0.5 pt-1 text-[11px] font-mono">
-              <div class="flex justify-between text-slate-500">
+            <div class="space-y-1 font-mono text-xs">
+              <div class="flex justify-between text-slate-500 text-[11px]">
                 <span>Inflows:</span>
-                <span class="text-emerald-700 font-bold">${FinanceAnalytics.formatINR(inAmt)}</span>
+                <span class="text-emerald-600 font-semibold">${FinanceAnalytics.formatINR(inAmt)}</span>
               </div>
-              <div class="flex justify-between text-slate-500">
+              <div class="flex justify-between text-slate-500 text-[11px]">
                 <span>Outflows:</span>
-                <span class="text-rose-700 font-bold">${FinanceAnalytics.formatINR(outAmt)}</span>
+                <span class="text-rose-600 font-semibold">${FinanceAnalytics.formatINR(outAmt)}</span>
               </div>
-              <div class="flex justify-between border-t border-slate-200 pt-1 font-bold">
-                <span class="text-slate-700">Net Flow:</span>
+              <div class="flex justify-between border-t border-slate-200 pt-1 font-bold text-slate-900">
+                <span>Net Channel:</span>
                 <span class="${netAmt >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${FinanceAnalytics.formatINR(netAmt)}</span>
               </div>
             </div>
@@ -629,378 +1071,92 @@ class FinanceApp {
     if (window.lucide) window.lucide.createIcons();
   }
 
-  
-  renderDashboardRecentTable(txns) {
-    const tbody = document.getElementById('dashboardRecentTableBody');
-    if (!tbody) return;
+  openFloatModal() {
+    const modal = document.getElementById('floatModal');
+    if (!modal) return;
 
-    const recent = (txns || []).slice(0, 5);
-    if (recent.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="p-6 text-center text-slate-400">No transactions recorded in this period.</td></tr>';
-      return;
-    }
+    const bankInput = document.getElementById('inputBankFloat');
+    const cashInput = document.getElementById('inputCashFloat');
 
-    const canEdit = window.roleManager ? window.roleManager.can('canEdit') : false;
-    const canDelete = window.roleManager ? window.roleManager.can('canDelete') : false;
+    if (bankInput) bankInput.value = FinanceAnalytics.openingBankBalance || 0;
+    if (cashInput) cashInput.value = FinanceAnalytics.openingCashFloat || 0;
 
-    tbody.innerHTML = recent.map((t, idx) => {
-      const isIncome = t.type && (t.type.toLowerCase().includes('received') || t.type.toLowerCase().includes('income'));
-      return `
-        <tr class="hover:bg-slate-50 transition-colors">
-          <td class="font-mono text-slate-500 font-semibold text-xs">#${t.slNo || (idx + 1)}</td>
-          <td class="font-mono text-slate-700 whitespace-nowrap">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
-          <td>
-            <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${isIncome ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}">
-              ${isIncome ? 'INCOME' : 'EXPENSE'}
-            </span>
-          </td>
-          <td class="font-bold text-slate-900">${t.partyName}</td>
-          <td>${t.category || 'General'}</td>
-          <td class="font-semibold text-slate-700 text-[11px]">${t.mode || 'CASH'}</td>
-          <td class="font-mono text-slate-500 text-[11px]">${t.refNumber || '-'}</td>
-          <td class="text-right font-mono font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'} whitespace-nowrap">
-            ${isIncome ? '+' : '-'}${FinanceAnalytics.formatINR(t.amount)}
-          </td>
-          <td class="text-center whitespace-nowrap">
-            <button onclick="app.showTransactionDetail('${t.id}')" class="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition" title="View Details">
-              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
-            </button>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
+    modal.classList.remove('hidden');
     if (window.lucide) window.lucide.createIcons();
   }
 
-  renderDashboard() {
-    const metrics = FinanceAnalytics.calculateDashboardMetrics(this.filteredTransactions);
-
-    // 1. Top 5 KPI Cards
-    const elRev = document.getElementById('kpi-total-revenue');
-    if (elRev) elRev.textContent = FinanceAnalytics.formatINR(metrics.grossRevenue);
-    const elIncCnt = document.getElementById('kpi-income-txns');
-    const incCnt = this.filteredTransactions.filter(t => t.type.includes('Received') || t.type.includes('Income')).length;
-    if (elIncCnt) elIncCnt.textContent = `${incCnt} txns`;
-
-    const elExp = document.getElementById('kpi-total-expenses');
-    if (elExp) elExp.textContent = FinanceAnalytics.formatINR(metrics.operatingCosts);
-    const elExpCnt = document.getElementById('kpi-expense-txns');
-    const expCnt = this.filteredTransactions.filter(t => t.type.includes('Paid') || t.type.includes('Expense')).length;
-    if (elExpCnt) elExpCnt.textContent = `${expCnt} txns`;
-
-    const elNet = document.getElementById('kpi-net-profit');
-    if (elNet) elNet.textContent = FinanceAnalytics.formatINR(metrics.netProfit);
-
-    const elMargin = document.getElementById('kpi-profit-margin');
-    if (elMargin) elMargin.textContent = `${metrics.profitMargin.toFixed(1)}%`;
-    const elMarginBadge = document.getElementById('kpi-margin-health-badge');
-    if (elMarginBadge) {
-      if (metrics.isProfitHealthy) {
-        elMarginBadge.className = 'px-1.5 py-0.5 rounded font-semibold text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200';
-        elMarginBadge.textContent = 'Healthy (>20%)';
-      } else {
-        elMarginBadge.className = 'px-1.5 py-0.5 rounded font-semibold text-[9px] bg-amber-50 text-amber-700 border border-amber-200';
-        elMarginBadge.textContent = 'Under Target (<20%)';
-      }
-    }
-
-    const elLiq = document.getElementById('kpi-total-liquidity');
-    if (elLiq) elLiq.textContent = FinanceAnalytics.formatINR(metrics.totalLiquidity);
-
-    // 2. Financial Summary Panel
-    const fsRev = document.getElementById('fs-gross-revenue');
-    if (fsRev) fsRev.textContent = FinanceAnalytics.formatINR(metrics.grossRevenue);
-    const fsCosts = document.getElementById('fs-operating-costs');
-    if (fsCosts) fsCosts.textContent = FinanceAnalytics.formatINR(metrics.operatingCosts);
-    const fsNet = document.getElementById('fs-net-profit');
-    if (fsNet) fsNet.textContent = FinanceAnalytics.formatINR(metrics.netProfit);
-    const fsMargin = document.getElementById('fs-profit-margin');
-    if (fsMargin) fsMargin.textContent = `${metrics.profitMargin.toFixed(1)}%`;
-    const fsLiq = document.getElementById('fs-total-liquidity');
-    if (fsLiq) fsLiq.textContent = FinanceAnalytics.formatINR(metrics.totalLiquidity);
-    const fsSplit = document.getElementById('fs-liquidity-split');
-    if (fsSplit) fsSplit.textContent = metrics.liquiditySplit;
-
-    // 3. Bank Account Position Panel
-    const bpIn = document.getElementById('bp-total-inflows');
-    if (bpIn) bpIn.textContent = FinanceAnalytics.formatINR(metrics.bankPosition.totalInflows);
-    const bpOut = document.getElementById('bp-total-outflows');
-    if (bpOut) bpOut.textContent = FinanceAnalytics.formatINR(metrics.bankPosition.totalOutflows);
-    const bpMov = document.getElementById('bp-operating-movement');
-    if (bpMov) bpMov.textContent = FinanceAnalytics.formatINR(metrics.bankPosition.operatingMovement);
-    const bpOpen = document.getElementById('bp-opening-balance');
-    if (bpOpen) bpOpen.textContent = FinanceAnalytics.formatINR(metrics.bankPosition.openingBalance);
-    const bpCur = document.getElementById('bp-current-balance');
-    if (bpCur) bpCur.textContent = FinanceAnalytics.formatINR(metrics.bankPosition.currentBalance);
-    const bpBadge = document.getElementById('bp-health-badge');
-    if (bpBadge) {
-      if (metrics.bankPosition.accountHealth === 'Reconciled') {
-        bpBadge.className = 'px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
-        bpBadge.textContent = 'Reconciled';
-      } else {
-        bpBadge.className = 'px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-rose-50 text-rose-700 border border-rose-200';
-        bpBadge.textContent = 'Overdrawn';
-      }
-    }
-
-    // 4. Cash Position & Float Panel
-    const cpIn = document.getElementById('cp-total-inflows');
-    if (cpIn) cpIn.textContent = FinanceAnalytics.formatINR(metrics.cashPosition.totalInflows);
-    const cpExp = document.getElementById('cp-total-expenses');
-    if (cpExp) cpExp.textContent = FinanceAnalytics.formatINR(metrics.cashPosition.totalExpenses);
-    const cpMov = document.getElementById('cp-net-movement');
-    if (cpMov) cpMov.textContent = FinanceAnalytics.formatINR(metrics.cashPosition.netCashMovement);
-    const cpOpen = document.getElementById('cp-opening-float');
-    if (cpOpen) cpOpen.textContent = FinanceAnalytics.formatINR(metrics.cashPosition.openingCashFloat);
-    const cpAvail = document.getElementById('cp-available-cash');
-    if (cpAvail) cpAvail.textContent = FinanceAnalytics.formatINR(metrics.cashPosition.availableCashInHand);
-    const cpBadge = document.getElementById('cp-health-badge');
-    if (cpBadge) {
-      if (metrics.cashPosition.cashHealth === 'Sufficient Cash') {
-        cpBadge.className = 'px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
-        cpBadge.textContent = 'Sufficient Cash';
-      } else {
-        cpBadge.className = 'px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-rose-50 text-rose-700 border border-rose-200';
-        cpBadge.textContent = 'Replenish Cash';
-      }
-    }
-
-    // 5. Modes
-    this.renderModeList('list-income-modes', metrics.incomeByMode, metrics.grossRevenue, 'emerald');
-    this.renderModeList('list-expense-modes', metrics.expensesByMode, metrics.operatingCosts, 'rose');
-
-    // 6. Recent preview
-    const recent = [...this.filteredTransactions].reverse().slice(0, 5);
-    const recentTbody = document.getElementById('dashboard-recent-table');
-    if (recentTbody) {
-      if (recent.length === 0) {
-        recentTbody.innerHTML = `<tr><td colspan="7" class="py-4 text-center text-slate-400">No transactions recorded</td></tr>`;
-      } else {
-        recentTbody.innerHTML = recent.map(t => {
-          const isIncome = t.type.includes('Received') || t.type.includes('Income');
-          const typeBadge = isIncome 
-            ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Income</span>`
-            : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Expense</span>`;
-          
-          const profitClass = (t.profitValue || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600';
-          return `
-            <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-              <td class="py-2 px-3 text-slate-500">#${t.slNo}</td>
-              <td class="py-2 px-3 text-slate-600 font-sans">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
-              <td class="py-2 px-3 font-sans font-medium text-slate-900">${this.escapeHtml(t.partyName)}</td>
-              <td class="py-2 px-3 font-sans">${typeBadge}</td>
-              <td class="py-2 px-3 font-sans">${this.getModeBadge(t.mode)}</td>
-              <td class="py-2 px-3 text-right text-slate-800">${FinanceAnalytics.formatINR(t.amount)}</td>
-              <td class="py-2 px-3 text-right ${profitClass} font-semibold">${FinanceAnalytics.formatINR(t.profitValue)}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-    }
-
-    const recentMobile = document.getElementById('dashboard-recent-mobile');
-    if (recentMobile) {
-      if (recent.length === 0) {
-        recentMobile.innerHTML = `<div class="py-4 text-center text-slate-400 text-xs">No transactions recorded</div>`;
-      } else {
-        recentMobile.innerHTML = recent.map(t => this.renderMobileCardHtml(t)).join('');
-      }
-    }
-
-    // Trigger Charts
-    window.financeCharts.render(this.filteredTransactions);
+  closeFloatModal() {
+    const modal = document.getElementById('floatModal');
+    if (modal) modal.classList.add('hidden');
   }
 
-  renderModeList(containerId, modeMap, total, themeColor) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
+  saveFloatAdjustments(e) {
+    e.preventDefault();
 
-    const modes = ['UPI', 'NETBANKING', 'CASH', 'DEBIT CARD / CREDIT CARD', 'CHEQUE', 'OTHERS'];
-    const barColors = {
-      emerald: 'bg-emerald-500',
-      rose: 'bg-rose-500'
-    };
+    const bankVal = parseFloat(document.getElementById('inputBankFloat')?.value) || 0;
+    const cashVal = parseFloat(document.getElementById('inputCashFloat')?.value) || 0;
 
-    const html = modes.map(m => {
-      const amount = modeMap[m] || 0;
-      const displayLabel = m === 'DEBIT CARD / CREDIT CARD' ? 'DEBIT / CREDIT' : m;
-      return `
-        <div class="flex items-center justify-between py-0.5">
-          <span class="text-slate-500 text-[11px]">${displayLabel}</span>
-          <span class="font-mono font-semibold text-slate-800">${FinanceAnalytics.formatINR(amount)}</span>
-        </div>
-      `;
-    }).join('');
+    FinanceAnalytics.openingBankBalance = bankVal;
+    FinanceAnalytics.openingCashFloat = cashVal;
 
-    container.innerHTML = html;
+    try {
+      localStorage.setItem('dharshithan_opening_bank', bankVal);
+      localStorage.setItem('dharshithan_opening_cash', cashVal);
+    } catch (err) {}
+
+    this.showToast('Float reserves updated successfully', 'success');
+    this.closeFloatModal();
+    this.renderBankingView();
+    this.renderDashboard();
   }
 
-  getModeBadge(mode) {
-    const m = (mode || 'CASH').toUpperCase();
-    if (m === 'CASH') return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold mode-badge-cash">CASH</span>`;
-    if (m === 'NETBANKING') return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold mode-badge-netbanking">NETBANKING</span>`;
-    if (m === 'UPI') return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold mode-badge-upi">UPI</span>`;
-    if (m.includes('CARD')) return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold mode-badge-card">CARD</span>`;
-    if (m === 'CHEQUE') return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold mode-badge-cheque">CHEQUE</span>`;
-    return `<span class="px-2 py-0.5 rounded text-[10px] font-semibold mode-badge-others">${m}</span>`;
-  }
+  // =========================================================================
+  // VIEW 6: PARTIES & CONTACTS DIRECTORY
+  // =========================================================================
 
-  renderMobileCardHtml(t) {
-    const isIncome = t.type.includes('Received') || t.type.includes('Income');
-    const profitClass = isIncome ? 'text-emerald-700' : 'text-rose-700';
-    const initial = (t.partyName || 'P').trim().charAt(0).toUpperCase();
+  filterPartySegment(segment) {
+    this.partySegment = segment;
 
-    const canEdit = window.roleManager ? window.roleManager.can('canEdit') : true;
-    const canDelete = window.roleManager ? window.roleManager.can('canDelete') : true;
-
-    return `
-      <div class="p-3 bg-white border border-slate-200 rounded-2xl shadow-xs space-y-2">
-        <div class="flex items-start justify-between">
-          <div class="flex items-center space-x-2.5">
-            <div class="w-8 h-8 rounded-full ${isIncome ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'} flex items-center justify-center font-bold text-xs">
-              ${initial}
-            </div>
-            <div>
-              <h4 class="font-bold text-slate-900 text-xs leading-tight" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">${this.escapeHtml(t.partyName)}</h4>
-              <p class="text-[10px] text-slate-400 mt-0.5">${FinanceAnalytics.formatDateDisplay(t.date)} • ${t.quarter || 'Q3'}</p>
-            </div>
-          </div>
-          <div class="text-right">
-            <span class="font-mono font-bold text-sm ${profitClass}">${isIncome ? '+' : '-'}${FinanceAnalytics.formatINR(t.amount)}</span>
-            <div class="mt-0.5">${this.getModeBadge(t.mode)}</div>
-          </div>
-        </div>
-
-        ${t.description ? `<p class="text-[11px] text-slate-600 line-clamp-1">${this.escapeHtml(t.description)}</p>` : ''}
-        
-        <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10px] text-slate-500">
-          <span class="truncate max-w-[180px]">${t.refNumber ? `Ref: ${this.escapeHtml(t.refNumber)}` : `#${t.slNo}`}</span>
-          <button onclick="app.viewTransactionDetails('${t.id}')" class="text-sky-700 font-semibold px-2 py-0.5 rounded-lg bg-sky-50 border border-sky-200 flex items-center space-x-1">
-            <i data-lucide="eye" class="w-3 h-3"></i>
-            <span>View Details</span>
-          </button>
-        </div>
-      </div>
-    `;
-  }
-
-  renderTransactionsTable() {
-    const tbody = document.getElementById('transactions-table-body');
-    const mobileCards = document.getElementById('transactions-mobile-cards');
-
-    if (this.filteredTransactions.length === 0) {
-      if (tbody) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="11" class="py-12 text-center text-slate-400">
-              <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-              <p class="font-medium text-slate-600">No transactions match the selected filters</p>
-            </td>
-          </tr>
-        `;
+    ['all', 'customer', 'vendor'].forEach(s => {
+      const btn = document.getElementById(`party-seg-${s}`);
+      if (btn) {
+        if (s.toUpperCase() === segment.toUpperCase()) {
+          btn.className = 'px-2.5 py-1 rounded-md bg-white shadow-xs text-slate-900 font-bold';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded-md hover:text-slate-900 font-semibold text-slate-600';
+        }
       }
-      if (mobileCards) {
-        mobileCards.innerHTML = `<div class="p-8 text-center text-slate-400 text-xs">No transactions match filters</div>`;
-      }
-      this.updateTableSummary(0, 0, 0, 0);
-      return;
-    }
+    });
 
-    let sumIncome = 0;
-    let sumExpense = 0;
-
-    if (tbody) {
-      tbody.innerHTML = this.filteredTransactions.map(t => {
-        const isIncome = t.type.includes('Received') || t.type.includes('Income');
-        if (isIncome) sumIncome += Number(t.amount) || 0;
-        else sumExpense += Number(t.amount) || 0;
-
-        const typeBadge = isIncome
-          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">Received</span>`
-          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200 whitespace-nowrap">Paid</span>`;
-
-        const profitVal = Number(t.profitValue) || 0;
-        const profitClass = profitVal >= 0 ? 'text-emerald-600' : 'text-rose-600';
-
-        return `
-          <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-            <td class="py-2.5 px-3 font-mono text-slate-500">${t.slNo}</td>
-            <td class="py-2.5 px-3 whitespace-nowrap text-slate-600 font-mono">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
-            <td class="py-2.5 px-3">${typeBadge}</td>
-            <td class="py-2.5 px-4 font-semibold text-slate-900 cursor-pointer hover:text-sky-600" onclick="app.openPartyModal('${this.escapeHtml(t.partyName)}')">${this.escapeHtml(t.partyName)}</td>
-            <td class="py-2.5 px-4 max-w-xs truncate text-slate-600" title="${this.escapeHtml(t.description)}">
-              <span class="text-slate-800">${this.escapeHtml(t.description)}</span>
-              ${t.category ? `<span class="block text-[10px] text-slate-400 font-normal">${this.escapeHtml(t.category)}</span>` : ''}
-            </td>
-            <td class="py-2.5 px-3 text-right font-mono font-medium text-slate-900">${FinanceAnalytics.formatINR(t.amount)}</td>
-            <td class="py-2.5 px-3">${this.getModeBadge(t.mode)}</td>
-            <td class="py-2.5 px-4 text-slate-500 text-[11px] max-w-xs truncate" title="${this.escapeHtml(t.refNumber)}">${this.escapeHtml(t.refNumber)}</td>
-            <td class="py-2.5 px-2 text-center text-slate-500 font-mono text-[11px]">${t.quarter || '-'}</td>
-            <td class="py-2.5 px-3 text-right font-mono font-semibold ${profitClass}">${FinanceAnalytics.formatINR(t.profitValue)}</td>
-            <td class="py-2.5 px-3 text-center">
-              <button onclick="app.viewTransactionDetails('${t.id}')" title="View Transaction Details" class="px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 text-[11px] font-semibold flex items-center justify-center space-x-1 border border-sky-200 mx-auto transition">
-                <i data-lucide="eye" class="w-3.5 h-3.5 text-sky-600"></i>
-                <span>View</span>
-              </button>
-            </td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    if (mobileCards) {
-      mobileCards.innerHTML = this.filteredTransactions.map(t => this.renderMobileCardHtml(t)).join('');
-    }
-
-    this.updateTableSummary(this.filteredTransactions.length, sumIncome, sumExpense, sumIncome - sumExpense);
-  }
-
-  updateTableSummary(count, income, expense, net) {
-    const elCount = document.getElementById('table-record-count');
-    if (elCount) elCount.textContent = `Showing ${count} entries`;
-    const elInc = document.getElementById('table-sum-income');
-    if (elInc) elInc.textContent = FinanceAnalytics.formatINR(income);
-    const elExp = document.getElementById('table-sum-expense');
-    if (elExp) elExp.textContent = FinanceAnalytics.formatINR(expense);
-    const elNet = document.getElementById('table-sum-net');
-    if (elNet) elNet.textContent = FinanceAnalytics.formatINR(net);
-
-    const mCount = document.getElementById('m-record-count');
-    if (mCount) mCount.textContent = count;
-    const mInc = document.getElementById('m-sum-income');
-    if (mInc) mInc.textContent = FinanceAnalytics.formatINR(income);
-    const mExp = document.getElementById('m-sum-expense');
-    if (mExp) mExp.textContent = FinanceAnalytics.formatINR(expense);
-    const mNet = document.getElementById('m-sum-net');
-    if (mNet) mNet.textContent = FinanceAnalytics.formatINR(net);
+    this.renderParties();
   }
 
   renderParties() {
     const grid = document.getElementById('parties-grid');
     if (!grid) return;
 
-    const searchInput = document.getElementById('partySearch');
-    const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    let parties = FinanceAnalytics.getPartySummary(this.transactions);
 
-    let parties = FinanceAnalytics.getPartySummary(this.filteredTransactions);
-    if (query) {
-      parties = parties.filter(p => p.name.toLowerCase().includes(query));
+    // Segment filtering
+    if (this.partySegment === 'CUSTOMER') {
+      parties = parties.filter(p => p.totalReceived >= p.totalPaid);
+    } else if (this.partySegment === 'VENDOR') {
+      parties = parties.filter(p => p.totalPaid > p.totalReceived);
     }
 
     if (parties.length === 0) {
-      grid.innerHTML = `<div class="col-span-3 py-12 text-center text-slate-400">No parties found matching criteria.</div>`;
+      grid.innerHTML = `<div class="col-span-3 py-12 text-center text-slate-400 font-medium text-xs">No contacts match the selected segment.</div>`;
       return;
     }
 
     grid.innerHTML = parties.map(p => {
-      const netClass = p.netBalance >= 0 ? 'text-emerald-600' : 'text-rose-600';
-      const statusBadge = p.netBalance >= 0
-        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Client / Surplus</span>`
-        : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Vendor / Payable</span>`;
+      const isCustomer = p.totalReceived >= p.totalPaid;
+      const statusBadge = isCustomer
+        ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Customer</span>'
+        : '<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">Vendor</span>';
 
       return `
-        <div class="glass-card glass-card-hover rounded-2xl p-4 space-y-3 cursor-pointer" onclick="app.openPartyModal('${this.escapeHtml(p.name)}')">
+        <div class="erp-card p-4 space-y-3 cursor-pointer hover:border-slate-300 transition shadow-xs" onclick="app.openPartyModal('${this.escapeHtml(p.name)}')">
           <div class="flex items-start justify-between">
             <div>
               <h4 class="font-bold text-slate-900 text-sm hover:text-sky-600 transition">${this.escapeHtml(p.name)}</h4>
@@ -1011,25 +1167,103 @@ class FinanceApp {
 
           <div class="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100">
             <div>
-              <span class="text-slate-400 block text-[10px]">Total Received</span>
-              <span class="font-mono text-emerald-600 font-semibold">${FinanceAnalytics.formatINR(p.totalReceived)}</span>
+              <span class="text-slate-400 block text-[10px] uppercase font-semibold">Total Inflow</span>
+              <span class="font-mono text-emerald-600 font-bold">${FinanceAnalytics.formatINR(p.totalReceived)}</span>
             </div>
             <div>
-              <span class="text-slate-400 block text-[10px]">Total Paid</span>
-              <span class="font-mono text-rose-600 font-semibold">${FinanceAnalytics.formatINR(p.totalPaid)}</span>
+              <span class="text-slate-400 block text-[10px] uppercase font-semibold">Total Outflow</span>
+              <span class="font-mono text-rose-600 font-bold">${FinanceAnalytics.formatINR(p.totalPaid)}</span>
             </div>
           </div>
 
-          <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
-            <span class="text-slate-600 font-medium">Net Standing:</span>
-            <span class="font-mono font-bold ${netClass}">${FinanceAnalytics.formatINR(p.netBalance)}</span>
+          <div class="flex justify-between items-center pt-2 border-t border-slate-100 text-xs">
+            <span class="text-slate-500 font-medium">Running Balance:</span>
+            <span class="font-mono font-bold ${p.netBalance >= 0 ? 'text-emerald-700' : 'text-rose-700'}">
+              ${FinanceAnalytics.formatINR(p.netBalance)}
+            </span>
           </div>
         </div>
       `;
     }).join('');
 
-    window.financeCharts.renderPartyChart(this.filteredTransactions);
+    if (window.lucide) window.lucide.createIcons();
   }
+
+  openPartyModal(partyName) {
+    const modal = document.getElementById('partyModal');
+    if (!modal) return;
+
+    const partyTxns = this.transactions
+      .filter(t => (t.partyName || '').trim().toLowerCase() === (partyName || '').trim().toLowerCase())
+      .sort((a, b) => new Date(a.date) - new Date(b.date) || (a.slNo || 0) - (b.slNo || 0));
+
+    let totalReceived = 0;
+    let totalPaid = 0;
+    let runningBalance = 0;
+
+    const titleEl = document.getElementById('partyModalTitle');
+    if (titleEl) titleEl.textContent = partyName;
+
+    const tbody = document.getElementById('partyModalTable');
+    if (tbody) {
+      if (partyTxns.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-slate-400">No records found for this contact.</td></tr>';
+      } else {
+        tbody.innerHTML = partyTxns.map(t => {
+          const isIncome = t.type && (t.type.includes('Received') || t.type.includes('Income'));
+          const amt = Number(t.amount) || 0;
+          let debit = 0;
+          let credit = 0;
+          if (isIncome) {
+            credit = amt;
+            totalReceived += amt;
+            runningBalance += amt;
+          } else {
+            debit = amt;
+            totalPaid += amt;
+            runningBalance -= amt;
+          }
+
+          const balClass = runningBalance >= 0 ? 'text-emerald-700 font-bold' : 'text-rose-700 font-bold';
+
+          return `
+            <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-xs">
+              <td class="p-2.5 font-mono text-slate-600 whitespace-nowrap">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+              <td class="p-2.5 font-mono text-slate-500">${t.refNumber || '#' + t.slNo}</td>
+              <td class="p-2.5 text-slate-800">${this.escapeHtml(t.description || t.category || '-')}</td>
+              <td class="p-2.5 text-right font-mono text-rose-600">${debit > 0 ? FinanceAnalytics.formatINR(debit) : '-'}</td>
+              <td class="p-2.5 text-right font-mono text-emerald-600">${credit > 0 ? FinanceAnalytics.formatINR(credit) : '-'}</td>
+              <td class="p-2.5 text-right font-mono ${balClass}">₹ ${runningBalance.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    const elRec = document.getElementById('partyModalReceived');
+    if (elRec) elRec.textContent = FinanceAnalytics.formatINR(totalReceived);
+
+    const elPaid = document.getElementById('partyModalPaid');
+    if (elPaid) elPaid.textContent = FinanceAnalytics.formatINR(totalPaid);
+
+    const elNet = document.getElementById('partyModalNet');
+    if (elNet) {
+      elNet.textContent = FinanceAnalytics.formatINR(totalReceived - totalPaid);
+      elNet.className = `font-mono text-lg font-bold ${(totalReceived - totalPaid) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`;
+    }
+
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closePartyModal() {
+    const modal = document.getElementById('partyModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  // =========================================================================
+  // VIEW 7: PROFIT & LOSS & GST TAX REPORTS
+  // =========================================================================
 
   renderReports() {
     const container = document.getElementById('fy-summary-container');
@@ -1038,8 +1272,30 @@ class FinanceApp {
     const fySummaries = FinanceAnalytics.getFYQuarterSummary(this.transactions);
     const fyKeys = Object.keys(fySummaries).sort().reverse();
 
+    // GST Tax Position Calculation
+    const rawSales = (this.transactions || []).filter(t => t.type && (t.type.includes('Received') || t.type.includes('Income')));
+    const rawExpenses = (this.transactions || []).filter(t => t.type && (t.type.includes('Paid') || t.type.includes('Expense')));
+
+    const totalTaxableTurnover = rawSales.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const outputTax = Math.round(totalTaxableTurnover * 0.18 * 100) / 100;
+    const totalBusinessExpenses = rawExpenses.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const inputCredit = Math.round(totalBusinessExpenses * 0.18 * 100) / 100;
+    const netTaxPayable = Math.max(0, outputTax - inputCredit);
+
+    const elTurnover = document.getElementById('gstTaxableTurnover');
+    if (elTurnover) elTurnover.textContent = FinanceAnalytics.formatINR(totalTaxableTurnover);
+
+    const elOutput = document.getElementById('gstOutputTax');
+    if (elOutput) elOutput.textContent = FinanceAnalytics.formatINR(outputTax);
+
+    const elInput = document.getElementById('gstInputCredit');
+    if (elInput) elInput.textContent = FinanceAnalytics.formatINR(inputCredit);
+
+    const elNetGst = document.getElementById('gstNetPayable');
+    if (elNetGst) elNetGst.textContent = FinanceAnalytics.formatINR(netTaxPayable);
+
     if (fyKeys.length === 0) {
-      container.innerHTML = `<div class="p-8 text-center text-slate-400">No financial data to generate reports.</div>`;
+      container.innerHTML = '<div class="p-8 text-center text-slate-400 font-medium text-xs">No financial data to generate reports.</div>';
       return;
     }
 
@@ -1051,7 +1307,7 @@ class FinanceApp {
         const qData = data.quarters[q];
         const profitClass = qData.profit >= 0 ? 'text-emerald-600' : 'text-rose-600';
         return `
-          <tr class="hover:bg-slate-50 border-b border-slate-100">
+          <tr class="hover:bg-slate-50 border-b border-slate-100 text-xs">
             <td class="py-2.5 px-4 font-semibold text-slate-800">${q}</td>
             <td class="py-2.5 px-4 font-mono text-emerald-600">${FinanceAnalytics.formatINR(qData.income)}</td>
             <td class="py-2.5 px-4 font-mono text-rose-600">${FinanceAnalytics.formatINR(qData.expense)}</td>
@@ -1061,101 +1317,245 @@ class FinanceApp {
         `;
       }).join('');
 
-      const monthRows = Object.keys(data.monthly).sort().map(m => {
-        const mData = data.monthly[m];
-        const profitClass = mData.profit >= 0 ? 'text-emerald-600' : 'text-rose-600';
-        return `
-          <tr class="hover:bg-slate-50 border-b border-slate-100">
-            <td class="py-2 px-4 font-medium text-slate-800 font-mono">${m}</td>
-            <td class="py-2 px-4 font-mono text-emerald-600">${FinanceAnalytics.formatINR(mData.income)}</td>
-            <td class="py-2 px-4 font-mono text-rose-600">${FinanceAnalytics.formatINR(mData.expense)}</td>
-            <td class="py-2 px-4 font-mono font-bold ${profitClass}">${FinanceAnalytics.formatINR(mData.profit)}</td>
-            <td class="py-2 px-4 text-slate-500 text-xs">${mData.count} txns</td>
-          </tr>
-        `;
-      }).join('');
-
       return `
-        <div class="glass-card rounded-2xl p-4 md:p-6 space-y-4">
-          <div class="flex flex-wrap items-center justify-between border-b border-slate-200 pb-3 gap-2">
+        <div class="erp-card p-5 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-100 pb-3">
             <div>
-              <h3 class="text-base font-bold text-slate-900">${fy} Financial Summary</h3>
-              <p class="text-xs text-slate-500">Total Profit Value: <span class="font-mono font-bold text-sky-700">${FinanceAnalytics.formatINR(data.totalProfit)}</span></p>
+              <h3 class="text-base font-bold text-slate-900">${fy} Statement of Profit & Loss</h3>
+              <p class="text-xs text-slate-500">Comprehensive statutory summary</p>
             </div>
-            <div class="flex items-center space-x-3 text-xs font-mono">
-              <span class="text-emerald-700 font-semibold">Turnover: ${FinanceAnalytics.formatINR(data.totalIncome)}</span>
-              <span class="text-rose-700 font-semibold">Expenses: ${FinanceAnalytics.formatINR(data.totalExpenses)}</span>
-            </div>
-          </div>
-
-          <div>
-            <h4 class="text-xs uppercase font-semibold text-slate-500 mb-2">Quarterly Breakdown</h4>
-            <div class="overflow-x-auto rounded-xl border border-slate-200">
-              <table class="w-full text-left text-xs text-slate-800">
-                <thead class="bg-slate-100 text-slate-600 uppercase text-[10px] font-semibold border-b border-slate-200">
-                  <tr>
-                    <th class="py-2.5 px-4">Quarter</th>
-                    <th class="py-2.5 px-4">Turnover (Income)</th>
-                    <th class="py-2.5 px-4">Expenses</th>
-                    <th class="py-2.5 px-4">Net Profit Value</th>
-                    <th class="py-2.5 px-4">Transactions</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 font-mono">
-                  ${quarterRows}
-                </tbody>
-              </table>
+            <div class="text-right">
+              <span class="text-xs font-semibold text-slate-500 block">FY Net Margin</span>
+              <span class="font-mono text-base font-bold ${data.totalProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}">
+                ${FinanceAnalytics.formatINR(data.totalProfit)}
+              </span>
             </div>
           </div>
 
-          <div>
-            <h4 class="text-xs uppercase font-semibold text-slate-500 mb-2">Monthly Trajectory</h4>
-            <div class="overflow-x-auto rounded-xl border border-slate-200 max-h-56 overflow-y-auto">
-              <table class="w-full text-left text-xs text-slate-800">
-                <thead class="bg-slate-100 sticky top-0 text-slate-600 uppercase text-[10px] font-semibold border-b border-slate-200">
-                  <tr>
-                    <th class="py-2 px-4">Month</th>
-                    <th class="py-2 px-4">Turnover</th>
-                    <th class="py-2 px-4">Expenses</th>
-                    <th class="py-2 px-4">Net Profit</th>
-                    <th class="py-2 px-4">Volume</th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 font-mono">
-                  ${monthRows}
-                </tbody>
-              </table>
-            </div>
+          <div class="overflow-x-auto">
+            <table class="erp-table text-xs">
+              <thead>
+                <tr>
+                  <th>Financial Quarter</th>
+                  <th>Total Revenue (Inflows)</th>
+                  <th>Operating Costs (Outflows)</th>
+                  <th>Net Surplus / Deficit</th>
+                  <th>Volume</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${quarterRows}
+              </tbody>
+            </table>
           </div>
         </div>
       `;
     }).join('');
+
+    if (window.lucide) window.lucide.createIcons();
   }
 
-  // FLOAT ADJUSTMENTS
-  promptOpeningFloat(type) {
-    if (!window.roleManager || !window.roleManager.can('canAdjustFloat')) {
-      this.showToast('Float adjustments require Admin or Owner permissions.', 'error');
+  exportComprehensiveReportCSV() {
+    if (this.transactions.length === 0) {
+      this.showToast('No transaction data to export', 'info');
       return;
     }
 
-    const isBank = type === 'bank';
-    const key = isBank ? 'dharshithan_opening_bank' : 'dharshithan_opening_cash';
-    const label = isBank ? 'Opening Bank Balance' : 'Opening Cash Float';
-    const current = localStorage.getItem(key) || '0';
+    const headers = [
+      'Sl No',
+      'Date',
+      'Document Type',
+      'Ref Number',
+      'Party Name',
+      'Category',
+      'Payment Mode',
+      'Taxable Value (INR)',
+      'GST Rate',
+      'Output Tax (18%)',
+      'Input Tax Credit (18%)',
+      'Gross Total (INR)',
+      'Quarter',
+      'Financial Year'
+    ];
 
-    const newVal = prompt(`Enter ${label} (₹):`, current);
-    if (newVal !== null && !isNaN(parseFloat(newVal))) {
-      localStorage.setItem(key, parseFloat(newVal).toString());
-      this.showToast(`${label} updated to ${FinanceAnalytics.formatINR(parseFloat(newVal))}`, 'success');
-      this.renderCurrentView();
+    const rows = this.transactions.map(t => {
+      const isInc = t.type && (t.type.includes('Received') || t.type.includes('Income'));
+      const amt = Number(t.amount) || 0;
+      const subtotal = Math.round((amt / 1.18) * 100) / 100;
+      const tax = Math.round((amt - subtotal) * 100) / 100;
+
+      return [
+        t.slNo || 0,
+        `"${FinanceAnalytics.formatDateDisplay(t.date)}"`,
+        `"${t.type}"`,
+        `"${(t.refNumber || '').replace(/"/g, '""')}"`,
+        `"${(t.partyName || '').replace(/"/g, '""')}"`,
+        `"${(t.category || '').replace(/"/g, '""')}"`,
+        `"${t.mode || 'CASH'}"`,
+        subtotal.toFixed(2),
+        '18%',
+        isInc ? tax.toFixed(2) : '0.00',
+        !isInc ? tax.toFixed(2) : '0.00',
+        amt.toFixed(2),
+        `"${t.quarter || 'Q3'}"`,
+        `"${t.financialYear || 'F.Y. 2026-27'}"`
+      ].join(',');
+    });
+
+    const csvContent = '﻿' + [headers.join(','), ...rows].join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `dharshithan_financial_audit_report_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    this.showToast('Downloaded comprehensive financial audit CSV report', 'success');
+  }
+
+  // =========================================================================
+  // GST TAX INVOICING & PAYMENT VOUCHER ENGINE (MULTI-LINE ITEMS)
+  // =========================================================================
+
+  addLineItemRow(item = null) {
+    const tbody = document.getElementById('lineItemsTableBody');
+    if (!tbody) return;
+
+    const tr = document.createElement('tr');
+    tr.className = 'border-b border-slate-100 text-xs';
+
+    const desc = item ? item.description : 'Waterproofing Treatment & Structural Grouting Services';
+    const hsn = item ? item.hsn : '9954';
+    const qty = item ? item.qty : 1;
+    const unit = item ? item.unit : 'Sq.Ft';
+    const rate = item ? item.rate : '';
+    const lineAmt = (Number(qty) || 0) * (Number(rate) || 0);
+
+    tr.innerHTML = `
+      <td class="p-1">
+        <input type="text" class="line-desc w-full bg-white border border-slate-200 rounded px-2 py-1 text-slate-800 focus:outline-none focus:border-sky-500" placeholder="Description of Work Scope" value="${this.escapeHtml(desc)}">
+      </td>
+      <td class="p-1 w-20">
+        <input type="text" class="line-hsn w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-center font-mono text-slate-700 focus:outline-none focus:border-sky-500" value="${this.escapeHtml(hsn)}">
+      </td>
+      <td class="p-1 w-16">
+        <input type="number" step="any" min="0" class="line-qty w-full bg-white border border-slate-200 rounded px-1.5 py-1 text-right font-mono text-slate-800 focus:outline-none focus:border-sky-500" value="${qty}" oninput="app.recalculateLineItems()">
+      </td>
+      <td class="p-1 w-16">
+        <input type="text" class="line-unit w-full bg-white border border-slate-200 rounded px-1 py-1 text-center text-slate-700 focus:outline-none focus:border-sky-500" value="${this.escapeHtml(unit)}">
+      </td>
+      <td class="p-1 w-24">
+        <input type="number" step="any" min="0" class="line-rate w-full bg-white border border-slate-200 rounded px-2 py-1 text-right font-mono text-slate-800 focus:outline-none focus:border-sky-500" placeholder="0.00" value="${rate}" oninput="app.recalculateLineItems()">
+      </td>
+      <td class="p-1 w-28 text-right font-mono font-bold text-slate-800">
+        <span class="line-amount block py-1">₹ ${lineAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      </td>
+      <td class="p-1 w-8 text-center">
+        <button type="button" onclick="app.removeLineItemRow(this)" class="p-1 text-slate-400 hover:text-rose-600 rounded transition cursor-pointer">
+          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+        </button>
+      </td>
+    `;
+
+    tbody.appendChild(tr);
+    if (window.lucide) window.lucide.createIcons();
+    this.recalculateLineItems();
+  }
+
+  removeLineItemRow(btn) {
+    const tr = btn.closest('tr');
+    if (tr) {
+      tr.remove();
+      this.recalculateLineItems();
     }
   }
 
-  // MODAL HANDLERS
+  recalculateLineItems() {
+    const rows = document.querySelectorAll('#lineItemsTableBody tr');
+    let subtotal = 0;
+    const items = [];
+
+    rows.forEach(tr => {
+      const desc = tr.querySelector('.line-desc')?.value.trim() || '';
+      const hsn = tr.querySelector('.line-hsn')?.value.trim() || '9954';
+      const qty = parseFloat(tr.querySelector('.line-qty')?.value) || 0;
+      const unit = tr.querySelector('.line-unit')?.value.trim() || 'Sq.Ft';
+      const rate = parseFloat(tr.querySelector('.line-rate')?.value) || 0;
+      const lineAmt = Math.round(qty * rate * 100) / 100;
+
+      const amtEl = tr.querySelector('.line-amount');
+      if (amtEl) {
+        amtEl.textContent = '₹ ' + lineAmt.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+
+      subtotal += lineAmt;
+      items.push({ description: desc, hsn, qty, unit, rate, amount: lineAmt });
+    });
+
+    const taxType = document.getElementById('modalTaxType')?.value || 'INTRA_18';
+    let cgst = 0, sgst = 0, igst = 0, totalTax = 0;
+
+    if (taxType === 'INTRA_18') {
+      cgst = Math.round(subtotal * 0.09 * 100) / 100;
+      sgst = Math.round(subtotal * 0.09 * 100) / 100;
+      totalTax = cgst + sgst;
+    } else if (taxType === 'INTER_18') {
+      igst = Math.round(subtotal * 0.18 * 100) / 100;
+      totalTax = igst;
+    } else {
+      totalTax = 0;
+    }
+
+    const grandTotal = Math.round((subtotal + totalTax) * 100) / 100;
+
+    // Update form displays
+    const elSub = document.getElementById('modalSubtotalDisplay');
+    if (elSub) elSub.textContent = '₹ ' + subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const elTaxLabel = document.getElementById('modalTaxLabel');
+    if (elTaxLabel) {
+      elTaxLabel.textContent = taxType === 'INTRA_18' ? 'CGST (9%) + SGST (9%)' : (taxType === 'INTER_18' ? 'IGST (18%)' : 'Exempt (0%)');
+    }
+
+    const elTax = document.getElementById('modalTaxDisplay');
+    if (elTax) elTax.textContent = '₹ ' + totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const elGrand = document.getElementById('modalGrandTotalDisplay');
+    if (elGrand) elGrand.textContent = '₹ ' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const elWords = document.getElementById('modalAmountInWords');
+    if (elWords) elWords.textContent = FinanceAnalytics.amountToWords(grandTotal);
+
+    const hiddenAmt = document.getElementById('modalAmount');
+    if (hiddenAmt) hiddenAmt.value = grandTotal;
+
+    return { subtotal, totalTax, grandTotal, items, taxType };
+  }
+
+  handleDocTypeChange(type) {
+    const isIncome = type === 'income';
+    const prefix = isIncome ? 'DWCS/REC/26-27/' : 'DWCS/PV/26-27/';
+    const count = this.transactions.filter(t => {
+      const isInc = t.type && (t.type.includes('Received') || t.type.includes('Income'));
+      return isIncome ? isInc : !isInc;
+    }).length + 1;
+
+    const refInput = document.getElementById('modalRef');
+    if (refInput && (!refInput.value || refInput.value.startsWith('DWCS/'))) {
+      refInput.value = prefix + String(count).padStart(3, '0');
+    }
+
+    const catInput = document.getElementById('modalCategory');
+    if (catInput && (!catInput.value || catInput.value === 'Waterproofing Services' || catInput.value === 'Material Cost')) {
+      catInput.value = isIncome ? 'Waterproofing & Construction Services' : 'Chemical Material Purchase';
+    }
+  }
+
   openTransactionModal(editId = null, defaultType = null) {
     if (window.roleManager && !window.roleManager.can('canAdd') && !editId) {
-      this.showToast('Your role does not have permission to add transactions.', 'error');
+      this.showToast('Your role does not have permission to record transactions.', 'error');
       return;
     }
     if (window.roleManager && !window.roleManager.can('canEdit') && editId) {
@@ -1170,6 +1570,9 @@ class FinanceApp {
     const form = document.getElementById('txnForm');
     if (form) form.reset();
 
+    const tbody = document.getElementById('lineItemsTableBody');
+    if (tbody) tbody.innerHTML = '';
+
     const titleEl = document.getElementById('modalTitle');
     const idInput = document.getElementById('txnId');
     const dateInput = document.getElementById('modalDate');
@@ -1177,37 +1580,58 @@ class FinanceApp {
     if (editId) {
       const item = this.transactions.find(t => t.id === editId || t.slNo === editId);
       if (item) {
-        if (titleEl) titleEl.innerHTML = `<i data-lucide="edit-3" class="w-5 h-5 text-sky-600"></i><span>Edit Transaction #${item.slNo}</span>`;
+        if (titleEl) titleEl.innerHTML = `<i data-lucide="edit-3" class="w-5 h-5 text-sky-600"></i><span>Edit Document #${item.slNo}</span>`;
         if (idInput) idInput.value = item.id;
         if (dateInput) dateInput.value = item.date;
 
-        const isIncome = item.type.includes('Received') || item.type.includes('Income');
+        const isIncome = item.type && (item.type.includes('Received') || item.type.includes('Income'));
         const radios = document.querySelectorAll('input[name="modalType"]');
         radios.forEach(r => {
-          if (isIncome && (r.value.includes('Received') || r.value.includes('Income'))) r.checked = true;
-          if (!isIncome && (r.value.includes('Paid') || r.value.includes('Expense'))) r.checked = true;
+          if (isIncome && r.value.includes('Received')) r.checked = true;
+          if (!isIncome && r.value.includes('Paid')) r.checked = true;
         });
 
         const partyInput = document.getElementById('modalParty');
         if (partyInput) partyInput.value = item.partyName;
 
-        const amtInput = document.getElementById('modalAmount');
-        if (amtInput) amtInput.value = item.amount;
-
-        const modeInput = document.getElementById('modalMode');
-        if (modeInput) modeInput.value = item.mode || 'CASH';
-
         const catInput = document.getElementById('modalCategory');
-        if (catInput) catInput.value = item.category || 'General';
+        if (catInput) catInput.value = item.category || '';
 
         const refInput = document.getElementById('modalRef');
         if (refInput) refInput.value = item.refNumber || '';
 
+        const modeInput = document.getElementById('modalMode');
+        if (modeInput) modeInput.value = item.mode || 'CASH';
+
+        // Parse line items if saved as structured JSON in description
+        let parsed = null;
+        try {
+          if (item.description && item.description.startsWith('{') && item.description.endsWith('}')) {
+            parsed = JSON.parse(item.description);
+          }
+        } catch (e) {}
+
         const descInput = document.getElementById('modalDesc');
-        if (descInput) descInput.value = item.description || '';
+        if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
+          if (descInput) descInput.value = parsed.remarks || '';
+          const taxTypeSelect = document.getElementById('modalTaxType');
+          if (taxTypeSelect && parsed.taxType) taxTypeSelect.value = parsed.taxType;
+          parsed.items.forEach(it => this.addLineItemRow(it));
+        } else {
+          if (descInput) descInput.value = item.description || '';
+          const sub = Math.round((Number(item.amount || 0) / 1.18) * 100) / 100;
+          this.addLineItemRow({
+            description: item.category || (isIncome ? 'Waterproofing & Injection Grouting' : 'Material & Chemicals Purchase'),
+            hsn: '9954',
+            qty: 1,
+            unit: 'Lot',
+            rate: sub,
+            amount: sub
+          });
+        }
       }
     } else {
-      if (titleEl) titleEl.innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-sky-600"></i><span>Record Financial Transaction</span>`;
+      if (titleEl) titleEl.innerHTML = '<i data-lucide="plus-circle" class="w-5 h-5 text-sky-600"></i><span>Record Financial Document</span>';
       if (idInput) idInput.value = '';
       if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
 
@@ -1217,11 +1641,16 @@ class FinanceApp {
 
       if (isExpense && radioExpense) {
         radioExpense.checked = true;
+        this.handleDocTypeChange('expense');
       } else if (radioIncome) {
         radioIncome.checked = true;
+        this.handleDocTypeChange('income');
       }
+
+      this.addLineItemRow();
     }
 
+    this.recalculateLineItems();
     modal.classList.remove('hidden');
     if (window.lucide) window.lucide.createIcons();
   }
@@ -1235,27 +1664,44 @@ class FinanceApp {
   async saveTransaction(e) {
     e.preventDefault();
 
-    const id = document.getElementById('txnId').value;
+    const id = document.getElementById('txnId')?.value;
     const typeRadio = document.querySelector('input[name="modalType"]:checked');
     const type = typeRadio ? typeRadio.value : 'Received / Income';
-    const date = document.getElementById('modalDate').value;
-    const partyName = document.getElementById('modalParty').value.trim();
-    const amount = parseFloat(document.getElementById('modalAmount').value);
-    const mode = document.getElementById('modalMode').value;
-    const category = document.getElementById('modalCategory').value.trim();
-    const refNumber = document.getElementById('modalRef').value.trim();
-    const description = document.getElementById('modalDesc').value.trim();
+    const date = document.getElementById('modalDate')?.value;
+    const partyName = document.getElementById('modalParty')?.value.trim();
+    const category = document.getElementById('modalCategory')?.value.trim();
+    const refNumber = document.getElementById('modalRef')?.value.trim();
+    const mode = document.getElementById('modalMode')?.value;
+    const remarks = document.getElementById('modalDesc')?.value.trim();
 
-    if (!partyName || isNaN(amount) || amount <= 0) {
-      this.showToast('Please provide valid party name and positive amount', 'error');
+    // Recalculate totals and gather line items
+    const { subtotal, totalTax, grandTotal, items, taxType } = this.recalculateLineItems();
+
+    if (!partyName) {
+      this.showToast('Please provide a valid client / vendor party name', 'error');
       return;
     }
+
+    if (grandTotal <= 0) {
+      this.showToast('Total amount must be greater than zero. Please enter line item rate and quantity.', 'error');
+      return;
+    }
+
+    // Encapsulate line items & tax breakdown into description JSON
+    const description = JSON.stringify({
+      items,
+      taxType,
+      subtotal,
+      taxAmount: totalTax,
+      grandTotal,
+      remarks: remarks || (items[0] ? items[0].description : '')
+    });
 
     const payload = {
       date,
       type,
       partyName,
-      amount,
+      amount: grandTotal,
       mode,
       category,
       refNumber,
@@ -1263,22 +1709,18 @@ class FinanceApp {
     };
 
     try {
-      let savedRecord = null;
       if (id) {
-        savedRecord = await window.financeDB.update(id, payload);
-        this.showToast('Transaction updated', 'success');
-        
-        
+        await window.financeDB.update(id, payload);
+        this.showToast('Financial document updated in Neon DB', 'success');
       } else {
-        savedRecord = await window.financeDB.add(payload);
-        this.showToast('Transaction saved', 'success');
-
-        
+        await window.financeDB.add(payload);
+        this.showToast('Financial document successfully posted to Neon DB', 'success');
       }
       this.closeTransactionModal();
+      await this.refreshData();
     } catch (err) {
       console.error(err);
-      this.showToast('Error saving: ' + err.message, 'error');
+      this.showToast('Error saving to Neon DB: ' + err.message, 'error');
     }
   }
 
@@ -1291,309 +1733,336 @@ class FinanceApp {
     const item = this.transactions.find(t => t.id === id);
     if (!item) return;
 
-    if (confirm(`Delete #${item.slNo} "${item.partyName}" (${FinanceAnalytics.formatINR(item.amount)})? This will permanently delete it from Neon Database.`)) {
-      await window.financeDB.delete(id);
-      this.showToast('Transaction deleted from Neon DB', 'info');
-      await this.refreshData();
-    }
-  }
-
-  editTransaction(id) {
-    this.openTransactionModal(id);
-  }
-
-  // ROLES & RBAC MODAL
-  openRoleModal() {
-    const modal = document.getElementById('roleModal');
-    if (!modal || !window.roleManager) return;
-
-    const container = document.getElementById('rolesListContainer');
-    const active = window.roleManager.getRole();
-    const allRoles = window.roleManager.getAllRoles();
-
-    if (container) {
-      container.innerHTML = allRoles.map(r => {
-        const isSelected = r.id === active.id;
-        return `
-          <div onclick="app.selectRole('${r.id}')" class="p-3 rounded-2xl border transition cursor-pointer flex items-center justify-between ${isSelected ? 'border-purple-500 bg-purple-50/50 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300'}">
-            <div class="flex items-center space-x-3">
-              <div class="w-8 h-8 rounded-full ${r.avatarBg} text-white font-bold flex items-center justify-center text-xs">
-                ${r.name.charAt(0)}
-              </div>
-              <div>
-                <h4 class="font-bold text-slate-900 leading-tight">${r.name}</h4>
-                <p class="text-[10px] text-slate-500 mt-0.5">${r.title}</p>
-              </div>
-            </div>
-            <div class="flex items-center space-x-2">
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border ${r.badgeClass}">${r.name}</span>
-              ${isSelected ? `<i data-lucide="check-circle" class="w-4 h-4 text-purple-600"></i>` : ''}
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    modal.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  closeRoleModal() {
-    const modal = document.getElementById('roleModal');
-    if (modal) modal.classList.add('hidden');
-  }
-
-  selectRole(roleId) {
-    if (!window.roleManager) return;
-    window.roleManager.setRole(roleId);
-    this.showToast(`Switched active role to: ${window.roleManager.getRole().name}`, 'info');
-    this.closeRoleModal();
-  }
-
-  // DATABASE HUB MODAL (STRICTLY SUPER ADMIN & DEVELOPER RESTRICTED)
-  openDatabaseHubModal() {
-    const user = window.authManager ? window.authManager.getCurrentUser() : null;
-    if (!user || (user.role !== 'super_admin' && user.role !== 'developer')) {
-      this.showToast('Access Denied: Enterprise Database Hub is restricted to Super Admin and Developer roles.', 'error');
-      return;
-    }
-
-    this.refreshDatabaseHubUI();
-    const modal = document.getElementById('dbHubModal');
-    if (!modal) return;
-    modal.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  closeDatabaseHubModal() {
-    const modal = document.getElementById('dbHubModal');
-    if (modal) modal.classList.add('hidden');
-  }
-
-  selectDbProvider(provider) {
-    if (!window.databaseHub) return;
-    window.databaseHub.setProvider('postgres');
-    this.refreshDatabaseHubUI();
-    this.showToast('Master Database: Neon Serverless PostgreSQL', 'info');
-  }
-
-  testAndSavePgConnection() {
-    if (!window.databaseHub) return;
-    const input = document.getElementById('pgConnInput');
-    const uri = input ? input.value : '';
-    const res = window.databaseHub.testAndSaveConnection(uri);
-
-    const dot = document.getElementById('pgStatusDot');
-    const text = document.getElementById('pgStatusText');
-
-    if (res.success) {
-      if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
-      if (text) {
-        text.className = 'text-emerald-700 font-medium';
-        text.textContent = `✓ Verified: Connected to ${res.host} (Database: ${res.database})`;
+    if (confirm(`Delete Document #${item.slNo} "${item.partyName}" (${FinanceAnalytics.formatINR(item.amount)})? This will permanently erase it from Neon Database.`)) {
+      try {
+        await window.financeDB.delete(id);
+        this.showToast('Transaction permanently removed from Neon DB', 'info');
+        await this.refreshData();
+      } catch (err) {
+        this.showToast('Failed to delete: ' + err.message, 'error');
       }
-      this.showToast(res.message, 'success');
-    } else {
-      if (dot) dot.className = 'w-2 h-2 rounded-full bg-rose-500';
-      if (text) {
-        text.className = 'text-rose-700 font-medium';
-        text.textContent = `✗ Verification Failed: ${res.error}`;
-      }
-      this.showToast(res.error, 'error');
     }
-  }
-
-  togglePgPasswordVisibility() {
-    const input = document.getElementById('pgConnInput');
-    if (input) {
-      input.type = input.type === 'password' ? 'text' : 'password';
-    }
-  }
-
-  copySchemaSQL() {
-    if (!window.databaseHub) return;
-    const ddl = window.databaseHub.getSchemaDDL();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(ddl).then(() => {
-        this.showToast('PostgreSQL schema.sql DDL copied to clipboard! Paste in Supabase/Neon SQL editor.', 'success');
-      }).catch(() => {
-        this.fallbackCopyText(ddl, 'PostgreSQL schema.sql DDL copied to clipboard!');
-      });
-    } else {
-      this.fallbackCopyText(ddl, 'PostgreSQL schema.sql DDL copied to clipboard!');
-    }
-  }
-
-  fallbackCopyText(text, successMsg) {
-    const ta = document.createElement('textarea');
-    ta.value = text;
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    document.body.appendChild(ta);
-    ta.select();
-    try {
-      document.execCommand('copy');
-      this.showToast(successMsg, 'success');
-    } catch (e) {
-      this.showToast('Could not copy automatically. Please use Download .SQL.', 'error');
-    }
-    document.body.removeChild(ta);
-  }
-
-  refreshDatabaseHubUI() {
-    if (!window.databaseHub) return;
-    const uri = window.databaseHub.getPostgresUri();
-    const input = document.getElementById('pgConnInput');
-    if (input && uri) input.value = uri;
-
-    const dot = document.getElementById('pgStatusDot');
-    const text = document.getElementById('pgStatusText');
-    if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500';
-    if (text) {
-      text.className = 'text-emerald-700 font-medium';
-      text.textContent = 'Connected: ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech (neondb)';
-    }
-  }
-
-  downloadMigrationSQL() {
-    if (!window.databaseHub) return;
-    window.databaseHub.downloadSQLMigration(this.transactions);
-    this.showToast('PostgreSQL Backup Script Downloaded!', 'success');
-  }
-
-  async refreshFromNeon(options = {}) {
-    const isSilent = options.silent === true;
-    const icons = [
-      document.getElementById('headerSyncIcon'),
-      document.getElementById('fabSyncIcon'),
-      document.getElementById('navSyncIcon')
-    ];
-    icons.forEach(i => { if (i) i.classList.add('animate-spin'); });
-
-    try {
-      if (!isSilent) this.showToast('Fetching latest from Neon Database...', 'info');
-      await this.refreshData();
-      this.updateLastSyncTimeDisplay();
-      if (!isSilent) {
-        const count = this.transactions ? this.transactions.length : 0;
-        this.showToast(`Neon DB Live: ${count} records active`, 'success');
-      }
-    } catch (e) {
-      console.warn('Neon refresh failed:', e);
-      if (!isSilent) this.showToast('Failed to refresh from Neon: ' + e.message, 'error');
-    } finally {
-      setTimeout(() => {
-        icons.forEach(i => { if (i) i.classList.remove('animate-spin'); });
-      }, 500);
-    }
-  }
-
-  updateLastSyncTimeDisplay() {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    const count = this.transactions ? this.transactions.length : 0;
-    
-    const bannerEl = document.getElementById('lastSyncBannerText');
-    if (bannerEl) bannerEl.textContent = `Neon DB Live • ${timeStr} (${count} entries)`;
-
-    const statusText = document.getElementById('neonStatusText');
-    if (statusText) statusText.textContent = `Neon Live ${timeStr}`;
-  }
-
-  closeAllModals() {
-    this.closeTransactionDetailModal();
-    this.closeTransactionModal();
-    this.closePartyModal();
-    this.closeSyncModal();
-    this.closeRoleModal();
-    this.closeDatabaseHubModal();
-    this.closeForgotPasswordModal();
-    this.closeUserManagementModal();
-    this.closeNewUserModal();
   }
 
   // =========================================================================
-  // AUTHENTICATION & SESSION MANAGEMENT
+  // COMMERCIAL TAX INVOICE & VOUCHER PRINT VIEWER
+  // =========================================================================
+
+  printTaxInvoice(id) {
+    const item = this.transactions.find(t => t.id === id || t.slNo === id);
+    if (!item) return;
+
+    const modal = document.getElementById('invoicePrintModal');
+    if (!modal) return;
+
+    const isIncome = item.type && (item.type.includes('Received') || item.type.includes('Income'));
+
+    // Badge
+    const badge = document.getElementById('printDocBadge');
+    if (badge) {
+      badge.textContent = isIncome ? 'TAX INVOICE' : 'PAYMENT VOUCHER';
+      badge.className = `px-2.5 py-1 rounded text-xs font-bold ${isIncome ? 'bg-sky-50 text-sky-800 border border-sky-200' : 'bg-rose-50 text-rose-800 border border-rose-200'}`;
+    }
+
+    // Invoice Meta
+    const elDocNo = document.getElementById('printDocNumber');
+    if (elDocNo) elDocNo.textContent = item.refNumber || (isIncome ? `DWCS/INV/26-27/${String(item.slNo).padStart(3, '0')}` : `DWCS/PV/26-27/${String(item.slNo).padStart(3, '0')}`);
+
+    const elDate = document.getElementById('printDocDate');
+    if (elDate) elDate.textContent = FinanceAnalytics.formatDateDisplay(item.date);
+
+    const elParty = document.getElementById('printPartyName');
+    if (elParty) elParty.textContent = item.partyName;
+
+    const elMode = document.getElementById('printPaymentMode');
+    if (elMode) elMode.textContent = item.mode || 'NETBANKING';
+
+    const elRef = document.getElementById('printRefNumber');
+    if (elRef) elRef.textContent = item.refNumber || '-';
+
+    // Parse Line Items
+    let lineItems = [];
+    let taxType = 'INTRA_18';
+    try {
+      if (item.description && item.description.startsWith('{') && item.description.endsWith('}')) {
+        const p = JSON.parse(item.description);
+        if (Array.isArray(p.items) && p.items.length > 0) {
+          lineItems = p.items;
+          taxType = p.taxType || 'INTRA_18';
+        }
+      }
+    } catch (e) {}
+
+    const totalAmt = Number(item.amount) || 0;
+    if (lineItems.length === 0) {
+      const sub = Math.round((totalAmt / 1.18) * 100) / 100;
+      lineItems = [
+        {
+          description: item.category || (isIncome ? 'Waterproofing Treatment & Concrete Injection Grouting Services' : 'Material & Waterproofing Chemicals Supply'),
+          hsn: '9954',
+          qty: 1,
+          unit: 'Lot',
+          rate: sub,
+          amount: sub
+        }
+      ];
+    }
+
+    const subtotal = lineItems.reduce((acc, it) => acc + (Number(it.amount) || 0), 0);
+    const isInter = taxType === 'INTER_18';
+    const gst = FinanceAnalytics.calculateGST(subtotal, taxType === 'EXEMPT' ? 0 : 18, isInter);
+    const grandTotal = gst.grandTotal > 0 ? gst.grandTotal : totalAmt;
+
+    // Render Table
+    const printTbody = document.getElementById('printLineItemsBody');
+    if (printTbody) {
+      printTbody.innerHTML = lineItems.map((it, idx) => `
+        <tr class="border-b border-slate-200">
+          <td class="p-2 border border-slate-300 text-center font-mono">${idx + 1}</td>
+          <td class="p-2 border border-slate-300 font-semibold">${this.escapeHtml(it.description)}</td>
+          <td class="p-2 border border-slate-300 text-center font-mono">${it.hsn || '9954'}</td>
+          <td class="p-2 border border-slate-300 text-right font-mono">${it.qty || 1}</td>
+          <td class="p-2 border border-slate-300 text-center">${this.escapeHtml(it.unit || 'Sq.Ft')}</td>
+          <td class="p-2 border border-slate-300 text-right font-mono">₹ ${(Number(it.rate) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+          <td class="p-2 border border-slate-300 text-right font-mono font-bold">₹ ${(Number(it.amount) || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Totals
+    const elSub = document.getElementById('printSubTotal');
+    if (elSub) elSub.textContent = '₹ ' + subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const elCgstL = document.getElementById('printCgstLabel');
+    if (elCgstL) elCgstL.textContent = isInter ? 'IGST (18%):' : 'CGST (9%):';
+
+    const elCgst = document.getElementById('printCgstAmount');
+    if (elCgst) elCgst.textContent = '₹ ' + (isInter ? gst.igst : gst.cgst).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const elSgstL = document.getElementById('printSgstLabel');
+    if (elSgstL) elSgstL.textContent = isInter ? '' : 'SGST (9%):';
+
+    const elSgst = document.getElementById('printSgstAmount');
+    if (elSgst) elSgst.textContent = isInter ? '' : '₹ ' + gst.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const elGrand = document.getElementById('printGrandTotal');
+    if (elGrand) elGrand.textContent = '₹ ' + grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const elWords = document.getElementById('printAmountWords');
+    if (elWords) elWords.textContent = FinanceAnalytics.amountToWords(grandTotal);
+
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeInvoicePrintModal() {
+    const modal = document.getElementById('invoicePrintModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  viewTransactionDetails(id) {
+    const item = this.transactions.find(t => t.id === id || t.slNo === id);
+    if (!item) return;
+
+    this.currentDetailId = item.id;
+    const modal = document.getElementById('txnDetailModal');
+    if (!modal) return;
+
+    const isIncome = item.type && (item.type.includes('Received') || item.type.includes('Income'));
+
+    const badge = document.getElementById('detailTypeBadge');
+    if (badge) {
+      badge.textContent = isIncome ? 'IN' : 'OUT';
+      badge.className = `w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${isIncome ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`;
+    }
+
+    const party = document.getElementById('detailPartyName');
+    if (party) party.textContent = item.partyName;
+
+    const slDate = document.getElementById('detailSlNoDate');
+    if (slDate) slDate.textContent = `Document #${item.slNo} • ${FinanceAnalytics.formatDateDisplay(item.date)}`;
+
+    const amt = document.getElementById('detailAmount');
+    if (amt) amt.textContent = FinanceAnalytics.formatINR(item.amount);
+
+    const profit = document.getElementById('detailProfit');
+    if (profit) {
+      profit.textContent = (isIncome ? '+' : '-') + FinanceAnalytics.formatINR(item.amount);
+      profit.className = `font-mono font-bold text-lg ${isIncome ? 'text-emerald-600' : 'text-rose-600'}`;
+    }
+
+    const mode = document.getElementById('detailMode');
+    if (mode) mode.textContent = item.mode || 'CASH';
+
+    const ref = document.getElementById('detailRefNumber');
+    if (ref) ref.textContent = item.refNumber || '-';
+
+    const qfy = document.getElementById('detailQuarterFY');
+    if (qfy) qfy.textContent = `${item.quarter || 'Q3'} • ${item.financialYear || 'F.Y. 2026-27'}`;
+
+    const cat = document.getElementById('detailCategory');
+    if (cat) cat.textContent = item.category || 'General';
+
+    const desc = document.getElementById('detailDescription');
+    if (desc) desc.textContent = item.description || '-';
+
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeTransactionDetailModal() {
+    const modal = document.getElementById('txnDetailModal');
+    if (modal) modal.classList.add('hidden');
+    this.currentDetailId = null;
+  }
+
+  printCurrentDetailInvoice() {
+    if (this.currentDetailId) {
+      this.closeTransactionDetailModal();
+      this.printTaxInvoice(this.currentDetailId);
+    }
+  }
+
+  // =========================================================================
+  // AUTHENTICATION & ROLE-BASED ACCESS CONTROL (RBAC)
   // =========================================================================
 
   checkAuthUI() {
     const isAuth = window.authManager && window.authManager.isAuthenticated();
     const loginOverlay = document.getElementById('loginOverlay');
-    if (loginOverlay) {
-      if (isAuth) {
-        loginOverlay.classList.add('hidden');
-      } else {
-        loginOverlay.classList.remove('hidden');
+    const appWrapper = document.getElementById('erpAppWrapper');
+
+    if (isAuth) {
+      if (loginOverlay) loginOverlay.classList.add('hidden');
+      if (appWrapper) appWrapper.classList.remove('hidden');
+
+      const user = window.authManager.getCurrentUser() || {};
+      const role = window.roleManager ? window.roleManager.getRole() : { label: 'Admin', color: 'sky' };
+
+      // Top Executive App Bar Badges
+      const avatarEl = document.getElementById('headerProfileAvatar');
+      if (avatarEl) avatarEl.textContent = (user.fullName || 'Admin').slice(0, 2).toUpperCase();
+
+      const nameEl = document.getElementById('headerProfileName');
+      if (nameEl) nameEl.textContent = user.fullName || 'Administrator';
+
+      const badgeEl = document.getElementById('headerProfileBadge');
+      if (badgeEl) {
+        badgeEl.textContent = role.label || 'Super Admin';
       }
+
+      // Sidebar Profile Info
+      const sideAvatar = document.getElementById('sideProfileAvatar');
+      if (sideAvatar) sideAvatar.textContent = (user.fullName || 'Admin').slice(0, 2).toUpperCase();
+
+      const sideName = document.getElementById('sideProfileName');
+      if (sideName) sideName.textContent = user.fullName || 'Administrator';
+
+      const sideRole = document.getElementById('sideProfileRole');
+      if (sideRole) sideRole.textContent = role.label || 'Executive';
+    } else {
+      if (loginOverlay) loginOverlay.classList.remove('hidden');
+      if (appWrapper) appWrapper.classList.add('hidden');
     }
+  }
 
-    const user = window.authManager ? window.authManager.getCurrentUser() : null;
-    const activeRoleId = window.roleManager ? window.roleManager.getRole().id : (user ? user.role : 'employee');
-    const isSuperAdmin = isAuth && (activeRoleId === 'super_admin');
-    const isSuperOrDev = isAuth && (activeRoleId === 'super_admin' || activeRoleId === 'developer');
-    const canManageUsers = isAuth && ['super_admin', 'developer', 'admin', 'owner'].includes(activeRoleId);
+  applyRolePermissions() {
+    const isSuperAdmin = window.roleManager ? window.roleManager.isSuperAdmin() : true;
+    const canAdd = window.roleManager ? window.roleManager.can('canAdd') : true;
 
-    // =========================================================================
-    // STRICT SUPER-ADMIN DATABASE GATING
-    // (Only Super Admin sees Database telemetry, console, or manual sync triggers)
-    // =========================================================================
-    const neonStatusBar = document.getElementById('neonStatusBar');
-    if (neonStatusBar) {
-      if (isSuperAdmin) {
-        neonStatusBar.classList.remove('hidden');
-        neonStatusBar.style.display = 'flex';
-      } else {
-        neonStatusBar.classList.add('hidden');
-        neonStatusBar.style.display = 'none';
-      }
+    // Strict Super Admin Database Gating
+    const dbSidebarTab = document.getElementById('side-tab-database');
+    if (dbSidebarTab) {
+      if (isSuperAdmin) dbSidebarTab.classList.remove('hidden');
+      else dbSidebarTab.classList.add('hidden');
     }
 
     const headerSyncBtn = document.getElementById('headerSyncBtn');
     if (headerSyncBtn) {
-      headerSyncBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
+      if (isSuperAdmin) headerSyncBtn.classList.remove('hidden');
+      else headerSyncBtn.classList.add('hidden');
     }
 
-    const sideDbBtn = document.getElementById('side-tab-database');
-    if (sideDbBtn) {
-      if (isSuperAdmin) sideDbBtn.classList.remove('hidden');
-      else sideDbBtn.classList.add('hidden');
+    const neonBar = document.getElementById('neonStatusBar');
+    if (neonBar) {
+      if (isSuperAdmin) neonBar.classList.remove('hidden');
+      else neonBar.classList.add('hidden');
     }
 
-    const sideUsersBtn = document.getElementById('side-tab-users');
-    if (sideUsersBtn) {
-      if (canManageUsers) sideUsersBtn.classList.remove('hidden');
-      else sideUsersBtn.classList.add('hidden');
+    // Role switcher in user profile drawer
+    const roleSelect = document.getElementById('rolePreviewSelect');
+    if (roleSelect && window.roleManager) {
+      roleSelect.value = window.roleManager.currentRoleId;
+      roleSelect.disabled = !isSuperAdmin;
+    }
+  }
+
+  async handleLogin(e) {
+    e.preventDefault();
+    const userInput = document.getElementById('loginUserId');
+    const passInput = document.getElementById('loginPassword');
+    const submitBtn = document.getElementById('loginSubmitBtn');
+
+    if (!userInput || !passInput) return;
+
+    const userId = userInput.value.trim();
+    const password = passInput.value;
+
+    if (!userId || !password) {
+      this.showToast('Please enter both User ID and Password', 'error');
+      return;
     }
 
-    // =========================================================================
-    // UPDATE USER PROFILES (SIDEBAR FOOTER & TOP APP BAR)
-    // =========================================================================
-    if (user) {
-      const roleObj = window.roleManager ? window.roleManager.getRole() : null;
-      const roleName = roleObj ? roleObj.name : user.role;
-      const roleId = roleObj ? roleObj.id : user.role;
-      const initials = (user.fullName || user.userId || 'U')
-        .split(' ')
-        .map(w => w[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase() || 'SA';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="inline-block animate-spin mr-2">⟳</span> Authenticating...';
+    }
 
-      // 1. Sidebar Footer User Profile
-      const sideAvatar = document.getElementById('sideProfileAvatar');
-      if (sideAvatar) sideAvatar.textContent = initials;
-      const sideName = document.getElementById('sideProfileName');
-      if (sideName) sideName.textContent = user.fullName || user.userId;
-      const sideRole = document.getElementById('sideProfileRole');
-      if (sideRole) sideRole.textContent = roleName;
+    try {
+      const res = await window.authManager.login(userId, password);
+      if (res.success) {
+        if (res.mustChangePassword) {
+          document.getElementById('firstLoginTargetName').textContent = res.user.fullName;
+          document.getElementById('firstLoginModal').classList.remove('hidden');
+        } else {
+          this.showToast(`Welcome back, ${res.user.fullName}!`, 'success');
+        }
+        this.checkAuthUI();
+        this.applyRolePermissions();
+        this.renderCurrentView();
+      } else {
+        this.showToast(res.error || 'Authentication failed. Please verify credentials.', 'error');
+      }
+    } catch (err) {
+      this.showToast('Login error: ' + err.message, 'error');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Sign in to ERP Portal';
+      }
+    }
+  }
 
-      // 2. Top Bar User Profile
-      const topAvatar = document.getElementById('headerProfileAvatar');
-      if (topAvatar) topAvatar.textContent = initials;
-      const topName = document.getElementById('headerProfileName');
-      if (topName) topName.textContent = user.fullName || user.userId;
-      const topBadge = document.getElementById('headerProfileBadge');
-      if (topBadge) topBadge.textContent = roleName;
+  toggleLoginPasswordVisibility() {
+    const passInput = document.getElementById('loginPassword');
+    const eyeIcon = document.getElementById('loginPassEyeIcon');
+    if (!passInput) return;
+
+    if (passInput.type === 'password') {
+      passInput.type = 'text';
+      if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye-off');
+    } else {
+      passInput.type = 'password';
+      if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye');
+    }
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  handleLogout() {
+    if (window.authManager) {
+      window.authManager.logout();
+      this.checkAuthUI();
+      this.showToast('Signed out of Dharshithan ERP portal', 'info');
     }
   }
 
@@ -1601,83 +2070,20 @@ class FinanceApp {
     const modal = document.getElementById('userProfileModal');
     if (!modal) return;
 
-    const user = window.authManager ? window.authManager.getCurrentUser() : null;
-    const roleObj = window.roleManager ? window.roleManager.getRole() : null;
-    const roleId = roleObj ? roleObj.id : (user ? user.role : 'employee');
-    const roleName = roleObj ? roleObj.name : 'Staff';
+    const user = window.authManager.getCurrentUser() || {};
+    const role = window.roleManager ? window.roleManager.getRole() : { label: 'Admin' };
 
-    // Avatar
-    const modalAvatar = document.getElementById('modalProfileAvatar');
-    if (modalAvatar && user) {
-      const initials = (user.fullName || user.userId || 'U')
-        .split(' ')
-        .map(w => w[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase();
-      modalAvatar.textContent = initials || 'SA';
-    }
+    const modalProfileAvatar = document.getElementById('modalProfileAvatar');
+    if (modalProfileAvatar) modalProfileAvatar.textContent = (user.fullName || 'Admin').slice(0, 2).toUpperCase();
 
-    // Name & User ID
-    const modalName = document.getElementById('modalProfileFullName');
-    if (modalName) modalName.textContent = user ? (user.fullName || user.userId) : 'User';
+    const drawerName = document.getElementById('modalProfileFullName');
+    if (drawerName) drawerName.textContent = user.fullName || 'Administrator';
 
-    const modalId = document.getElementById('modalProfileUserId');
-    if (modalId) modalId.textContent = user ? `ID: ${user.userId} • ${user.email || 'account@dharshithan.com'}` : '';
+    const drawerEmail = document.getElementById('modalProfileUserId');
+    if (drawerEmail) drawerEmail.textContent = user.email || 'admin@dharshithan.com';
 
-    // Role Badge & Category
-    const modalRoleBadge = document.getElementById('modalProfileRoleBadge');
-    if (modalRoleBadge) {
-      modalRoleBadge.textContent = `${roleName}`;
-      if (roleObj) modalRoleBadge.className = `inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${roleObj.badgeClass}`;
-    }
-
-    const modalCategory = document.getElementById('modalProfileCategory');
-    if (modalCategory) {
-      modalCategory.textContent = user ? (user.category || 'Financial Management') : 'Operations';
-    }
-
-    // Render Rights to Use matrix
-    const rightsList = document.getElementById('profileRightsList');
-    if (rightsList && window.roleManager) {
-      const matrix = window.roleManager.getRightsMatrix(roleId);
-      rightsList.innerHTML = matrix.map(r => `
-        <div class="p-2.5 rounded-xl border flex items-start space-x-2.5 ${r.granted ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50 opacity-60'}">
-          <div class="w-6 h-6 rounded-lg ${r.granted ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'} flex items-center justify-center flex-shrink-0 mt-0.5">
-            <i data-lucide="${r.granted ? 'check' : 'lock'}" class="w-3.5 h-3.5"></i>
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between">
-              <h5 class="text-xs font-bold ${r.granted ? 'text-slate-900' : 'text-slate-600'}">${r.title}</h5>
-              <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${r.granted ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">
-                ${r.granted ? 'Granted' : 'Restricted'}
-              </span>
-            </div>
-            <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">${r.desc}</p>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    // Show/hide Super Admin Preview Box
-    const previewBox = document.getElementById('superAdminRolePreviewBox');
-    const actualRole = user ? user.role : '';
-    if (previewBox) {
-      if (actualRole === 'super_admin') {
-        previewBox.classList.remove('hidden');
-        const select = document.getElementById('rolePreviewSelect');
-        if (select) select.value = roleId;
-      } else {
-        previewBox.classList.add('hidden');
-      }
-    }
-
-    // User management button visibility
-    const canManageUsers = ['super_admin', 'developer', 'admin', 'owner'].includes(roleId);
-    const modalUserMgmtBtn = document.getElementById('modalUserMgmtBtn');
-    if (modalUserMgmtBtn) {
-      modalUserMgmtBtn.style.display = canManageUsers ? 'inline-flex' : 'none';
-    }
+    const drawerBadge = document.getElementById('modalProfileRoleBadge');
+    if (drawerBadge) drawerBadge.textContent = role.label || 'Executive';
 
     modal.classList.remove('hidden');
     if (window.lucide) window.lucide.createIcons();
@@ -1689,15 +2095,110 @@ class FinanceApp {
   }
 
   switchRolePreview(roleId) {
-    if (!window.roleManager) return;
-    window.roleManager.setRole(roleId);
-    this.applyRolePermissions();
-    this.checkAuthUI();
-    this.renderCurrentView();
+    if (!window.roleManager.isSuperAdmin() && window.roleManager.currentRoleId !== roleId) {
+      this.showToast('Only Super Admin can simulate different role permissions', 'error');
+      return;
+    }
 
-    // Re-render permissions in open modal
-    this.openUserProfileModal();
-    this.showToast(`Previewing interface as ${roleId.toUpperCase()}`, 'info');
+    window.roleManager.setRole(roleId);
+    this.checkAuthUI();
+    this.applyRolePermissions();
+    this.renderCurrentView();
+    this.showToast(`Switched role view to: ${window.roleManager.getRole().label}`, 'info');
+  }
+
+  // =========================================================================
+  // PASSWORD RESET, OTP & USER MANAGEMENT
+  // =========================================================================
+
+  openForgotPasswordModal() {
+    const modal = document.getElementById('forgotPasswordModal');
+    if (!modal) return;
+    document.getElementById('forgotStep1')?.classList.remove('hidden');
+    document.getElementById('forgotStep2')?.classList.add('hidden');
+    modal.classList.remove('hidden');
+  }
+
+  closeForgotPasswordModal() {
+    const modal = document.getElementById('forgotPasswordModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  handleRequestOTP() {
+    const input = document.getElementById('forgotTargetId');
+    if (!input) return;
+    const val = input.value.trim();
+
+    if (!val) {
+      this.showToast('Please enter your User ID or Email Address', 'error');
+      return;
+    }
+
+    const res = window.authManager.requestOTP(val);
+    if (res.success) {
+      this.pendingResetUserId = res.userId;
+      this.generatedTestOTP = res.code;
+
+      const emailEl = document.getElementById('forgotDispatchedEmail');
+      if (emailEl) emailEl.textContent = res.email;
+
+      const testOtpEl = document.getElementById('forgotTestingOTP');
+      if (testOtpEl) testOtpEl.textContent = res.code;
+
+      document.getElementById('forgotStep1')?.classList.add('hidden');
+      document.getElementById('forgotStep2')?.classList.remove('hidden');
+      document.getElementById('forgotOTPCode')?.focus();
+      this.showToast(`6-Digit OTP code generated for ${res.email}`, 'success');
+    } else {
+      this.showToast(res.error || 'User not found in Neon records', 'error');
+    }
+  }
+
+  autofillOTP() {
+    if (this.generatedTestOTP) {
+      const input = document.getElementById('forgotOTPCode');
+      if (input) input.value = this.generatedTestOTP;
+      this.showToast('Autofilled security OTP', 'info');
+    }
+  }
+
+  async handleVerifyOTPAndReset() {
+    const code = document.getElementById('forgotOTPCode')?.value.trim();
+    const newPass = document.getElementById('forgotNewPass')?.value;
+
+    if (!code || !newPass) {
+      this.showToast('Please provide both OTP code and new password', 'error');
+      return;
+    }
+
+    const res = await window.authManager.verifyOTPAndResetPassword(this.pendingResetUserId, code, newPass);
+    if (res.success) {
+      this.showToast('Password reset successfully! Please sign in with your new credentials.', 'success');
+      this.closeForgotPasswordModal();
+    } else {
+      this.showToast(res.error || 'Invalid or expired OTP', 'error');
+    }
+  }
+
+  async handleFirstLoginPasswordChange(e) {
+    e.preventDefault();
+    const currentPass = document.getElementById('firstLoginCurrentPass')?.value;
+    const newPass = document.getElementById('firstLoginNewPass')?.value;
+    const confirmPass = document.getElementById('firstLoginConfirmPass')?.value;
+
+    if (newPass !== confirmPass) {
+      this.showToast('New passwords do not match', 'error');
+      return;
+    }
+
+    const user = window.authManager.getCurrentUser();
+    const res = await window.authManager.changePassword(user.userId, currentPass, newPass);
+    if (res.success) {
+      this.showToast('Password initialized! Welcome to Dharshithan ERP.', 'success');
+      document.getElementById('firstLoginModal')?.classList.add('hidden');
+    } else {
+      this.showToast(res.error || 'Failed to update password', 'error');
+    }
   }
 
   openSelfPasswordChangeModal() {
@@ -1714,478 +2215,213 @@ class FinanceApp {
   async handleSelfPasswordChange(e) {
     e.preventDefault();
     const newPass = document.getElementById('selfNewPass')?.value;
-    const confirmPass = document.getElementById('selfConfirmPass')?.value;
+    const conPass = document.getElementById('selfConfirmPass')?.value;
 
-    if (!newPass || newPass.length < 6) {
-      this.showToast('New password must be at least 6 characters long', 'error');
-      return;
-    }
-    if (newPass !== confirmPass) {
-      this.showToast('Passwords do not match. Please verify.', 'error');
+    if (newPass !== conPass) {
+      this.showToast('New passwords do not match', 'error');
       return;
     }
 
-    const user = window.authManager ? window.authManager.getCurrentUser() : null;
-    if (!user) return;
-
-    try {
-      const res = await window.authManager.changeFirstLoginPassword(user.userId, newPass);
-      if (res.success) {
-        this.closeSelfPasswordChangeModal();
-        this.showToast('Password updated successfully in Neon Database!', 'success');
-      } else {
-        this.showToast(res.error || 'Failed to update password', 'error');
-      }
-    } catch (err) {
-      this.showToast('Password update error: ' + err.message, 'error');
-    }
-  }
-
-  async handleLogin(e) {
-    if (e) e.preventDefault();
-    const userIdInput = document.getElementById('loginUserId');
-    const passwordInput = document.getElementById('loginPassword');
-    const submitBtn = document.getElementById('loginSubmitBtn');
-
-    if (!userIdInput || !passwordInput) return;
-    const userId = userIdInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (submitBtn) {
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Authenticating...</span>`;
-      if (window.lucide) window.lucide.createIcons();
-    }
-
-    try {
-      const res = await window.authManager.login(userId, password);
-      if (res.mustChangePassword) {
-        // First-time login forced password change
-        this.openFirstLoginModal(userId, password);
-      } else if (res.success) {
-        this.checkAuthUI();
-        this.showToast(`Welcome back, ${res.user.fullName}!`, 'success');
-        this.renderCurrentView();
-      } else {
-        this.showToast(res.error || 'Login failed', 'error');
-      }
-    } catch (err) {
-      this.showToast('Authentication error: ' + err.message, 'error');
-    } finally {
-      if (submitBtn) {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `<i data-lucide="log-in" class="w-4 h-4"></i><span>Sign In</span>`;
-        if (window.lucide) window.lucide.createIcons();
-      }
-    }
-  }
-
-  fillCredentials(userId, password) {
-    const uInput = document.getElementById('loginUserId');
-    const pInput = document.getElementById('loginPassword');
-    if (uInput) uInput.value = userId;
-    if (pInput) pInput.value = password;
-    this.showToast(`Credentials filled for "${userId}"! Click Sign In to proceed.`, 'info');
-  }
-
-  toggleLoginPasswordVisibility() {
-    const pInput = document.getElementById('loginPassword');
-    const icon = document.getElementById('loginPassEyeIcon');
-    if (!pInput) return;
-    const isPass = pInput.type === 'password';
-    pInput.type = isPass ? 'text' : 'password';
-    if (icon) {
-      icon.setAttribute('data-lucide', isPass ? 'eye-off' : 'eye');
-      if (window.lucide) window.lucide.createIcons();
-    }
-  }
-
-  openFirstLoginModal(userId, currentPassword) {
-    const modal = document.getElementById('firstLoginModal');
-    const nameEl = document.getElementById('firstLoginTargetName');
-    const curPassInput = document.getElementById('firstLoginCurrentPass');
-    const newPassInput = document.getElementById('firstLoginNewPass');
-    const confirmPassInput = document.getElementById('firstLoginConfirmPass');
-
-    this.pendingFirstLoginUserId = userId;
-    if (nameEl) nameEl.textContent = userId;
-    if (curPassInput) curPassInput.value = currentPassword;
-    if (newPassInput) newPassInput.value = '';
-    if (confirmPassInput) confirmPassInput.value = '';
-
-    if (modal) modal.classList.remove('hidden');
-    if (newPassInput) newPassInput.focus();
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  closeFirstLoginModal() {
-    const modal = document.getElementById('firstLoginModal');
-    if (modal) modal.classList.add('hidden');
-  }
-
-  async handleFirstLoginPasswordChange(e) {
-    if (e) e.preventDefault();
-    const curPass = document.getElementById('firstLoginCurrentPass').value;
-    const newPass = document.getElementById('firstLoginNewPass').value;
-    const confirmPass = document.getElementById('firstLoginConfirmPass').value;
-
-    if (newPass !== confirmPass) {
-      this.showToast('New password and confirmation do not match.', 'error');
-      return;
-    }
-
-    const res = await window.authManager.changePassword(this.pendingFirstLoginUserId, curPass, newPass);
+    const user = window.authManager.getCurrentUser();
+    const res = await window.authManager.changePassword(user.userId, null, newPass);
     if (res.success) {
-      this.closeFirstLoginModal();
-      this.checkAuthUI();
-      this.showToast(res.message, 'success');
-      this.renderCurrentView();
+      this.showToast('Your password was updated successfully', 'success');
+      this.closeSelfPasswordChangeModal();
     } else {
-      this.showToast(res.error || 'Failed to update password', 'error');
-    }
-  }
-
-  handleLogout() {
-    if (confirm('Are you sure you want to sign out?')) {
-      window.authManager.logout();
-      this.checkAuthUI();
-      this.showToast('You have been signed out successfully.', 'info');
+      this.showToast(res.error || 'Password update failed', 'error');
     }
   }
 
   // =========================================================================
-  // FORGOT PASSWORD & OTP VERIFICATION
-  // =========================================================================
-
-  openForgotPasswordModal() {
-    const modal = document.getElementById('forgotPasswordModal');
-    const step1 = document.getElementById('forgotStep1');
-    const step2 = document.getElementById('forgotStep2');
-    const input = document.getElementById('forgotInputUserOrEmail');
-
-    if (step1) step1.classList.remove('hidden');
-    if (step2) step2.classList.add('hidden');
-    if (input) input.value = '';
-
-    if (modal) modal.classList.remove('hidden');
-    if (input) input.focus();
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  closeForgotPasswordModal() {
-    const modal = document.getElementById('forgotPasswordModal');
-    if (modal) modal.classList.add('hidden');
-  }
-
-  handleRequestResetOTP() {
-    const input = document.getElementById('forgotInputUserOrEmail');
-    if (!input) return;
-    const val = input.value.trim();
-
-    const res = window.authManager.requestOTP(val);
-    if (res.success) {
-      this.pendingResetUserId = res.userId;
-      this.generatedTestOTP = res.code;
-
-      document.getElementById('forgotDispatchedEmail').textContent = res.email;
-      document.getElementById('forgotTestingOTP').textContent = res.code;
-
-      document.getElementById('forgotStep1').classList.add('hidden');
-      document.getElementById('forgotStep2').classList.remove('hidden');
-      document.getElementById('forgotOTPCode').focus();
-      if (window.lucide) window.lucide.createIcons();
-
-      this.showToast(`6-Digit OTP code sent to ${res.email}! (Test Code: ${res.code})`, 'success');
-    } else {
-      this.showToast(res.error || 'Failed to request OTP', 'error');
-    }
-  }
-
-  autofillOTP() {
-    const input = document.getElementById('forgotOTPCode');
-    if (input && this.generatedTestOTP) {
-      input.value = this.generatedTestOTP;
-      document.getElementById('forgotNewPass')?.focus();
-    }
-  }
-
-  handleVerifyOTPAndReset() {
-    const otp = document.getElementById('forgotOTPCode').value.trim();
-    const newPass = document.getElementById('forgotNewPass').value.trim();
-
-    const res = window.authManager.verifyOTPAndReset(this.pendingResetUserId, otp, newPass);
-    if (res.success) {
-      this.closeForgotPasswordModal();
-      this.fillCredentials(this.pendingResetUserId, newPass);
-      this.showToast(res.message, 'success');
-    } else {
-      this.showToast(res.error || 'Failed to verify OTP', 'error');
-    }
-  }
-
-  // =========================================================================
-  // USER MANAGEMENT & RBAC DIRECTORY
+  // STAFF DIRECTORY & USER PROVISIONING MODAL
   // =========================================================================
 
   openUserManagementModal() {
-    if (!window.authManager || !window.authManager.canManageUsers()) {
-      this.showToast('Access restricted to Super Admin, Developer & Admin.', 'error');
+    if (!window.roleManager.isSuperAdmin()) {
+      this.showToast('Only Super Administrator has access to Staff Directory', 'error');
       return;
     }
+    const modal = document.getElementById('userManagementModal');
+    if (!modal) return;
 
-    this.renderUserManagementTable();
-    const modal = document.getElementById('userMgmtModal');
-    if (modal) modal.classList.remove('hidden');
+    this.renderUsersTable();
+    modal.classList.remove('hidden');
     if (window.lucide) window.lucide.createIcons();
   }
 
   closeUserManagementModal() {
-    const modal = document.getElementById('userMgmtModal');
+    const modal = document.getElementById('userManagementModal');
     if (modal) modal.classList.add('hidden');
   }
 
-  renderUserManagementTable() {
-    const tbody = document.getElementById('userMgmtTableBody');
-    if (!tbody || !window.authManager) return;
+  async renderUsersTable() {
+    const tbody = document.getElementById('usersTableBody');
+    if (!tbody) return;
 
-    const users = window.authManager.getAllUsers();
-    
-    // Update summary counts
-    const totalEl = document.getElementById('mgmtStatTotalUsers');
-    if (totalEl) totalEl.textContent = users.length;
-
-    const cats = new Set(users.map(u => u.category));
-    const catEl = document.getElementById('mgmtStatCategories');
-    if (catEl) catEl.textContent = cats.size;
-
-    const pendingCount = users.filter(u => u.mustChangePassword).length;
-    const pendEl = document.getElementById('mgmtStatPendingChanges');
-    if (pendEl) pendEl.textContent = pendingCount;
-
-    tbody.innerHTML = users.map(u => {
-      const roleObj = window.roleManager ? window.roleManager.getAllRoles().find(r => r.id === u.role) : null;
-      const roleBadge = `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${roleObj ? roleObj.badgeClass : 'bg-slate-100 text-slate-700'}">${roleObj ? roleObj.name : u.role}</span>`;
-
-      const passStatus = u.mustChangePassword 
-        ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">Temporary (Must Change)</span>`
-        : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Active & Verified</span>`;
-
-      const isMasterAdmin = u.userId.toLowerCase() === 'admin';
-
-      return `
-        <tr class="hover:bg-slate-50 transition border-b border-slate-100">
-          <td class="py-2.5 px-3">
-            <div class="font-bold text-slate-900">${this.escapeHtml(u.fullName)}</div>
-            <div class="font-mono text-[11px] text-slate-500">ID: <strong class="text-slate-800">${this.escapeHtml(u.userId)}</strong></div>
-          </td>
-          <td class="py-2.5 px-3">
-            <span class="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 font-medium text-[11px] border border-slate-200">
-              ${this.escapeHtml(u.category)}
-            </span>
-          </td>
-          <td class="py-2.5 px-3">${roleBadge}</td>
-          <td class="py-2.5 px-3">
-            <div class="text-slate-700">${this.escapeHtml(u.email)}</div>
-            <div class="text-[11px] text-slate-400 font-mono">${this.escapeHtml(u.phone || '-')}</div>
-          </td>
-          <td class="py-2.5 px-3">${passStatus}</td>
-          <td class="py-2.5 px-3 text-center">
-            <div class="flex items-center justify-center space-x-1.5">
-              <button onclick="app.openEditUserModal('${this.escapeHtml(u.userId)}')" title="Edit User & Permissions" class="p-1.5 rounded-lg bg-slate-100 hover:bg-sky-100 text-slate-600 hover:text-sky-700 transition">
-                <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
-              </button>
-              ${isMasterAdmin ? '' : `
-              <button onclick="app.confirmDeleteUser('${this.escapeHtml(u.userId)}')" title="Delete User" class="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition">
-                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
-              </button>
-              `}
-              <button onclick="app.issueUserPasswordReset('${this.escapeHtml(u.userId)}')" title="Send Reset OTP / Instructions to Mail" class="p-1.5 rounded-lg bg-slate-100 hover:bg-purple-100 text-slate-600 hover:text-purple-700 transition">
-                <i data-lucide="mail" class="w-3.5 h-3.5"></i>
-              </button>
-              <button onclick="app.adminResetUserPassword('${this.escapeHtml(u.userId)}')" title="Direct Password Reset (Forces Change on Next Login)" class="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-100 text-slate-600 hover:text-amber-700 transition">
-                <i data-lucide="key" class="w-3.5 h-3.5"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
-
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  openEditUserModal(userId) {
-    if (!window.authManager) return;
-    const user = window.authManager.getUser(userId);
-    if (!user) {
-      this.showToast('User account not found.', 'error');
-      return;
-    }
-
-    const idInput = document.getElementById('editUserId');
-    const nameInput = document.getElementById('editUserFullName');
-    const catInput = document.getElementById('editUserCategory');
-    const roleInput = document.getElementById('editUserRole');
-    const emailInput = document.getElementById('editUserEmail');
-    const phoneInput = document.getElementById('editUserPhone');
-    const statusInput = document.getElementById('editUserStatus');
-
-    if (idInput) idInput.value = user.userId;
-    if (nameInput) nameInput.value = user.fullName || '';
-    if (catInput) catInput.value = user.category || 'Site Operations';
-    if (roleInput) roleInput.value = user.role || 'employee';
-    if (emailInput) emailInput.value = user.email || '';
-    if (phoneInput) phoneInput.value = user.phone || '';
-    if (statusInput) statusInput.value = user.status || 'active';
-
-    const modal = document.getElementById('editUserModal');
-    if (modal) modal.classList.remove('hidden');
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  closeEditUserModal() {
-    const modal = document.getElementById('editUserModal');
-    if (modal) modal.classList.add('hidden');
-  }
-
-  handleEditUser(e) {
-    if (e) e.preventDefault();
-    if (!window.authManager) return;
-
-    const userId = document.getElementById('editUserId').value.trim();
-    const fullName = document.getElementById('editUserFullName').value.trim();
-    const category = document.getElementById('editUserCategory').value;
-    const role = document.getElementById('editUserRole').value;
-    const email = document.getElementById('editUserEmail').value.trim();
-    const phone = document.getElementById('editUserPhone').value.trim();
-    const status = document.getElementById('editUserStatus').value;
-
-    const res = window.authManager.updateUser(userId, {
-      fullName,
-      category,
-      role,
-      email,
-      phone,
-      status
-    });
-
-    if (res.success) {
-      this.closeEditUserModal();
-      this.renderUserManagementTable();
-      this.checkAuthUI();
-      this.showToast(res.message, 'success');
-    } else {
-      this.showToast(res.error || 'Failed to update user', 'error');
-    }
-  }
-
-  confirmDeleteUser(userId) {
-    if (!window.authManager) return;
-    if (userId.toLowerCase() === 'admin') {
-      this.showToast('Super Administrator account ("admin") cannot be deleted.', 'error');
-      return;
-    }
-
-    const ok = confirm(`Are you sure you want to permanently delete user "${userId}"? This action cannot be undone.`);
-    if (!ok) return;
-
-    const res = window.authManager.deleteUser(userId);
-    if (res.success) {
-      this.renderUserManagementTable();
-      this.showToast(res.message, 'success');
-    } else {
-      this.showToast(res.error || 'Failed to delete user', 'error');
-    }
-  }
-
-  openNewUserModal() {
-    const modal = document.getElementById('newUserModal');
-    const form = document.getElementById('newUserForm');
-    if (form) form.reset();
-
-    const passInput = document.getElementById('newUserTempPassword');
-    if (passInput) passInput.value = window.authManager.generateSecureTempPassword();
-
-    if (modal) modal.classList.remove('hidden');
-    document.getElementById('newUserId')?.focus();
-    if (window.lucide) window.lucide.createIcons();
-  }
-
-  closeNewUserModal() {
-    const modal = document.getElementById('newUserModal');
-    if (modal) modal.classList.add('hidden');
-  }
-
-  generateRandomTempPassword() {
-    const passInput = document.getElementById('newUserTempPassword');
-    if (passInput && window.authManager) {
-      passInput.value = window.authManager.generateSecureTempPassword();
-    }
-  }
-
-  handleCreateUser(e) {
-    if (e) e.preventDefault();
-    const userId = document.getElementById('newUserId').value.trim();
-    const fullName = document.getElementById('newUserFullName').value.trim();
-    const category = document.getElementById('newUserCategory').value;
-    const role = document.getElementById('newUserRole').value;
-    const email = document.getElementById('newUserEmail').value.trim();
-    const phone = document.getElementById('newUserPhone').value.trim();
-    const tempPassword = document.getElementById('newUserTempPassword').value.trim();
-
-    const res = window.authManager.createUser({
-      userId,
-      fullName,
-      category,
-      role,
-      email,
-      phone,
-      password: tempPassword
-    });
-
-    if (res.success) {
-      this.closeNewUserModal();
-      this.renderUserManagementTable();
-      this.showToast(`User ${userId} created with temporary password "${tempPassword}". Forced change on first login enabled!`, 'success');
-    } else {
-      this.showToast(res.error || 'Failed to create user', 'error');
-    }
-  }
-
-  issueUserPasswordReset(userId) {
-    const res = window.authManager.issuePasswordReset(userId);
-    if (res.success) {
-      this.showToast(`Password reset OTP (${res.otpCode}) dispatched to ${res.email}!`, 'success');
-    } else {
-      this.showToast(res.error || 'Failed to issue reset', 'error');
-    }
-  }
-
-  adminResetUserPassword(userId) {
-    const newTemp = prompt(`Enter new temporary password for "${userId}":`, window.authManager.generateSecureTempPassword());
-    if (newTemp && newTemp.trim()) {
-      const res = window.authManager.adminResetPassword(userId, newTemp.trim());
-      if (res.success) {
-        this.renderUserManagementTable();
-        this.showToast(res.message, 'success');
-      } else {
-        this.showToast(res.error || 'Failed to reset password', 'error');
+    try {
+      const res = await fetch('/api/users');
+      let users = [];
+      if (res.ok) {
+        const body = await res.json();
+        if (body.success && Array.isArray(body.data)) users = body.data;
       }
+
+      if (users.length === 0 && window.authManager) {
+        users = window.authManager.getAllUsers();
+      }
+
+      tbody.innerHTML = users.map(u => {
+        const isSuper = (u.role || '').toLowerCase().includes('super');
+        return `
+          <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-xs">
+            <td class="p-2.5 font-bold text-slate-900">${this.escapeHtml(u.fullName || u.full_name)}</td>
+            <td class="p-2.5 font-mono text-slate-600">${this.escapeHtml(u.userId || u.user_id)}</td>
+            <td class="p-2.5 text-slate-600">${this.escapeHtml(u.email)}</td>
+            <td class="p-2.5">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${isSuper ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-sky-50 text-sky-700 border border-sky-200'}">
+                ${u.role}
+              </span>
+            </td>
+            <td class="p-2.5 text-center">
+              <span class="inline-block w-2 h-2 rounded-full ${u.isActive !== false ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    } catch (err) {
+      console.error(err);
+      tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-rose-500">Failed to load staff list</td></tr>';
     }
   }
 
-  downloadUserSQL() {
-    const sql = window.authManager.generatePostgresUserSQL();
-    const blob = new Blob([sql], { type: 'text/sql;charset=utf-8;' });
+  async handleAddUser(e) {
+    e.preventDefault();
+    const fullName = document.getElementById('newFullName')?.value.trim();
+    const userId = document.getElementById('newUserId')?.value.trim();
+    const email = document.getElementById('newEmail')?.value.trim();
+    const role = document.getElementById('newRole')?.value;
+    const phone = document.getElementById('newCategory')?.value.trim();
+    const password = document.getElementById('newPassword')?.value;
+
+    if (!fullName || !userId || !email || !password) {
+      this.showToast('Please fill all required staff account fields', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fullName, userId, email, role, phone, password, category: 'Internal' })
+      });
+
+      if (res.ok) {
+        this.showToast(`Staff account for ${fullName} created in Neon DB`, 'success');
+        document.getElementById('addUserForm')?.reset();
+        this.renderUsersTable();
+      } else {
+        const body = await res.json();
+        this.showToast(body.error || 'Failed to create staff account', 'error');
+      }
+    } catch (err) {
+      this.showToast('User provisioning error: ' + err.message, 'error');
+    }
+  }
+
+  // =========================================================================
+  // NEON DATABASE CONSOLE & SQL TOOLS (SUPER ADMIN ONLY)
+  // =========================================================================
+
+  openDatabaseHubModal() {
+    if (!window.roleManager.isSuperAdmin()) {
+      this.showToast('Restricted: Database Console is accessible only to Super Admin', 'error');
+      return;
+    }
+    const modal = document.getElementById('databaseHubModal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+
+  closeDatabaseHubModal() {
+    const modal = document.getElementById('databaseHubModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  downloadMigrationSQL() {
+    const sql = `-- Dharshithan Waterproofing and Concrete Solutions
+-- Enterprise PostgreSQL Native DDL Migration for Neon Cloud
+
+CREATE TABLE IF NOT EXISTS transactions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sl_no SERIAL,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  type VARCHAR(50) NOT NULL,
+  party_name VARCHAR(255) NOT NULL,
+  category VARCHAR(100),
+  description TEXT,
+  amount NUMERIC(14,2) NOT NULL,
+  mode VARCHAR(50) DEFAULT 'CASH',
+  ref_number VARCHAR(100),
+  quarter VARCHAR(10),
+  financial_year VARCHAR(30),
+  profit_value NUMERIC(14,2),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR(50) UNIQUE NOT NULL,
+  full_name VARCHAR(150) NOT NULL,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  category VARCHAR(50) DEFAULT 'Internal',
+  role VARCHAR(50) NOT NULL DEFAULT 'admin',
+  phone VARCHAR(30),
+  password_hash TEXT NOT NULL,
+  must_change_password BOOLEAN DEFAULT FALSE,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+`;
+
+    const blob = new Blob([sql], { type: 'text/sql' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', 'dharshithan_users_seed.sql');
+    link.href = url;
+    link.download = 'dharshithan_neon_schema.sql';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    this.showToast('Downloaded dharshithan_users_seed.sql for PostgreSQL database!', 'success');
+    this.showToast('Downloaded dharshithan_neon_schema.sql for Neon Database', 'success');
+  }
+
+  // =========================================================================
+  // UTILITIES & FEEDBACK
+  // =========================================================================
+
+  closeAllModals() {
+    const modals = [
+      'txnModal',
+      'invoicePrintModal',
+      'orgDetailsModal',
+      'userProfileModal',
+      'txnDetailModal',
+      'partyModal',
+      'floatModal',
+      'userManagementModal',
+      'databaseHubModal',
+      'forgotPasswordModal',
+      'selfPasswordChangeModal'
+    ];
+    modals.forEach(m => {
+      const el = document.getElementById(m);
+      if (el) el.classList.add('hidden');
+    });
+    this.closeQuickCreateMenu();
   }
 
   showToast(message, type = 'info') {
@@ -2232,6 +2468,7 @@ class FinanceApp {
   }
 }
 
+// Global Instantiation
 window.app = new FinanceApp();
 document.addEventListener('DOMContentLoaded', () => {
   window.app.init();
