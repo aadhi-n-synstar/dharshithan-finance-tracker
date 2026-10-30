@@ -147,6 +147,60 @@ class RoleManager {
     this.listeners.forEach(fn => fn(this.activeRole));
   }
 
+  getRightsMatrix(roleKey) {
+    const role = ROLES[roleKey] || Object.values(ROLES).find(r => r.id === roleKey) || this.activeRole;
+    return [
+      {
+        action: 'canAdd',
+        title: 'Record & Add Financial Transactions',
+        desc: 'Post new client revenue, receipts, vendor bills, and operational expenses to Neon DB.',
+        granted: !!role.permissions.canAdd
+      },
+      {
+        action: 'canEdit',
+        title: 'Edit & Alter Existing Ledger Entries',
+        desc: 'Modify parties, amounts, dates, payment modes, and invoice references.',
+        granted: !!role.permissions.canEdit
+      },
+      {
+        action: 'canDelete',
+        title: 'Permanent Database Deletion',
+        desc: 'Permanently remove transactions from Neon PostgreSQL Database.',
+        granted: !!role.permissions.canDelete
+      },
+      {
+        action: 'canViewReports',
+        title: 'Executive P&L and Fiscal Analytics',
+        desc: 'Access Profit & Loss statements, quarterly breakdowns, and tax summaries.',
+        granted: !!role.permissions.canViewReports
+      },
+      {
+        action: 'canManageUsers',
+        title: 'User Management & Access Governance',
+        desc: 'Provision new staff IDs, update roles, and manage credentials.',
+        granted: !!role.permissions.canManageUsers
+      },
+      {
+        action: 'canManageDatabase',
+        title: 'Cloud Database Console & Backups',
+        desc: 'Super Admin direct access to Neon PostgreSQL telemetry and .SQL backup exports.',
+        granted: !!role.permissions.canManageDatabase
+      },
+      {
+        action: 'canAdjustFloat',
+        title: 'Liquidity & Cash Float Adjustments',
+        desc: 'Reconcile opening bank balances and petty cash floating reserves.',
+        granted: !!role.permissions.canAdjustFloat
+      },
+      {
+        action: 'canExportData',
+        title: 'Data Export & Download (CSV / TSV)',
+        desc: 'Export financial ledger data to CSV and copy formatted TSV to clipboard.',
+        granted: !!role.permissions.canExportData
+      }
+    ];
+  }
+
   getAllRoles() {
     return Object.values(ROLES);
   }

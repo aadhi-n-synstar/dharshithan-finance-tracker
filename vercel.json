@@ -3,7 +3,10 @@
   "outputDirectory": "public",
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    {
+      "source": "/((?!api/|assets/|css/|js/|manifest\\.json|sw\\.js|favicon|logo).*)",
+      "destination": "/index.html"
+    }
   ],
   "headers": [
     {

@@ -206,33 +206,55 @@ class FinanceApp {
 
   setActiveTab(tabName) {
     if (tabName === 'reports' && window.roleManager && !window.roleManager.can('canViewReports')) {
-      this.showToast('Access restricted: P&L reports are hidden for Employee role.', 'error');
+      this.showToast('Access restricted: P&L reports are restricted for your role.', 'error');
       return;
     }
 
     this.activeTab = tabName;
+    const allTabs = ['dashboard', 'transactions', 'sales', 'expenses', 'banking', 'parties', 'reports'];
 
-    ['dashboard', 'transactions', 'parties', 'reports'].forEach(tab => {
-      const btn = document.getElementById(`tab-${tab}`);
-      const navItem = document.getElementById(`nav-${tab}`);
+    allTabs.forEach(tab => {
+      const desktopBtn = document.getElementById(`tab-${tab}`);
+      const tabletBtn = document.getElementById(`subtab-${tab}`);
+      const mobileNav = document.getElementById(`nav-${tab}`);
       const view = document.getElementById(`view-${tab}`);
 
-      if (tab === tabName) {
-        if (btn) {
-          btn.className = 'px-3 py-1.5 rounded-lg transition-all text-white bg-sky-600 font-semibold shadow-xs flex items-center space-x-1.5';
+      const isActive = tab === tabName;
+
+      // Desktop top nav
+      if (desktopBtn) {
+        if (isActive) {
+          desktopBtn.className = 'px-3 py-1.5 rounded-lg transition-all text-white bg-sky-600 font-bold shadow-xs flex items-center space-x-1.5 cursor-pointer';
+        } else {
+          desktopBtn.className = 'px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 flex items-center space-x-1.5 cursor-pointer';
         }
-        if (navItem) {
-          navItem.classList.add('active');
+      }
+
+      // Tablet secondary nav
+      if (tabletBtn) {
+        if (isActive) {
+          tabletBtn.className = 'px-2.5 py-1 rounded-lg text-white bg-sky-600 font-bold whitespace-nowrap cursor-pointer';
+        } else {
+          tabletBtn.className = 'px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 whitespace-nowrap cursor-pointer';
         }
-        if (view) view.classList.remove('hidden');
-      } else {
-        if (btn) {
-          btn.className = 'px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 flex items-center space-x-1.5';
+      }
+
+      // Mobile bottom nav
+      if (mobileNav) {
+        if (isActive) {
+          mobileNav.classList.add('active');
+        } else {
+          mobileNav.classList.remove('active');
         }
-        if (navItem) {
-          navItem.classList.remove('active');
+      }
+
+      // View container
+      if (view) {
+        if (isActive) {
+          view.classList.remove('hidden');
+        } else {
+          view.classList.add('hidden');
         }
-        if (view) view.classList.add('hidden');
       }
     });
 
@@ -271,6 +293,12 @@ class FinanceApp {
       this.renderDashboard();
     } else if (this.activeTab === 'transactions') {
       this.renderTransactionsTable();
+    } else if (this.activeTab === 'sales') {
+      this.renderSalesView();
+    } else if (this.activeTab === 'expenses') {
+      this.renderExpensesView();
+    } else if (this.activeTab === 'banking') {
+      this.renderBankingView();
     } else if (this.activeTab === 'parties') {
       this.renderParties();
     } else if (this.activeTab === 'reports') {
@@ -291,6 +319,275 @@ class FinanceApp {
    * 5. Bank Account Position Panel
    * 6. Cash Position & Float Panel
    */
+  
+  // =========================================================================
+  // CORPORATE VIEWS: SALES (RECEIVABLES), EXPENSES (PAYABLES) & BANKING
+  // =========================================================================
+
+  renderSalesView() {
+    const rawSales = (this.filteredTransactions || []).filter(t => 
+      t.type && (t.type.toLowerCase().includes('received') || t.type.toLowerCase().includes('income'))
+    );
+    this.salesList = rawSales;
+
+    const totalRevenue = rawSales.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    const count = rawSales.length;
+    const highest = rawSales.reduce((max, t) => Math.max(max, Number(t.amount) || 0), 0);
+    const uniqueClients = new Set(rawSales.map(t => (t.partyName || '').trim().toLowerCase())).size;
+
+    const elRev = document.getElementById('salesTotalRevenue');
+    if (elRev) elRev.textContent = FinanceAnalytics.formatINR(totalRevenue);
+
+    const elCnt = document.getElementById('salesTotalReceiptsCount');
+    if (elCnt) elCnt.textContent = count;
+
+    const elHigh = document.getElementById('salesHighestReceipt');
+    if (elHigh) elHigh.textContent = FinanceAnalytics.formatINR(highest);
+
+    const elClients = document.getElementById('salesActiveClientsCount');
+    if (elClients) elClients.textContent = uniqueClients;
+
+    this.filterSalesTable();
+  }
+
+  filterSalesTable() {
+    const search = (document.getElementById('salesSearchInput')?.value || '').toLowerCase().trim();
+    const mode = document.getElementById('salesModeFilter')?.value || 'ALL';
+
+    const list = (this.salesList || []).filter(t => {
+      const matchSearch = !search || 
+        (t.partyName && t.partyName.toLowerCase().includes(search)) ||
+        (t.refNumber && t.refNumber.toLowerCase().includes(search)) ||
+        (t.description && t.description.toLowerCase().includes(search));
+      const matchMode = mode === 'ALL' || (t.mode && t.mode.toUpperCase() === mode.toUpperCase());
+      return matchSearch && matchMode;
+    });
+
+    const tbody = document.getElementById('salesTableBody');
+    const emptyState = document.getElementById('salesEmptyState');
+
+    if (!tbody) return;
+
+    if (list.length === 0) {
+      tbody.innerHTML = '';
+      if (emptyState) emptyState.classList.remove('hidden');
+      return;
+    }
+
+    if (emptyState) emptyState.classList.add('hidden');
+
+    const canEdit = window.roleManager ? window.roleManager.can('canEdit') : false;
+    const canDelete = window.roleManager ? window.roleManager.can('canDelete') : false;
+
+    tbody.innerHTML = list.map((t, idx) => `
+      <tr class="hover:bg-slate-50/80 transition-colors">
+        <td class="py-3 px-3.5 font-mono text-slate-500 font-semibold text-xs">#${t.slNo || (idx + 1)}</td>
+        <td class="py-3 px-3.5 font-mono text-slate-700 whitespace-nowrap">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+        <td class="py-3 px-3.5 font-bold text-slate-900">
+          <div>${t.partyName}</div>
+          ${t.description ? `<div class="text-[10px] font-normal text-slate-400 truncate max-w-xs">${t.description}</div>` : ''}
+        </td>
+        <td class="py-3 px-3.5">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+            ${t.category || 'General Invoicing'}
+          </span>
+        </td>
+        <td class="py-3 px-3.5 font-semibold text-slate-700 text-[11px]">${t.mode || 'CASH'}</td>
+        <td class="py-3 px-3.5 font-mono text-slate-500 text-[11px]">${t.refNumber || '-'}</td>
+        <td class="py-3 px-3.5 text-right font-mono font-bold text-emerald-600 whitespace-nowrap">
+          +${FinanceAnalytics.formatINR(t.amount)}
+        </td>
+        <td class="py-3 px-3.5 text-center whitespace-nowrap">
+          <div class="inline-flex items-center space-x-1">
+            <button onclick="app.showTransactionDetail('${t.id}')" class="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer" title="View Full Receipt">
+              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+            </button>
+            ${canEdit ? `
+              <button onclick="app.openTransactionModal('${t.id}')" class="p-1 rounded-lg hover:bg-sky-50 text-sky-600 hover:text-sky-700 transition cursor-pointer" title="Edit Receipt">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+              </button>
+            ` : ''}
+            ${canDelete ? `
+              <button onclick="app.deleteTransaction('${t.id}')" class="p-1 rounded-lg hover:bg-rose-50 text-rose-500 hover:text-rose-600 transition cursor-pointer" title="Permanently Delete">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  renderExpensesView() {
+    const rawExpenses = (this.filteredTransactions || []).filter(t => 
+      t.type && (t.type.toLowerCase().includes('paid') || t.type.toLowerCase().includes('expense'))
+    );
+    this.expensesList = rawExpenses;
+
+    const totalExpenses = rawExpenses.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    const count = rawExpenses.length;
+    const avg = count > 0 ? (totalExpenses / count) : 0;
+
+    // Find top category
+    const catMap = {};
+    rawExpenses.forEach(t => {
+      const c = t.category || 'General';
+      catMap[c] = (catMap[c] || 0) + (Number(t.amount) || 0);
+    });
+    let topCat = 'None';
+    let topCatVal = 0;
+    Object.entries(catMap).forEach(([k, v]) => {
+      if (v > topCatVal) {
+        topCatVal = v;
+        topCat = k;
+      }
+    });
+
+    const elTotal = document.getElementById('expenseTotalAmount');
+    if (elTotal) elTotal.textContent = FinanceAnalytics.formatINR(totalExpenses);
+
+    const elCnt = document.getElementById('expenseTotalVouchersCount');
+    if (elCnt) elCnt.textContent = count;
+
+    const elTop = document.getElementById('expenseTopCategory');
+    if (elTop) elTop.textContent = topCat;
+
+    const elAvg = document.getElementById('expenseAverageSize');
+    if (elAvg) elAvg.textContent = FinanceAnalytics.formatINR(avg);
+
+    this.filterExpensesTable();
+  }
+
+  filterExpensesTable() {
+    const search = (document.getElementById('expenseSearchInput')?.value || '').toLowerCase().trim();
+    const cat = document.getElementById('expenseCategoryFilter')?.value || 'ALL';
+
+    const list = (this.expensesList || []).filter(t => {
+      const matchSearch = !search || 
+        (t.partyName && t.partyName.toLowerCase().includes(search)) ||
+        (t.refNumber && t.refNumber.toLowerCase().includes(search)) ||
+        (t.category && t.category.toLowerCase().includes(search)) ||
+        (t.description && t.description.toLowerCase().includes(search));
+      const matchCat = cat === 'ALL' || (t.category && t.category.toLowerCase() === cat.toLowerCase());
+      return matchSearch && matchCat;
+    });
+
+    const tbody = document.getElementById('expenseTableBody');
+    const emptyState = document.getElementById('expenseEmptyState');
+
+    if (!tbody) return;
+
+    if (list.length === 0) {
+      tbody.innerHTML = '';
+      if (emptyState) emptyState.classList.remove('hidden');
+      return;
+    }
+
+    if (emptyState) emptyState.classList.add('hidden');
+
+    const canEdit = window.roleManager ? window.roleManager.can('canEdit') : false;
+    const canDelete = window.roleManager ? window.roleManager.can('canDelete') : false;
+
+    tbody.innerHTML = list.map((t, idx) => `
+      <tr class="hover:bg-slate-50/80 transition-colors">
+        <td class="py-3 px-3.5 font-mono text-slate-500 font-semibold text-xs">#${t.slNo || (idx + 1)}</td>
+        <td class="py-3 px-3.5 font-mono text-slate-700 whitespace-nowrap">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+        <td class="py-3 px-3.5 font-bold text-slate-900">
+          <div>${t.partyName}</div>
+          ${t.description ? `<div class="text-[10px] font-normal text-slate-400 truncate max-w-xs">${t.description}</div>` : ''}
+        </td>
+        <td class="py-3 px-3.5">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-800 border border-rose-200">
+            ${t.category || 'Site Overhead'}
+          </span>
+        </td>
+        <td class="py-3 px-3.5 font-semibold text-slate-700 text-[11px]">${t.mode || 'CASH'}</td>
+        <td class="py-3 px-3.5 font-mono text-slate-500 text-[11px]">${t.refNumber || '-'}</td>
+        <td class="py-3 px-3.5 text-right font-mono font-bold text-rose-600 whitespace-nowrap">
+          -${FinanceAnalytics.formatINR(t.amount)}
+        </td>
+        <td class="py-3 px-3.5 text-center whitespace-nowrap">
+          <div class="inline-flex items-center space-x-1">
+            <button onclick="app.showTransactionDetail('${t.id}')" class="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition cursor-pointer" title="View Full Voucher">
+              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+            </button>
+            ${canEdit ? `
+              <button onclick="app.openTransactionModal('${t.id}')" class="p-1 rounded-lg hover:bg-sky-50 text-sky-600 hover:text-sky-700 transition cursor-pointer" title="Edit Voucher">
+                <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+              </button>
+            ` : ''}
+            ${canDelete ? `
+              <button onclick="app.deleteTransaction('${t.id}')" class="p-1 rounded-lg hover:bg-rose-50 text-rose-500 hover:text-rose-600 transition cursor-pointer" title="Permanently Delete">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  renderBankingView() {
+    const metrics = FinanceAnalytics.calculateDashboardMetrics(this.filteredTransactions);
+
+    const elBank = document.getElementById('bankFloatAmount');
+    if (elBank) elBank.textContent = FinanceAnalytics.formatINR(metrics.bankPosition);
+
+    const elCash = document.getElementById('cashFloatAmount');
+    if (elCash) elCash.textContent = FinanceAnalytics.formatINR(metrics.cashBalance);
+
+    const elTotal = document.getElementById('totalLiquidityAmount');
+    if (elTotal) elTotal.textContent = FinanceAnalytics.formatINR(metrics.totalLiquidity);
+
+    const channels = [
+      { name: 'Netbanking (NEFT / RTGS)', key: 'NETBANKING', icon: 'landmark', color: 'sky' },
+      { name: 'Unified Payments (UPI)', key: 'UPI', icon: 'smartphone', color: 'indigo' },
+      { name: 'Petty Cash in Hand', key: 'CASH', icon: 'banknote', color: 'emerald' },
+      { name: 'Cheque / Draft Clearing', key: 'CHEQUE', icon: 'file-check', color: 'purple' },
+      { name: 'Card Settlements', key: 'DEBIT CARD / CREDIT CARD', icon: 'credit-card', color: 'slate' }
+    ];
+
+    const grid = document.getElementById('bankingChannelGrid');
+    if (grid) {
+      grid.innerHTML = channels.map(ch => {
+        const inAmt = metrics.incomeByMode[ch.key] || 0;
+        const outAmt = metrics.expenseByMode[ch.key] || 0;
+        const netAmt = inAmt - outAmt;
+
+        return `
+          <div class="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/60 hover:bg-white transition shadow-xs space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-slate-800 truncate">${ch.name}</span>
+              <div class="w-6 h-6 rounded-lg bg-${ch.color}-100 text-${ch.color}-700 flex items-center justify-center">
+                <i data-lucide="${ch.icon}" class="w-3.5 h-3.5"></i>
+              </div>
+            </div>
+            <div class="space-y-0.5 pt-1 text-[11px] font-mono">
+              <div class="flex justify-between text-slate-500">
+                <span>Inflows:</span>
+                <span class="text-emerald-700 font-bold">${FinanceAnalytics.formatINR(inAmt)}</span>
+              </div>
+              <div class="flex justify-between text-slate-500">
+                <span>Outflows:</span>
+                <span class="text-rose-700 font-bold">${FinanceAnalytics.formatINR(outAmt)}</span>
+              </div>
+              <div class="flex justify-between border-t border-slate-200 pt-1 font-bold">
+                <span class="text-slate-700">Net Flow:</span>
+                <span class="${netAmt >= 0 ? 'text-emerald-700' : 'text-rose-700'}">${FinanceAnalytics.formatINR(netAmt)}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
   renderDashboard() {
     const metrics = FinanceAnalytics.calculateDashboardMetrics(this.filteredTransactions);
 
@@ -771,7 +1068,7 @@ class FinanceApp {
   }
 
   // MODAL HANDLERS
-  openTransactionModal(editId = null) {
+  openTransactionModal(editId = null, defaultType = null) {
     if (window.roleManager && !window.roleManager.can('canAdd') && !editId) {
       this.showToast('Your role does not have permission to add transactions.', 'error');
       return;
@@ -815,6 +1112,9 @@ class FinanceApp {
         const modeInput = document.getElementById('modalMode');
         if (modeInput) modeInput.value = item.mode || 'CASH';
 
+        const catInput = document.getElementById('modalCategory');
+        if (catInput) catInput.value = item.category || 'General';
+
         const refInput = document.getElementById('modalRef');
         if (refInput) refInput.value = item.refNumber || '';
 
@@ -822,11 +1122,19 @@ class FinanceApp {
         if (descInput) descInput.value = item.description || '';
       }
     } else {
-      if (titleEl) titleEl.innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-emerald-600"></i><span>Add New Transaction</span>`;
+      if (titleEl) titleEl.innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5 text-sky-600"></i><span>Record Financial Transaction</span>`;
       if (idInput) idInput.value = '';
       if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+
+      const isExpense = defaultType && (defaultType.includes('Paid') || defaultType.includes('Expense'));
       const radioIncome = document.querySelector('input[name="modalType"][value*="Received"]');
-      if (radioIncome) radioIncome.checked = true;
+      const radioExpense = document.querySelector('input[name="modalType"][value*="Paid"]');
+
+      if (isExpense && radioExpense) {
+        radioExpense.checked = true;
+      } else if (radioIncome) {
+        radioIncome.checked = true;
+      }
     }
 
     modal.classList.remove('hidden');
@@ -1136,38 +1444,249 @@ class FinanceApp {
 
     const user = window.authManager ? window.authManager.getCurrentUser() : null;
     const activeRoleId = window.roleManager ? window.roleManager.getRole().id : (user ? user.role : 'employee');
+    const isSuperAdmin = isAuth && (activeRoleId === 'super_admin');
     const isSuperOrDev = isAuth && (activeRoleId === 'super_admin' || activeRoleId === 'developer');
     const canManageUsers = isAuth && ['super_admin', 'developer', 'admin', 'owner'].includes(activeRoleId);
 
-    if (user) {
-      const pillText = document.getElementById('rolePillText');
-      if (pillText) {
-        const roleObj = window.roleManager ? window.roleManager.getRole() : null;
-        pillText.textContent = `${user.userId} (${roleObj ? roleObj.name : user.role})`;
-      }
-    }
-
-    // User Management button visibility (Super Admin, Developer, Admin, Owner)
-    const userMgmtBtn = document.getElementById('userMgmtBtn');
-    if (userMgmtBtn) {
-      if (canManageUsers) {
-        userMgmtBtn.classList.remove('hidden');
+    // =========================================================================
+    // STRICT SUPER-ADMIN ONLY DATABASE GATING
+    // (Only Super Admin Dashboard shows DB telemetry, connection strings, or sync)
+    // =========================================================================
+    const neonStatusBar = document.getElementById('neonStatusBar');
+    if (neonStatusBar) {
+      if (isSuperAdmin) {
+        neonStatusBar.classList.remove('hidden');
+        neonStatusBar.style.display = 'flex';
       } else {
-        userMgmtBtn.classList.add('hidden');
+        neonStatusBar.classList.add('hidden');
+        neonStatusBar.style.display = 'none';
       }
     }
 
-    // Backend Access Protection: Enterprise Database Hub is strictly visible to Super Admin and Developer ONLY
+    const headerSyncBtn = document.getElementById('headerSyncBtn');
+    if (headerSyncBtn) {
+      headerSyncBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
+    }
+
+    const neonSyncPill = document.getElementById('neonSyncPill');
+    if (neonSyncPill) {
+      neonSyncPill.style.display = isSuperAdmin ? 'inline-flex' : 'none';
+    }
+
     const dbHubBtn = document.getElementById('dbHubBtn');
     if (dbHubBtn) {
-      if (isSuperOrDev) {
-        dbHubBtn.classList.remove('hidden');
+      dbHubBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
+    }
+
+    const filterBarSyncBtn = document.getElementById('filterBarSyncBtn');
+    if (filterBarSyncBtn) {
+      filterBarSyncBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
+    }
+
+    const filterBarSqlBtn = document.getElementById('filterBarSqlBtn');
+    if (filterBarSqlBtn) {
+      filterBarSqlBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
+    }
+
+    const androidFabBtn = document.getElementById('androidFabBtn');
+    if (androidFabBtn) {
+      androidFabBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+    }
+
+    // =========================================================================
+    // UPDATE RIGHT-SIDE USER PROFILE PILL BUTTON (Zoho Books Style)
+    // =========================================================================
+    if (user) {
+      const roleObj = window.roleManager ? window.roleManager.getRole() : null;
+      const roleName = roleObj ? roleObj.name : user.role;
+      const roleId = roleObj ? roleObj.id : user.role;
+
+      // Header Profile Avatar Initials
+      const profileAvatar = document.getElementById('headerProfileAvatar');
+      if (profileAvatar) {
+        const initials = (user.fullName || user.userId || 'U')
+          .split(' ')
+          .map(w => w[0])
+          .slice(0, 2)
+          .join('')
+          .toUpperCase();
+        profileAvatar.textContent = initials || 'SA';
+
+        // Avatar color coding based on role
+        if (roleId === 'super_admin') profileAvatar.className = 'w-7 h-7 rounded-xl bg-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs';
+        else if (roleId === 'owner') profileAvatar.className = 'w-7 h-7 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs';
+        else if (roleId === 'admin') profileAvatar.className = 'w-7 h-7 rounded-xl bg-sky-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs';
+        else if (roleId === 'developer') profileAvatar.className = 'w-7 h-7 rounded-xl bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs';
+        else profileAvatar.className = 'w-7 h-7 rounded-xl bg-amber-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs';
+      }
+
+      // Header Profile Full Name
+      const profileName = document.getElementById('headerProfileName');
+      if (profileName) {
+        profileName.textContent = user.fullName || user.userId;
+      }
+
+      // Header Profile Role Badge
+      const profileBadge = document.getElementById('headerProfileBadge');
+      if (profileBadge) {
+        let badgeIcon = '👑';
+        if (roleId === 'owner') badgeIcon = '💼';
+        else if (roleId === 'admin') badgeIcon = '📊';
+        else if (roleId === 'developer') badgeIcon = '💻';
+        else if (roleId === 'employee') badgeIcon = '👷';
+        else if (roleId === 'stakeholder') badgeIcon = '📈';
+
+        profileBadge.textContent = `${badgeIcon} ${roleName}`;
+      }
+    }
+  }
+
+  // =========================================================================
+  // USER PROFILE & RIGHTS TO USE DRAWER / MODAL
+  // =========================================================================
+
+  openUserProfileModal() {
+    const modal = document.getElementById('userProfileModal');
+    if (!modal) return;
+
+    const user = window.authManager ? window.authManager.getCurrentUser() : null;
+    const roleObj = window.roleManager ? window.roleManager.getRole() : null;
+    const roleId = roleObj ? roleObj.id : (user ? user.role : 'employee');
+    const roleName = roleObj ? roleObj.name : 'Staff';
+
+    // Avatar
+    const modalAvatar = document.getElementById('modalProfileAvatar');
+    if (modalAvatar && user) {
+      const initials = (user.fullName || user.userId || 'U')
+        .split(' ')
+        .map(w => w[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase();
+      modalAvatar.textContent = initials || 'SA';
+    }
+
+    // Name & User ID
+    const modalName = document.getElementById('modalProfileFullName');
+    if (modalName) modalName.textContent = user ? (user.fullName || user.userId) : 'User';
+
+    const modalId = document.getElementById('modalProfileUserId');
+    if (modalId) modalId.textContent = user ? `ID: ${user.userId} • ${user.email || 'account@dharshithan.com'}` : '';
+
+    // Role Badge & Category
+    const modalRoleBadge = document.getElementById('modalProfileRoleBadge');
+    if (modalRoleBadge) {
+      modalRoleBadge.textContent = `${roleName}`;
+      if (roleObj) modalRoleBadge.className = `inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${roleObj.badgeClass}`;
+    }
+
+    const modalCategory = document.getElementById('modalProfileCategory');
+    if (modalCategory) {
+      modalCategory.textContent = user ? (user.category || 'Financial Management') : 'Operations';
+    }
+
+    // Render Rights to Use matrix
+    const rightsList = document.getElementById('profileRightsList');
+    if (rightsList && window.roleManager) {
+      const matrix = window.roleManager.getRightsMatrix(roleId);
+      rightsList.innerHTML = matrix.map(r => `
+        <div class="p-2.5 rounded-xl border flex items-start space-x-2.5 ${r.granted ? 'border-emerald-200 bg-emerald-50/40' : 'border-slate-200 bg-slate-50 opacity-60'}">
+          <div class="w-6 h-6 rounded-lg ${r.granted ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500'} flex items-center justify-center flex-shrink-0 mt-0.5">
+            <i data-lucide="${r.granted ? 'check' : 'lock'}" class="w-3.5 h-3.5"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <h5 class="text-xs font-bold ${r.granted ? 'text-slate-900' : 'text-slate-600'}">${r.title}</h5>
+              <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${r.granted ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">
+                ${r.granted ? 'Granted' : 'Restricted'}
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500 mt-0.5 leading-snug">${r.desc}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Show/hide Super Admin Preview Box
+    const previewBox = document.getElementById('superAdminRolePreviewBox');
+    const actualRole = user ? user.role : '';
+    if (previewBox) {
+      if (actualRole === 'super_admin') {
+        previewBox.classList.remove('hidden');
+        const select = document.getElementById('rolePreviewSelect');
+        if (select) select.value = roleId;
       } else {
-        dbHubBtn.classList.add('hidden');
+        previewBox.classList.add('hidden');
       }
     }
 
-    
+    // User management button visibility
+    const canManageUsers = ['super_admin', 'developer', 'admin', 'owner'].includes(roleId);
+    const modalUserMgmtBtn = document.getElementById('modalUserMgmtBtn');
+    if (modalUserMgmtBtn) {
+      modalUserMgmtBtn.style.display = canManageUsers ? 'inline-flex' : 'none';
+    }
+
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeUserProfileModal() {
+    const modal = document.getElementById('userProfileModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  switchRolePreview(roleId) {
+    if (!window.roleManager) return;
+    window.roleManager.setRole(roleId);
+    this.applyRolePermissions();
+    this.checkAuthUI();
+    this.renderCurrentView();
+
+    // Re-render permissions in open modal
+    this.openUserProfileModal();
+    this.showToast(`Previewing interface as ${roleId.toUpperCase()}`, 'info');
+  }
+
+  openSelfPasswordChangeModal() {
+    this.closeUserProfileModal();
+    const modal = document.getElementById('selfPasswordChangeModal');
+    if (modal) modal.classList.remove('hidden');
+  }
+
+  closeSelfPasswordChangeModal() {
+    const modal = document.getElementById('selfPasswordChangeModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  async handleSelfPasswordChange(e) {
+    e.preventDefault();
+    const newPass = document.getElementById('selfNewPass')?.value;
+    const confirmPass = document.getElementById('selfConfirmPass')?.value;
+
+    if (!newPass || newPass.length < 6) {
+      this.showToast('New password must be at least 6 characters long', 'error');
+      return;
+    }
+    if (newPass !== confirmPass) {
+      this.showToast('Passwords do not match. Please verify.', 'error');
+      return;
+    }
+
+    const user = window.authManager ? window.authManager.getCurrentUser() : null;
+    if (!user) return;
+
+    try {
+      const res = await window.authManager.changeFirstLoginPassword(user.userId, newPass);
+      if (res.success) {
+        this.closeSelfPasswordChangeModal();
+        this.showToast('Password updated successfully in Neon Database!', 'success');
+      } else {
+        this.showToast(res.error || 'Failed to update password', 'error');
+      }
+    } catch (err) {
+      this.showToast('Password update error: ' + err.message, 'error');
+    }
   }
 
   async handleLogin(e) {
