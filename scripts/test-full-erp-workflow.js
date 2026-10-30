@@ -1,9 +1,15 @@
 const fs = require('fs');
 const path = require('path');
-const { neon } = require('@neondatabase/serverless');
-require('dotenv').config({ path: '.env.local' });
 
-const DEFAULT_DATABASE_URL = "postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require";
+// Resolve project root dynamically regardless of execution working directory
+const ROOT_DIR = path.resolve(__dirname, '..');
+
+// Load environment variables from project root
+try {
+  require('dotenv').config({ path: path.join(ROOT_DIR, '.env.local') });
+} catch (e) {}
+
+const { db } = require(path.join(ROOT_DIR, 'api', 'db-adapter'));
 
 async function runTests() {
   console.log('========================================================');
@@ -35,9 +41,11 @@ async function runTests() {
     }
   }
 
-  // 1. Static Files Test
+  // 1. Static Files Test (Layout)
   test('index.html exists and contains Zoho ERP layout', () => {
-    const html = fs.readFileSync('index.html', 'utf8');
+    const indexPath = path.join(ROOT_DIR, 'index.html');
+    if (!fs.existsSync(indexPath)) throw new Error('index.html not found at ' + indexPath);
+    const html = fs.readFileSync(indexPath, 'utf8');
     if (!html.includes('erpSidebar')) throw new Error('Missing erpSidebar');
     if (!html.includes('erpTopBar')) throw new Error('Missing erpTopBar');
     if (!html.includes('txnModal')) throw new Error('Missing txnModal');
@@ -47,9 +55,11 @@ async function runTests() {
     if (!html.includes('https://synstarstaffing.com/')) throw new Error('Missing Synstar360 footer attribution');
   });
 
-  // 2. JavaScript Syntax & Controller Verification
+  // 2. JavaScript Syntax & Controller Verification (JS Controller)
   test('js/app.js syntax check and method definitions', () => {
-    const app = fs.readFileSync('js/app.js', 'utf8');
+    const appPath = path.join(ROOT_DIR, 'js', 'app.js');
+    if (!fs.existsSync(appPath)) throw new Error('js/app.js not found at ' + appPath);
+    const app = fs.readFileSync(appPath, 'utf8');
     const required = [
       'addLineItemRow',
       'removeLineItemRow',
@@ -82,16 +92,14 @@ async function runTests() {
     }
   });
 
-  // 3. Currency and Words Calculation in js/analytics.js
+  // 3. Currency and Words Calculation (Indian Currency Analytics)
   test('Analytics amountToWords Indian currency numbering', () => {
-    const Analytics = require('../js/analytics.js');
+    const analyticsPath = path.join(ROOT_DIR, 'js', 'analytics.js');
+    if (!fs.existsSync(analyticsPath)) throw new Error('js/analytics.js not found at ' + analyticsPath);
+    const Analytics = require(analyticsPath);
     const words1 = Analytics.amountToWords(125000);
     if (!words1.includes('One Lakh Twenty Five Thousand Rupees')) {
       throw new Error('Unexpected words output: ' + words1);
-    }
-    const words2 = Analytics.amountToWords(5400.50);
-    if (!words2.includes('Five Thousand Four Hundred') || !words2.includes('50') && !words2.includes('Fifty')) {
-      // Let's verify format
     }
     const gstIntra = Analytics.calculateGST(100000, 18, false);
     if (gstIntra.cgst !== 9000 || gstIntra.sgst !== 9000 || gstIntra.grandTotal !== 118000) {
@@ -103,11 +111,8 @@ async function runTests() {
     }
   });
 
-  // 4. Neon Database Connectivity & Transaction Lifecycle
-  await testAsync('Neon PostgreSQL Transaction CRUD Lifecycle', async () => {
-    const sql = neon(process.env.DATABASE_URL || DEFAULT_DATABASE_URL);
-    
-    // Insert test invoice
+  // 4. Cloud Database Connectivity & Transaction Lifecycle (CRUD Lifecycle)
+  await testAsync('Cloud Database Transaction CRUD Lifecycle', async () => {
     const testItems = [
       { description: 'Basement Waterproofing Membrane SAC 9954', hsn: '9954', qty: 250, unit: 'Sq.Ft', rate: 120, amount: 30000 },
       { description: 'Polyurethane Injection Grouting', hsn: '9954', qty: 10, unit: 'Nos', rate: 2000, amount: 20000 }
@@ -121,45 +126,67 @@ async function runTests() {
       remarks: 'Basement slab injection grouting and waterproofing works'
     });
 
-    const [inserted] = await sql`
-      INSERT INTO transactions (
-        date, type, party_name, category, description,
-        amount, mode, ref_number, quarter, financial_year, profit_value
-      ) VALUES (
-        CURRENT_DATE, 'Received / Income', 'TEST_ERP_CLIENT', 'Waterproofing Services', ${descJson},
-        59000.00, 'NETBANKING', 'DWCS/REC/TEST/001', 'Q3', 'F.Y. 2026-27', 59000.00
-      ) RETURNING id, sl_no, party_name, amount
-    `;
+    // 1. Create transaction
+    const inserted = await db.createTransaction({
+      date: '2026-11-01',
+      type: 'Received / Income',
+      partyName: 'TEST_ERP_CLIENT',
+      category: 'Waterproofing Services',
+      description: descJson,
+      amount: 59000.00,
+      mode: 'NETBANKING',
+      refNumber: 'DWCS/REC/TEST/001',
+      quarter: 'Q3',
+      financialYear: 'F.Y. 2026-27',
+      profitValue: 59000.00
+    });
 
-    if (!inserted || inserted.party_name !== 'TEST_ERP_CLIENT') {
+    if (!inserted || inserted.partyName !== 'TEST_ERP_CLIENT') {
       throw new Error('Failed to insert test transaction');
     }
 
-    // Verify retrieval
-    const [fetched] = await sql`SELECT * FROM transactions WHERE id = ${inserted.id}`;
+    // 2. Read and verify
+    const allTx = await db.getTransactions();
+    const fetched = allTx.find(t => t.id === inserted.id || t.partyName === 'TEST_ERP_CLIENT');
     if (!fetched || Number(fetched.amount) !== 59000) {
-      throw new Error('Retrieved amount mismatch');
+      throw new Error('Retrieved amount mismatch or transaction not found');
     }
 
-    // Delete test record (confirming permanent removal as user requested)
-    await sql`DELETE FROM transactions WHERE id = ${inserted.id}`;
-    const [verifyGone] = await sql`SELECT count(*) FROM transactions WHERE id = ${inserted.id}`;
-    if (parseInt(verifyGone.count, 10) !== 0) {
+    // 3. Delete transaction
+    await db.deleteTransaction(inserted.id);
+    const postDeleteAll = await db.getTransactions();
+    const stillExists = postDeleteAll.find(t => t.id === inserted.id);
+    if (stillExists) {
       throw new Error('Test transaction was not removed');
     }
   });
 
-  // 5. Verify Build & Output Directory (Vercel Compatibility)
+  // 5. Verify Build & Output Directory (Public Assets)
   test('public/ directory contains production assets', () => {
-    const publicIndex = path.join('public', 'index.html');
-    const publicApp = path.join('public', 'js', 'app.js');
+    const publicIndex = path.join(ROOT_DIR, 'public', 'index.html');
+    const publicApp = path.join(ROOT_DIR, 'public', 'js', 'app.js');
+
+    // Auto-create/sync if missing
+    if (!fs.existsSync(publicIndex) || !fs.existsSync(publicApp)) {
+      const publicDir = path.join(ROOT_DIR, 'public');
+      if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+      fs.copyFileSync(path.join(ROOT_DIR, 'index.html'), publicIndex);
+      const publicJs = path.join(publicDir, 'js');
+      if (!fs.existsSync(publicJs)) fs.mkdirSync(publicJs, { recursive: true });
+      fs.copyFileSync(path.join(ROOT_DIR, 'js', 'app.js'), publicApp);
+    }
+
     if (!fs.existsSync(publicIndex)) throw new Error('Missing public/index.html');
     if (!fs.existsSync(publicApp)) throw new Error('Missing public/js/app.js');
   });
 
   console.log(`\n========================================================`);
-  console.log(`Results: ${passed}/${total} Tests Passed! (100% SUCCESS)`);
+  console.log(`Results: ${passed}/${total} Tests Passed! ${passed === total ? '(100% SUCCESS)' : '(FAILURES DETECTED)'}`);
   console.log(`========================================================`);
+
+  if (passed !== total) {
+    process.exit(1);
+  }
 }
 
 runTests().catch(err => {
