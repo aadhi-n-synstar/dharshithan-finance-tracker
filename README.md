@@ -1,140 +1,111 @@
-# Dharshithan Waterproofing - Finance Tracker Pro
+# Dharshithan Waterproofing - Finance ERP Pro
 
 <p align="center">
   <img src="assets/logo.webp" alt="Dharshithan Waterproofing Logo" width="130" style="border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />
   <br>
-  <strong>Enterprise Financial Management, Live Sheet Sync & Cloud Database Software</strong><br>
-  <em>Built for Dharshithan Waterproofing & Complete Solutions</em>
+  <strong>Enterprise Financial Governance, Multi-Cloud Database & Zoho ERP Billing Suite</strong><br>
+  <em>Built for Dharshithan Waterproofing & Concrete Solutions</em>
 </p>
 
 ---
 
-## 🌟 Key Architecture & Capabilities
+## 🌟 Key Highlights & Architecture
 
-### 1. 📊 Complete Google Sheets "Dashboard" Worksheet Mirroring
-The system accurately computes and displays all executive KPI cards and operational panels directly modeled after the master Google Spreadsheet (`Dashboard` worksheet):
-- **Top 5 KPI Metrics**: Total Revenue, Total Expenses, Net Profit/Loss, Profit Margin % (with healthy/alert badges), and Total Available Liquidity.
-- **Financial Summary & Liquidity Split**: Clear breakdown of Bank balance vs. Physical Cash in Hand.
-- **Income & Expense by Mode**: Netbanking vs. Cash vs. Cheque vs. UPI breakdown.
-- **Bank Position Panel**: Inflows, Outflows, Net Movement, Opening Balance, Current Bank Balance, and Auto-Reconciliation health badge (`Reconciled` / `Deficit`).
-- **Cash Position & Float Panel**: Physical Cash Receipts, Cash Expenses, Net Cash Movement, Opening Float (editable directly on screen), Available Physical Cash, and Cash Health alert (`Healthy` or `Replenish Cash`).
-
-### 2. 🔐 Enterprise Authentication, RBAC & User Governance
-Full multi-user authentication system with permission gating and credentials control:
-- **Default Super Admin**:
-  - **User ID**: `admin`
-  - **Password**: `admin@2026`
-  - **Role**: `👑 Super Admin`
-  - **Category**: `Executive Management`
-  - **Mail ID**: `admin@dharshithan.com` (OTP enabled)
-  - **Phone**: `+91 98765 43210`
-- **Role Hierarchy & Access Matrix**:
-  - **👑 Super Admin**: Full system control (Add, Edit, Delete, Float Adjustment, DB Migration, User Management, Full Audit Access).
-  - **👔 Owner**: Strategic & operational executive control (Add, Edit, Delete, Float Adjustment, Reports, DB Setup, User oversight).
-  - **🛡️ Admin**: Operational finance management (Add, Edit, Delete, Adjust Balances, View Reports, Issue Password Resets).
-  - **💻 Developer**: System maintenance, API endpoints, migration testing, schema DDL inspection, DB credentials & user management.
-  - **👷 Employee**: Field & site entry mode (Add transactions, view records — Edit/Delete and configuration locked).
-  - **📈 Stakeholder**: Read-only executive oversight (View KPIs, charts, and export summary reports — modification locked).
-- **Mandatory First-Time Password Change**:
-  - Any new user created by Super Admin/Admin with a temporary password is automatically flagged with `mustChangePassword: true`.
-  - Upon first login, they are required to choose and set a new personal secure password before accessing application data.
-- **Forgot Password with OTP Verification**:
-  - Users can reset forgotten passwords by entering their User ID or registered Mail ID.
-  - The system generates and verifies a 6-digit OTP code (with 10-minute expiry) before permitting password reset.
-- **User Management & RBAC Directory (`userMgmtModal`)**:
-  - Controlled under Super Admin, Developer, and Admin IDs.
-  - Create new users with Category, Role, Email, Phone, and auto-generated temporary password.
-  - Issue password reset links or OTPs directly to user's registered email.
-  - Export full user table as PostgreSQL SQL `INSERT` statements matching `schema.sql`.
-
-### 3. ☁️ Enterprise Cloud Database Hub (Vercel / Supabase / Neon PostgreSQL Ready)
-Seamlessly scale from Google Sheets to a production cloud database:
-- **`schema.sql` Included**: Production PostgreSQL DDL schema with typed ENUMs (`user_role`), tables (`users`, `transactions`, `liquidity_settings`, `audit_logs`), performance indexes, and Row-Level Security (RLS) policies.
-- **1-Click SQL Migration**: Export all live transactions as PostgreSQL-ready `INSERT` statements with a single click in the Database Hub.
-- **Provider Switching**: Toggle effortlessly between **Google Sheets Master** mode and **PostgreSQL (Supabase/Neon/Vercel)** with connection health verification.
-
-### 4. 🔄 Real-Time Google Sheets Live Connection (Read-Only Mode)
-- **Master Data Source**: Entries are strictly maintained in the master Google Spreadsheet ([View Sheet](https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing)).
-- **Pre-Configured Web App**: Pre-connected to Google Apps Script Web App endpoint:
-  `https://script.google.com/macros/s/AKfycbyqdg6OETWiEEc2r_aWvXPJ68CkMbGoPVwcbCCG1yYmSWyrFmRAfIDW2aVPufsiDFn7YQ/exec`
-- **Auto-Sync on Launch & Background Polling**: Automatically pulls and synchronizes latest rows on initial load, every 30 seconds, and whenever the browser tab regains focus.
-- **Deep Voucher Details Viewer**: Clicking any transaction displays a comprehensive read-only detail card with exact amount, P&L profit impact, mode, reference numbers, and spreadsheet row location.
-- **Direct 1-Click Spreadsheet Access**: Quick header, ledger, and detail buttons to open the Google Sheet whenever new entries or edits need to be recorded.
-
-### 5. 📱 Native Android App Experience (PWA)
-- **Installable PWA**: Runs full-screen as an app on any Android device via Google Chrome.
-- **Android Bottom Navigation Bar**: Quick navigation for Home, Ledger, Parties, P&L Reports, and Sync.
-- **Android Floating Action Button (FAB)**: Instant `🔄` Sync from Google Sheets button anchored at bottom-right for rapid on-site data refresh.
-- **Touch-Optimized Cards & Bottom Sheets**: Modern Material Design 3 inspired touch controls with crisp White/Light aesthetics.
+### 1. ☁️ Multi-Cloud Free Database Engine (Supabase / MongoDB Atlas / Neon)
+The platform is powered by an automated, multi-cloud database architecture designed for permanent free-tier hosting:
+- **Supabase (Recommended - 100% Free Forever Tier)**:
+  - 500 MB hosted PostgreSQL instance with Row Level Security (RLS).
+  - PostgREST instant REST API and 50,000 monthly active users.
+  - Native PostgreSQL schema with UUID primary keys, financial ENUMs, and performance indexes.
+  - Complete `supabase-schema.sql` included.
+- **MongoDB Atlas (Free M0 Sandbox)**:
+  - 512 MB document storage with automatic indexing.
+  - Native `mongodb` driver connection pooling.
+- **Neon Cloud Database (PostgreSQL)**:
+  - Fully maintained as a live connected source with bidirectional data transfer.
+- **High-Reliability Local/Offline Engine**:
+  - Automatically caches in IndexedDB and LocalStorage.
+  - Zero-downtime fallback: if cloud credentials are being updated or network is offline, the site continues functioning seamlessly without 500 errors!
 
 ---
 
-## ⚡ How to Connect Real-Time Google Sheets Sync (3 Simple Steps)
-
-1. **Open your Google Sheet**:  
-   [Dharshithan Waterproofing - Finance Tracker](https://docs.google.com/spreadsheets/d/1WWhXiHHrlUohpJUWhpKXfvqVSR_JUJJDGHFvOFk_Ltc/edit?usp=sharing)
-2. **Open Apps Script**:  
-   Click `Extensions > Apps Script`. Replace any code with the contents of [`google-apps-script.js`](./google-apps-script.js) from this repository.
-3. **Deploy as Web App**:
-   - Click the blue **Deploy** button at the top right → **New deployment**.
-   - Click the gear icon next to "Select type" → Choose **Web app**.
-   - Set **Execute as**: `Me`.
-   - Set **Who has access**: `Anyone` *(required for mobile & web access)*.
-   - Click **Deploy** and copy your Web App URL (e.g. `https://script.google.com/macros/s/.../exec`).
-4. **Connect in App**:
-   - Open your Finance Tracker app.
-   - Click the **"Sheets Sync"** button in the top bar.
-   - Paste the Web App URL and click **"Save Webhook URL"**!
-   - Every transaction will now immediately reflect in your Google Sheet!
+### 2. ⚡ Automated Cloud Data Transfer Pipeline
+Transfer data seamlessly between Neon, Supabase, and MongoDB:
+- **In-App One-Click Migration**: From the **Database Hub** in the executive sidebar, Super Admins can click **"Transfer to Supabase (Free)"** or **"Transfer to MongoDB Atlas"** to migrate all live transactions, user roles, opening float, and tax vouchers in seconds.
+- **CLI Transfer Script**: Run `npm run transfer` anytime to execute automated migration:
+  ```bash
+  npm run transfer
+  ```
+- **Export Formats**: One-click export for Supabase SQL (`.sql`), MongoDB Documents (`.json`), Neon PostgreSQL (`.sql`), Excel (`.xlsx`), and CSV.
 
 ---
 
-## 🗄️ Migrating to Cloud Database (Supabase / Neon / Vercel Postgres)
-
-When you're ready to migrate from Google Sheets to a dedicated cloud database:
-1. Create a free PostgreSQL project on [Supabase](https://supabase.com), [Neon](https://neon.tech), or Vercel Postgres.
-2. In the Supabase/Neon SQL Editor, run the contents of [`schema.sql`](./schema.sql) to create the schema and security policies.
-3. In the Dharshithan Finance Tracker app, click **"Cloud DB"** in the top navigation bar.
-4. Click **"Generate PostgreSQL SQL Migration Script"** to download all existing data as ready-to-run `INSERT` queries.
-5. Paste the generated SQL into your database SQL Editor to complete data migration!
-
----
-
-## 📲 How to Install as an Android App on Your Phone
-
-1. Open your live app URL on your Android phone using **Google Chrome**.
-2. Tap the three dots menu (⋮) in the top-right corner of Chrome.
-3. Tap **"Install app"** (or **"Add to Home screen"**).
-4. The **Dharshithan Finance Tracker** icon will now appear on your home screen and app drawer just like a native Android APK!
-5. Tap it to launch full-screen with no browser address bars!
+### 3. 🏢 Complete Zoho ERP Corporate Financial Portal
+- **Dashboard & Executive KPIs**: Real-time Total Revenue, Total Expenses, Net Profit/Loss, Margin %, Cash Float, and Bank Book position.
+- **GST Tax Invoicing (Sales)**: Multi-line invoice generator with HSN/SAC 9954 (Waterproofing Services), CGST 9% + SGST 9% or IGST 18%, automated amount-in-words conversion (Indian numbering format: *"Rupees One Lakh Twenty Thousand Only"*), and printable commercial vouchers.
+- **Purchases & Expense Book**: Track site labor wages, chemical materials, equipment, and travel with cash/UPI/netbanking voucher generation.
+- **Master Ledger & Party Statements**: Real-time double-entry party ledger with running balances, column sorting, search, and bulk operations.
+- **Banking & Float Reconciliation**: Liquidity settings for bank accounts and daily physical cash float with audit alerts.
+- **Reports & P&L Analytics**: Period filters (Today, This Month, Q1-Q4, Full Year), interactive Chart.js revenue vs. expense timelines, and comprehensive financial reports.
 
 ---
 
-## 💻 Tech Stack & Architecture
+### 4. 🔐 Enterprise Role-Based Access Control (RBAC)
+- **Super Administrator (`admin`)**:
+  - Full system control, Database Console, User Governance, permanent transaction deletion, and cloud data transfer.
+  - Default Credentials: `admin` / `admin@2026`
+- **Owner (`owner`)**: Executive oversight, P&L visibility, balance adjustments, and audit reports.
+- **Admin (`admin`)**: Operational accounting, invoice generation, voucher issue, and customer statements.
+- **Developer (`developer`)**: Cloud connectivity, telemetry, schema inspection, and API testing.
+- **Employee (`employee`)**: Site expense logging, receipt upload, and field transaction view.
+- **Stakeholder (`stakeholder`)**: Read-only investor view with financial statement exports.
 
+---
+
+## 🚀 Quick Start & Development
+
+### 1. Install & Run Locally
+```bash
+# Start local server
+npm start
+# Server runs at http://localhost:3000
 ```
-Dharshithan Finance Tracker/
-├── index.html            # Crisp White Light theme, mobile-first Android app UI
-├── manifest.json         # Android PWA Web App Manifest
-├── sw.js                 # Service worker for offline caching & Android installability
-├── google-apps-script.js # Google Sheets Webhook Backend for real-time 2-way sync
-├── schema.sql            # Enterprise PostgreSQL DDL schema with RBAC and RLS
-├── vercel.json           # Vercel deployment configuration & caching rules
-├── start-app.bat         # 1-click Windows launcher
-├── push-to-github.bat    # 1-click GitHub push script
-├── README.md             # Complete project documentation
-├── assets/
-│   ├── logo.webp         # Official company logo
-│   └── favicon.webp      # Branded browser favicon & app icon
-├── css/
-│   └── styles.css        # Material Design 3 inspired Android UI & Light Theme
-└── js/
-    ├── app.js            # Main application controller & Android view orchestrator
-    ├── roles.js          # Role-Based Access Control (RBAC) governance system
-    ├── database-hub.js   # Cloud database provider abstraction & SQL migration engine
-    ├── google-sync.js    # Real-time Google Sheets Live Sync engine
-    ├── db.js             # IndexedDB & LocalStorage persistent storage
-    ├── analytics.js      # Indian FY, Quarters, and INR calculations mirroring Dashboard sheet
-    ├── charts.js         # Interactive Chart.js visualizations
-    └── export-import.js  # CSV/TSV Google Sheets exporter & importer
+
+### 2. Test Cloud Services & Handlers
+```bash
+# Verify Multi-Cloud Database Engine (Supabase / MongoDB / Neon)
+npm test
+
+# Run Comprehensive Zoho ERP Workflow Test
+npm run test:e2e
 ```
+
+### 3. Build for Production / Vercel
+```bash
+npm run build
+```
+
+---
+
+## 🌐 Deploy to Vercel
+
+1. Push to your GitHub repository:
+   ```bash
+   git add .
+   git commit -m "Fresh enterprise release with Supabase free tier & Vercel deployment"
+   git push origin main
+   ```
+2. In your Vercel Project Settings, add optional database environment variables:
+   - `DB_PROVIDER`: `supabase` (or `mongodb` / `neon`)
+   - `SUPABASE_DATABASE_URL`: `postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres`
+   - `SUPABASE_URL`: `https://[PROJECT-REF].supabase.co`
+   - `SUPABASE_ANON_KEY`: `your-supabase-anon-key`
+   - *(Optional for MongoDB)* `MONGODB_URI`: `mongodb+srv://...`
+   - *(Optional for Neon)* `DATABASE_URL`: `postgresql://...`
+3. Click **Deploy**. Vercel will automatically build from `public/` with serverless API routes in `api/`.
+
+---
+
+<p align="center">
+  <em>Developed for Dharshithan Waterproofing & Concrete Solutions • Powered by Synstar360 Enterprise ERP</em>
+</p>

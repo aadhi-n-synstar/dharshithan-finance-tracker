@@ -1,14 +1,6 @@
-const { neon } = require('@neondatabase/serverless');
-
-const DEFAULT_DATABASE_URL = "postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require";
-
-function getDb() {
-  const url = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
-  return neon(url);
-}
+const { db } = require('./db-adapter');
 
 module.exports = async function handler(req, res) {
-  // CORS & Content Type
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -18,32 +10,12 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const sql = getDb();
-
     // 1. GET - Fetch all transactions
     if (req.method === 'GET') {
-      const rows = await sql`
-        SELECT 
-          id,
-          sl_no as "slNo",
-          to_char(date, 'YYYY-MM-DD') as "date",
-          type,
-          party_name as "partyName",
-          category,
-          description,
-          amount::numeric as amount,
-          mode,
-          ref_number as "refNumber",
-          quarter,
-          financial_year as "financialYear",
-          profit_value::numeric as "profitValue",
-          created_at as "createdAt"
-        FROM transactions
-        ORDER BY sl_no ASC, date ASC
-      `;
-
+      const rows = await db.getTransactions();
       return res.status(200).json({
         success: true,
+        provider: db.getProvider(),
         count: rows.length,
         data: rows
       });
@@ -61,40 +33,16 @@ module.exports = async function handler(req, res) {
         return res.status(400).json({ success: false, error: 'Missing required transaction fields' });
       }
 
-      const numAmount = parseFloat(amount);
-      const isIncome = type.toLowerCase().includes('received') || type.toLowerCase().includes('income');
-      const calcProfitValue = profitValue !== undefined ? parseFloat(profitValue) : (isIncome ? numAmount : -numAmount);
+      const inserted = await db.createTransaction({
+        date, type, partyName, category, description,
+        amount, mode, refNumber, quarter, financialYear, profitValue
+      });
 
-      // Get next sl_no
-      const maxSlRes = await sql`SELECT COALESCE(MAX(sl_no), 0) + 1 as "nextSl" FROM transactions`;
-      const nextSl = maxSlRes[0].nextSl;
-
-      const inserted = await sql`
-        INSERT INTO transactions (
-          sl_no, date, type, party_name, category, description,
-          amount, mode, ref_number, quarter, financial_year, profit_value
-        ) VALUES (
-          ${nextSl}, ${date}, ${type}, ${partyName}, ${category || 'General'}, ${description || ''},
-          ${numAmount}, ${mode || 'CASH'}, ${refNumber || ''}, ${quarter || 'Q1'}, 
-          ${financialYear || 'F.Y. 2026-27'}, ${calcProfitValue}
-        )
-        RETURNING 
-          id,
-          sl_no as "slNo",
-          to_char(date, 'YYYY-MM-DD') as "date",
-          type,
-          party_name as "partyName",
-          category,
-          description,
-          amount::numeric as amount,
-          mode,
-          ref_number as "refNumber",
-          quarter,
-          financial_year as "financialYear",
-          profit_value::numeric as "profitValue"
-      `;
-
-      return res.status(201).json({ success: true, data: inserted[0] });
+      return res.status(201).json({
+        success: true,
+        provider: db.getProvider(),
+        data: inserted
+      });
     }
 
     // 3. PUT - Update existing transaction
@@ -105,83 +53,45 @@ module.exports = async function handler(req, res) {
         amount, mode, refNumber, quarter, financialYear, profitValue
       } = body;
 
-      if (!id && !slNo) {
+      const targetId = id || slNo;
+      if (!targetId) {
         return res.status(400).json({ success: false, error: 'Transaction id or slNo is required for update' });
       }
 
-      const numAmount = parseFloat(amount);
+      const updated = await db.updateTransaction(targetId, {
+        date, type, partyName, category, description,
+        amount, mode, refNumber, quarter, financialYear, profitValue
+      });
 
-      let updated;
-      const isUuid = id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
-
-      if (isUuid) {
-        updated = await sql`
-          UPDATE transactions SET
-            date = ${date},
-            type = ${type},
-            party_name = ${partyName},
-            category = ${category},
-            description = ${description},
-            amount = ${numAmount},
-            mode = ${mode},
-            ref_number = ${refNumber},
-            quarter = ${quarter},
-            financial_year = ${financialYear},
-            profit_value = ${profitValue},
-            updated_at = NOW()
-          WHERE id = ${id}
-          RETURNING id, sl_no as "slNo", to_char(date, 'YYYY-MM-DD') as "date", type, party_name as "partyName"
-        `;
-      } else {
-        const targetSl = slNo || id;
-        updated = await sql`
-          UPDATE transactions SET
-            date = ${date},
-            type = ${type},
-            party_name = ${partyName},
-            category = ${category},
-            description = ${description},
-            amount = ${numAmount},
-            mode = ${mode},
-            ref_number = ${refNumber},
-            quarter = ${quarter},
-            financial_year = ${financialYear},
-            profit_value = ${profitValue},
-            updated_at = NOW()
-          WHERE sl_no = ${Number(targetSl)}
-          RETURNING id, sl_no as "slNo", to_char(date, 'YYYY-MM-DD') as "date", type, party_name as "partyName"
-        `;
-      }
-
-      return res.status(200).json({ success: true, data: updated ? updated[0] : null });
+      return res.status(200).json({
+        success: true,
+        provider: db.getProvider(),
+        data: updated
+      });
     }
 
-    // 4. DELETE - Delete transaction permanently from Neon DB
+    // 4. DELETE - Delete transaction permanently
     if (req.method === 'DELETE') {
       const id = req.query.id || (req.body && req.body.id);
       const slNo = req.query.slNo || (req.body && req.body.slNo);
+      const targetId = id || slNo;
 
-      if (id) {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
-        if (isUuid) {
-          await sql`DELETE FROM transactions WHERE id = ${id}`;
-        } else if (!isNaN(Number(id))) {
-          await sql`DELETE FROM transactions WHERE sl_no = ${Number(id)}`;
-        } else {
-          await sql`DELETE FROM transactions WHERE id = ${id}`;
-        }
-      } else if (slNo) {
-        await sql`DELETE FROM transactions WHERE sl_no = ${Number(slNo)}`;
-      } else {
+      if (!targetId) {
         return res.status(400).json({ success: false, error: 'Missing id or slNo parameter' });
       }
 
-      return res.status(200).json({ success: true, message: 'Transaction permanently deleted from Neon DB' });
+      await db.deleteTransaction(targetId);
+
+      return res.status(200).json({
+        success: true,
+        provider: db.getProvider(),
+        message: 'Transaction permanently deleted from active database'
+      });
     }
 
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    console.error('API Error:', err);
+    console.error('API Transactions Error:', err);
     return res.status(500).json({ success: false, error: err.message });
   }
 };

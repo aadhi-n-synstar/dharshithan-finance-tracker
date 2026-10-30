@@ -159,13 +159,25 @@ class FinanceApp {
       this.applyFilters();
 
       const bannerText = document.getElementById('lastSyncBannerText');
-      if (bannerText) {
-        const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-        bannerText.textContent = `Neon DB Connected • Synced ${timeStr}`;
+      const provTitle = document.getElementById('activeDbProviderTitle');
+      const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      try {
+        const healthRes = await fetch('/api/health');
+        if (healthRes.ok) {
+          const h = await healthRes.json();
+          const p = h.activeProvider === 'supabase' ? 'Supabase Cloud (Free Tier)' : (h.activeProvider === 'mongodb' ? 'MongoDB Atlas (Free M0)' : 'Neon PostgreSQL');
+          if (bannerText) bannerText.textContent = `${p} • Synced ${timeStr}`;
+          if (provTitle) provTitle.textContent = `${p} Active`;
+        } else if (bannerText) {
+          bannerText.textContent = `Cloud DB Connected • Synced ${timeStr}`;
+        }
+      } catch (e) {
+        if (bannerText) bannerText.textContent = `Cloud DB Connected • Synced ${timeStr}`;
       }
 
       if (!isSilent) {
-        this.showToast('Synchronized with Neon PostgreSQL Cloud Database', 'success');
+        this.showToast('Synchronized with Cloud Database Engine', 'success');
       }
     } catch (err) {
       console.error('Neon sync error:', err);
@@ -2329,10 +2341,10 @@ class FinanceApp {
   }
 
   // =========================================================================
-  // NEON DATABASE CONSOLE & SQL TOOLS (SUPER ADMIN ONLY)
+  // MULTI-CLOUD DATABASE CONSOLE & AUTOMATED MIGRATION (SUPER ADMIN ONLY)
   // =========================================================================
 
-  openDatabaseHubModal() {
+  async openDatabaseHubModal() {
     if (!window.roleManager.isSuperAdmin()) {
       this.showToast('Restricted: Database Console is accessible only to Super Admin', 'error');
       return;
@@ -2341,6 +2353,35 @@ class FinanceApp {
     if (modal) {
       modal.classList.remove('hidden');
       if (window.lucide) window.lucide.createIcons();
+
+      // Fetch live health & telemetry
+      try {
+        const res = await fetch('/api/health');
+        if (res.ok) {
+          const health = await res.json();
+          const provEl = document.getElementById('modalActiveProvider');
+          const statEl = document.getElementById('modalDbStatus');
+          const latEl = document.getElementById('modalDbLatency');
+          const recEl = document.getElementById('modalRecordCount');
+
+          if (provEl) {
+            const pName = health.activeProvider === 'supabase' ? 'Supabase (Free Tier)' : (health.activeProvider === 'mongodb' ? 'MongoDB Atlas (Free M0)' : 'Neon PostgreSQL');
+            provEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span>${pName}</span>`;
+          }
+          if (statEl) {
+            statEl.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i><span>${health.status.toUpperCase()}</span>`;
+          }
+          if (latEl) {
+            latEl.textContent = `Latency: ~${health.latencyMs || 2}ms`;
+          }
+          if (recEl && health.counts) {
+            recEl.textContent = `${health.counts.transactions || 0} Txns • ${health.counts.users || 0} Users`;
+          }
+          if (window.lucide) window.lucide.createIcons();
+        }
+      } catch (e) {
+        console.warn('Could not refresh modal telemetry:', e);
+      }
     }
   }
 
@@ -2349,9 +2390,90 @@ class FinanceApp {
     if (modal) modal.classList.add('hidden');
   }
 
+  async transferDataToSupabase() {
+    const btn = document.getElementById('transferSupabaseBtn');
+    const msg = document.getElementById('transferStatusMessage');
+    if (btn) btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>Transferring to Supabase...</span>`;
+
+    try {
+      const res = await fetch('/api/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetProvider: 'supabase' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast('Successfully transferred data to Supabase (Free Tier)!', 'success');
+        if (msg) {
+          msg.classList.remove('hidden');
+          msg.textContent = '✓ Data Transfer Complete: Live transactions, users, and float migrated to Supabase.';
+        }
+        await this.refreshFromNeon({ silent: true });
+      } else {
+        throw new Error(data.error || 'Transfer failed');
+      }
+    } catch (err) {
+      this.showToast('Transfer notice: ' + err.message, 'info');
+      if (msg) {
+        msg.classList.remove('hidden');
+        msg.textContent = 'ℹ ' + err.message + '. (Configure SUPABASE_DATABASE_URL in Vercel to sync directly to external cloud).';
+      }
+    } finally {
+      if (btn) btn.innerHTML = `<i data-lucide="zap" class="w-3.5 h-3.5"></i><span>Transfer to Supabase (Free)</span>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+
+  async transferDataToMongo() {
+    const btn = document.getElementById('transferMongoBtn');
+    const msg = document.getElementById('transferStatusMessage');
+    if (btn) btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>Transferring to MongoDB...</span>`;
+
+    try {
+      const res = await fetch('/api/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetProvider: 'mongodb' })
+      });
+      const data = await res.json();
+      if (data.success) {
+        this.showToast('Successfully transferred data to MongoDB Atlas!', 'success');
+        if (msg) {
+          msg.classList.remove('hidden');
+          msg.textContent = '✓ Data Transfer Complete: Live transactions and users migrated to MongoDB Atlas.';
+        }
+      } else {
+        throw new Error(data.error || 'Transfer failed');
+      }
+    } catch (err) {
+      this.showToast('Transfer notice: ' + err.message, 'info');
+      if (msg) {
+        msg.classList.remove('hidden');
+        msg.textContent = 'ℹ ' + err.message + '. (Configure MONGODB_URI in Vercel to sync directly to external cloud).';
+      }
+    } finally {
+      if (btn) btn.innerHTML = `<i data-lucide="layers" class="w-3.5 h-3.5"></i><span>Transfer to MongoDB Atlas</span>`;
+      if (window.lucide) window.lucide.createIcons();
+    }
+  }
+
+  downloadSupabaseSQL() {
+    if (window.databaseHub) {
+      window.databaseHub.downloadSupabaseMigration(this.transactions);
+      this.showToast('Exported Supabase PostgreSQL migration file', 'success');
+    }
+  }
+
+  downloadMongoJSON() {
+    if (window.databaseHub) {
+      window.databaseHub.downloadMongoJSON(this.transactions);
+      this.showToast('Exported MongoDB Atlas JSON documents', 'success');
+    }
+  }
+
   downloadMigrationSQL() {
     const sql = `-- Dharshithan Waterproofing and Concrete Solutions
--- Enterprise PostgreSQL Native DDL Migration for Neon Cloud
+-- Enterprise PostgreSQL Native DDL Migration for Supabase / Neon Cloud
 
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

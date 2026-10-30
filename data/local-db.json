@@ -1,0 +1,86 @@
+{
+  "users": [
+    {
+      "id": "563fd33e-d726-45ae-a31d-1ecca9a776e3",
+      "user_id": "admin",
+      "full_name": "Super Administrator",
+      "email": "admin@dharshithan.com",
+      "category": "Executive Management",
+      "role": "super_admin",
+      "phone": "+91 98765 43210",
+      "password_hash": "$2a$06$AXeuNXUsJDB3F.6iK4PmOOhNcZnGUJjuZZYHHkxNdITOMgBm/N.T.",
+      "must_change_password": false,
+      "email_verified": true,
+      "reset_otp": null,
+      "reset_otp_expires": null,
+      "last_password_change": null,
+      "is_active": true,
+      "created_at": "2026-10-29T06:09:07.378Z",
+      "updated_at": "2026-10-29T06:09:07.378Z"
+    },
+    {
+      "id": "acce0495-bb42-4252-86de-29c03815c969",
+      "user_id": "test",
+      "full_name": "Aadhi N",
+      "email": "aadhi.n@synstarstaffing.com",
+      "category": "Accounts & Audit",
+      "role": "admin",
+      "phone": "",
+      "password_hash": "$2a$06$9CDasJVkpNxDnS6jHEwDleTPZM.qdv21.ZCBEIMqdFvXJw5YPHpJO",
+      "must_change_password": false,
+      "email_verified": true,
+      "reset_otp": null,
+      "reset_otp_expires": null,
+      "last_password_change": "2026-10-30T09:29:13.515Z",
+      "is_active": true,
+      "created_at": "2026-10-30T09:28:45.101Z",
+      "updated_at": "2026-10-30T09:29:13.515Z"
+    }
+  ],
+  "transactions": [
+    {
+      "id": "cbf012b8-207d-4c5d-b549-0db3579474f6",
+      "sl_no": 1,
+      "date": "2026-10-29T18:30:00.000Z",
+      "type": "Received / Income",
+      "party_name": "AYYAN HOMES",
+      "description": "",
+      "amount": "120000.00",
+      "mode": "NETBANKING",
+      "ref_number": "Inv No. 001",
+      "quarter": "Q3",
+      "financial_year": "F.Y. 2026-27",
+      "profit_value": "120000.00",
+      "category": "Client Waterproofing Project",
+      "created_by": null,
+      "created_at": "2026-10-30T09:41:10.655Z",
+      "updated_at": "2026-10-30T09:41:10.655Z"
+    },
+    {
+      "id": "7dc512c4-4910-4cc3-a8b4-56f3e68d794c",
+      "sl_no": 2,
+      "date": "2026-10-29T18:30:00.000Z",
+      "type": "Paid / Expense",
+      "party_name": "David",
+      "description": "Wages",
+      "amount": "3200.00",
+      "mode": "CASH",
+      "ref_number": "PYSL No: 001",
+      "quarter": "Q3",
+      "financial_year": "F.Y. 2026-27",
+      "profit_value": "-3200.00",
+      "category": "Staff & Salary",
+      "created_by": null,
+      "created_at": "2026-10-30T09:41:50.308Z",
+      "updated_at": "2026-10-30T09:41:50.308Z"
+    }
+  ],
+  "liquidity": {
+    "id": 1,
+    "opening_bank_balance": "0.00",
+    "opening_cash_float": "0.00",
+    "last_reconciled_at": "2026-10-29T09:16:11.140Z",
+    "updated_by": null
+  },
+  "audit_logs": []
+}

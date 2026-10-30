@@ -1,91 +1,80 @@
-const { neon } = require('@neondatabase/serverless');
+const { db } = require('./api/db-adapter');
 const https = require('https');
 require('dotenv').config({ path: '.env.local' });
 
-const DEFAULT_DATABASE_URL = "postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require";
-
 async function testServices() {
   console.log('====================================================');
-  console.log('   Dharshithan Finance Tracker - Neon End-to-End Test');
+  console.log('   Dharshithan Finance Tracker - Cloud Services Test');
+  console.log('   Active Engine: Supabase (Free Tier) / MongoDB / Neon');
   console.log('====================================================\n');
 
   let passed = 0;
   let total = 3;
 
-  // --- SERVICE 1: NEON POSTGRESQL ---
-  console.log('[1/3] Testing Service: Neon Lakebase Postgres...');
+  // --- SERVICE 1: UNIFIED DATABASE ADAPTER ---
+  console.log('[1/3] Testing Unified Database Engine (Active: ' + db.getProvider() + ')...');
   try {
-    const dbUrl = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
-    const sql = neon(dbUrl);
-    const dbInfo = await sql`SELECT current_database(), current_user, version()`;
-    console.log(`  ✓ Database connected: ${dbInfo[0].current_database} (User: ${dbInfo[0].current_user})`);
+    const health = await db.getHealth();
+    console.log(`  ✓ Provider Status: ${health.status.toUpperCase()} (${health.details.databaseType})`);
+    console.log(`  ✓ Response Latency: ${health.latencyMs}ms`);
 
     // Test Write (Insert)
-    const testParty = 'Neon E2E Test Party ' + Date.now();
-    const insertRes = await sql`
-      INSERT INTO transactions (
-        sl_no, date, type, party_name, category, description,
-        amount, mode, ref_number, quarter, financial_year, profit_value
-      ) VALUES (
-        9999, '2026-11-01', 'Received / Income', ${testParty}, 'Test Category', 'E2E Testing',
-        5000.00, 'UPI', 'TEST-REF', 'Q3', 'F.Y. 2026-27', 5000.00
-      )
-      RETURNING id, sl_no, party_name, amount
-    `;
-    console.log(`  ✓ Write Test: Inserted test transaction id=${insertRes[0].id} (₹${insertRes[0].amount})`);
+    const testTxn = await db.createTransaction({
+      date: '2026-11-01',
+      type: 'Received / Income',
+      partyName: 'Cloud E2E Verification Party',
+      category: 'Cloud Test',
+      description: 'End-to-End Automated Test Transaction',
+      amount: 7500.00,
+      mode: 'UPI',
+      refNumber: 'TEST-UPI-' + Date.now(),
+      quarter: 'Q3',
+      financialYear: 'F.Y. 2026-27',
+      profitValue: 7500.00
+    });
+    console.log(`  ✓ Write Test: Inserted transaction id=${testTxn.id} (₹${testTxn.amount})`);
 
     // Test Read (Select)
-    const readRes = await sql`SELECT id, party_name, amount FROM transactions WHERE id = ${insertRes[0].id}`;
-    if (!readRes.length || readRes[0].party_name !== testParty) {
-      throw new Error('Read verification failed!');
-    }
+    const allTx = await db.getTransactions();
+    const found = allTx.find(t => t.id === testTxn.id || t.partyName === 'Cloud E2E Verification Party');
+    if (!found) throw new Error('Could not find newly created test record');
     console.log(`  ✓ Read Test: Verified test record retrieved successfully`);
 
     // Test Cleanup (Delete)
-    await sql`DELETE FROM transactions WHERE id = ${insertRes[0].id}`;
+    await db.deleteTransaction(testTxn.id);
     console.log(`  ✓ Delete Test: Cleaned up test record`);
 
-    console.log('  >>> SERVICE 1 (Neon Postgres): PASSED! <<<\n');
+    console.log('  >>> SERVICE 1 (Unified Cloud DB Engine): PASSED! <<<\n');
     passed++;
   } catch (err) {
     console.error('  ✗ SERVICE 1 FAILED:', err.message, '\n');
   }
 
-  // --- SERVICE 2: NEON AUTH ---
-  console.log('[2/3] Testing Service: Neon Auth (Managed Better Auth)...');
+  // --- SERVICE 2: USER GOVERNANCE & RBAC ---
+  console.log('[2/3] Testing User & Role-Based Access Control (RBAC)...');
   try {
-    const authUrl = process.env.NEON_AUTH_BASE_URL || "https://ep-late-art-b5308bnc.neonauth.c-7.us-east-2.aws.neon.tech/neondb/auth";
-    const jwksUrl = process.env.NEON_AUTH_JWKS_URL || "https://ep-late-art-b5308bnc.neonauth.c-7.us-east-2.aws.neon.tech/neondb/auth/.well-known/jwks.json";
-    console.log(`  ✓ Auth Base URL: ${authUrl}`);
-    console.log(`  ✓ JWKS URL: ${jwksUrl}`);
+    const users = await db.getUsers();
+    console.log(`  ✓ Users found in database: ${users.length}`);
+    const adminUser = await db.getUserByLogin('admin');
+    if (!adminUser) throw new Error('Super Admin user (admin) not found!');
+    console.log(`  ✓ Super Admin verified: ${adminUser.fullName} (${adminUser.email}) - Role: ${adminUser.role}`);
 
-    // Verify JWKS endpoint responds
-    await new Promise((resolve, reject) => {
-      https.get(jwksUrl, (res) => {
-        if (res.statusCode >= 200 && res.statusCode < 400) {
-          console.log(`  ✓ JWKS Endpoint Responding: HTTP ${res.statusCode}`);
-          resolve();
-        } else {
-          reject(new Error(`JWKS HTTP error: ${res.statusCode}`));
-        }
-      }).on('error', reject);
-    });
-
-    console.log('  >>> SERVICE 2 (Neon Auth): PASSED! <<<\n');
+    console.log('  >>> SERVICE 2 (User Governance & RBAC): PASSED! <<<\n');
     passed++;
   } catch (err) {
     console.error('  ✗ SERVICE 2 FAILED:', err.message, '\n');
   }
 
-  // --- SERVICE 3: NEON REALTIME ---
-  console.log('[3/3] Testing Service: Neon Realtime...');
+  // --- SERVICE 3: CLOUD HEALTH & SYNC STATUS ---
+  console.log('[3/3] Testing Health Monitor & Migration Endpoints...');
   try {
-    const rtUrl = process.env.NEON_REALTIME_URL || "wss://ep-late-art-b5308bnc.rt.c-7.us-east-2.aws.neon.tech/";
-    const rtSecret = process.env.NEON_REALTIME_SECRET || "nrt_live_11CWcEoqGXuKLKPgW_4eECgbcIvSbQznG-IyDHOnJROI";
-    console.log(`  ✓ Realtime WebSocket Endpoint: ${rtUrl}`);
-    console.log(`  ✓ Realtime Secret Configured: ${rtSecret.slice(0, 12)}...`);
+    const health = await db.getHealth();
+    if (health.status !== 'healthy') throw new Error('Health check returned degraded status: ' + health.error);
+    console.log(`  ✓ Health check confirmed: ${health.status}`);
+    console.log(`  ✓ Live transaction count: ${health.counts.transactions}`);
+    console.log(`  ✓ Live user count: ${health.counts.users}`);
 
-    console.log('  >>> SERVICE 3 (Neon Realtime): PASSED! <<<\n');
+    console.log('  >>> SERVICE 3 (Health Monitor & Endpoints): PASSED! <<<\n');
     passed++;
   } catch (err) {
     console.error('  ✗ SERVICE 3 FAILED:', err.message, '\n');

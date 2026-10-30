@@ -8,6 +8,7 @@ const transactionsHandler = require('./api/transactions');
 const usersHandler = require('./api/users');
 const authHandler = require('./api/auth');
 const healthHandler = require('./api/health');
+const transferHandler = require('./api/transfer');
 
 const PORT = process.env.PORT || 3000;
 
@@ -73,6 +74,9 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/api/health') {
       return healthHandler(req, res);
     }
+    if (pathname === '/api/transfer') {
+      return transferHandler(req, res);
+    }
 
     // Static Files (check public/ first, fallback to root)
     let filePath = path.join(__dirname, 'public', pathname === '/' ? 'index.html' : pathname);
@@ -104,7 +108,7 @@ const server = http.createServer(async (req, res) => {
 if (require.main === module) {
   server.listen(PORT, () => {
     console.log(`Dharshithan Finance Tracker is running at http://localhost:${PORT}`);
-    console.log(`Powered 100% by Neon Cloud Database (Postgres, Auth, Realtime)`);
+    console.log(`Multi-Database Cloud Engine: Supabase (Free Tier), MongoDB Atlas, Neon PostgreSQL`);
   });
 }
 
