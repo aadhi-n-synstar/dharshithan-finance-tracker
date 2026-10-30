@@ -204,6 +204,40 @@ class FinanceApp {
     }
   }
 
+  
+  toggleSidebar() {
+    const sidebar = document.getElementById('erpSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (sidebar) {
+      sidebar.classList.toggle('-translate-x-full');
+      if (backdrop) backdrop.classList.toggle('hidden');
+    }
+  }
+
+  closeSidebar() {
+    const sidebar = document.getElementById('erpSidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    if (sidebar && !sidebar.classList.contains('-translate-x-full')) {
+      sidebar.classList.add('-translate-x-full');
+    }
+    if (backdrop && !backdrop.classList.contains('hidden')) {
+      backdrop.classList.add('hidden');
+    }
+  }
+
+  handleGlobalSearch(query) {
+    const q = (query || '').toLowerCase().trim();
+    const searchInput = document.getElementById('txnSearch');
+    if (searchInput) searchInput.value = q;
+    
+    this.filters.search = q;
+    if (q && this.activeTab === 'dashboard') {
+      this.setActiveTab('transactions');
+    } else {
+      this.handleFilterChange();
+    }
+  }
+
   setActiveTab(tabName) {
     if (tabName === 'reports' && window.roleManager && !window.roleManager.can('canViewReports')) {
       this.showToast('Access restricted: P&L reports are restricted for your role.', 'error');
@@ -213,38 +247,42 @@ class FinanceApp {
     this.activeTab = tabName;
     const allTabs = ['dashboard', 'transactions', 'sales', 'expenses', 'banking', 'parties', 'reports'];
 
-    allTabs.forEach(tab => {
-      const desktopBtn = document.getElementById(`tab-${tab}`);
-      const tabletBtn = document.getElementById(`subtab-${tab}`);
-      const mobileNav = document.getElementById(`nav-${tab}`);
-      const view = document.getElementById(`view-${tab}`);
+    // Update Top Bar Breadcrumb
+    const breadcrumbEl = document.getElementById('topBarBreadcrumb');
+    const titles = {
+      dashboard: 'Executive Dashboard',
+      transactions: 'Master General Ledger',
+      sales: 'Sales & Customer Invoices',
+      expenses: 'Purchases & Operating Expenses',
+      banking: 'Banking & Cash Reserves',
+      parties: 'Clients & Vendors Directory',
+      reports: 'Profit & Loss Statement'
+    };
+    if (breadcrumbEl && titles[tabName]) {
+      breadcrumbEl.textContent = titles[tabName];
+    }
 
+    allTabs.forEach(tab => {
+      const sideItem = document.getElementById(`side-tab-${tab}`);
+      const desktopBtn = document.getElementById(`tab-${tab}`);
+      const view = document.getElementById(`view-${tab}`);
       const isActive = tab === tabName;
 
-      // Desktop top nav
+      // Zoho Sidebar Item
+      if (sideItem) {
+        if (isActive) {
+          sideItem.className = 'erp-sidebar-item w-full active';
+        } else {
+          sideItem.className = 'erp-sidebar-item w-full';
+        }
+      }
+
+      // Legacy desktop tab if present
       if (desktopBtn) {
         if (isActive) {
-          desktopBtn.className = 'px-3 py-1.5 rounded-lg transition-all text-white bg-sky-600 font-bold shadow-xs flex items-center space-x-1.5 cursor-pointer';
+          desktopBtn.className = 'px-3 py-1.5 rounded-lg text-white bg-sky-600 font-bold';
         } else {
-          desktopBtn.className = 'px-3 py-1.5 rounded-lg transition-all text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 flex items-center space-x-1.5 cursor-pointer';
-        }
-      }
-
-      // Tablet secondary nav
-      if (tabletBtn) {
-        if (isActive) {
-          tabletBtn.className = 'px-2.5 py-1 rounded-lg text-white bg-sky-600 font-bold whitespace-nowrap cursor-pointer';
-        } else {
-          tabletBtn.className = 'px-2.5 py-1 rounded-lg text-slate-600 hover:text-slate-900 whitespace-nowrap cursor-pointer';
-        }
-      }
-
-      // Mobile bottom nav
-      if (mobileNav) {
-        if (isActive) {
-          mobileNav.classList.add('active');
-        } else {
-          mobileNav.classList.remove('active');
+          desktopBtn.className = 'px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900';
         }
       }
 
@@ -258,13 +296,16 @@ class FinanceApp {
       }
     });
 
+    this.closeSidebar();
     this.renderCurrentView();
 
     if (window.lucide) {
       window.lucide.createIcons();
     }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const mainScroll = document.getElementById('erpMainScroll');
+    if (mainScroll) mainScroll.scrollTo({ top: 0, behavior: 'smooth' });
+    else window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   handleFilterChange() {
@@ -584,6 +625,50 @@ class FinanceApp {
         `;
       }).join('');
     }
+
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  
+  renderDashboardRecentTable(txns) {
+    const tbody = document.getElementById('dashboardRecentTableBody');
+    if (!tbody) return;
+
+    const recent = (txns || []).slice(0, 5);
+    if (recent.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="p-6 text-center text-slate-400">No transactions recorded in this period.</td></tr>';
+      return;
+    }
+
+    const canEdit = window.roleManager ? window.roleManager.can('canEdit') : false;
+    const canDelete = window.roleManager ? window.roleManager.can('canDelete') : false;
+
+    tbody.innerHTML = recent.map((t, idx) => {
+      const isIncome = t.type && (t.type.toLowerCase().includes('received') || t.type.toLowerCase().includes('income'));
+      return `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="font-mono text-slate-500 font-semibold text-xs">#${t.slNo || (idx + 1)}</td>
+          <td class="font-mono text-slate-700 whitespace-nowrap">${FinanceAnalytics.formatDateDisplay(t.date)}</td>
+          <td>
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${isIncome ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-rose-50 text-rose-700 border-rose-200'}">
+              ${isIncome ? 'INCOME' : 'EXPENSE'}
+            </span>
+          </td>
+          <td class="font-bold text-slate-900">${t.partyName}</td>
+          <td>${t.category || 'General'}</td>
+          <td class="font-semibold text-slate-700 text-[11px]">${t.mode || 'CASH'}</td>
+          <td class="font-mono text-slate-500 text-[11px]">${t.refNumber || '-'}</td>
+          <td class="text-right font-mono font-bold ${isIncome ? 'text-emerald-600' : 'text-rose-600'} whitespace-nowrap">
+            ${isIncome ? '+' : '-'}${FinanceAnalytics.formatINR(t.amount)}
+          </td>
+          <td class="text-center whitespace-nowrap">
+            <button onclick="app.showTransactionDetail('${t.id}')" class="p-1 rounded hover:bg-slate-100 text-slate-500 hover:text-slate-800 transition" title="View Details">
+              <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
 
     if (window.lucide) window.lucide.createIcons();
   }
@@ -1449,8 +1534,8 @@ class FinanceApp {
     const canManageUsers = isAuth && ['super_admin', 'developer', 'admin', 'owner'].includes(activeRoleId);
 
     // =========================================================================
-    // STRICT SUPER-ADMIN ONLY DATABASE GATING
-    // (Only Super Admin Dashboard shows DB telemetry, connection strings, or sync)
+    // STRICT SUPER-ADMIN DATABASE GATING
+    // (Only Super Admin sees Database telemetry, console, or manual sync triggers)
     // =========================================================================
     const neonStatusBar = document.getElementById('neonStatusBar');
     if (neonStatusBar) {
@@ -1468,82 +1553,49 @@ class FinanceApp {
       headerSyncBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
     }
 
-    const neonSyncPill = document.getElementById('neonSyncPill');
-    if (neonSyncPill) {
-      neonSyncPill.style.display = isSuperAdmin ? 'inline-flex' : 'none';
+    const sideDbBtn = document.getElementById('side-tab-database');
+    if (sideDbBtn) {
+      if (isSuperAdmin) sideDbBtn.classList.remove('hidden');
+      else sideDbBtn.classList.add('hidden');
     }
 
-    const dbHubBtn = document.getElementById('dbHubBtn');
-    if (dbHubBtn) {
-      dbHubBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
-    }
-
-    const filterBarSyncBtn = document.getElementById('filterBarSyncBtn');
-    if (filterBarSyncBtn) {
-      filterBarSyncBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
-    }
-
-    const filterBarSqlBtn = document.getElementById('filterBarSqlBtn');
-    if (filterBarSqlBtn) {
-      filterBarSqlBtn.style.display = isSuperAdmin ? 'inline-flex' : 'none';
-    }
-
-    const androidFabBtn = document.getElementById('androidFabBtn');
-    if (androidFabBtn) {
-      androidFabBtn.style.display = isSuperAdmin ? 'flex' : 'none';
+    const sideUsersBtn = document.getElementById('side-tab-users');
+    if (sideUsersBtn) {
+      if (canManageUsers) sideUsersBtn.classList.remove('hidden');
+      else sideUsersBtn.classList.add('hidden');
     }
 
     // =========================================================================
-    // UPDATE RIGHT-SIDE USER PROFILE PILL BUTTON (Zoho Books Style)
+    // UPDATE USER PROFILES (SIDEBAR FOOTER & TOP APP BAR)
     // =========================================================================
     if (user) {
       const roleObj = window.roleManager ? window.roleManager.getRole() : null;
       const roleName = roleObj ? roleObj.name : user.role;
       const roleId = roleObj ? roleObj.id : user.role;
+      const initials = (user.fullName || user.userId || 'U')
+        .split(' ')
+        .map(w => w[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase() || 'SA';
 
-      // Header Profile Avatar Initials
-      const profileAvatar = document.getElementById('headerProfileAvatar');
-      if (profileAvatar) {
-        const initials = (user.fullName || user.userId || 'U')
-          .split(' ')
-          .map(w => w[0])
-          .slice(0, 2)
-          .join('')
-          .toUpperCase();
-        profileAvatar.textContent = initials || 'SA';
+      // 1. Sidebar Footer User Profile
+      const sideAvatar = document.getElementById('sideProfileAvatar');
+      if (sideAvatar) sideAvatar.textContent = initials;
+      const sideName = document.getElementById('sideProfileName');
+      if (sideName) sideName.textContent = user.fullName || user.userId;
+      const sideRole = document.getElementById('sideProfileRole');
+      if (sideRole) sideRole.textContent = roleName;
 
-        // Avatar color coding based on role
-        if (roleId === 'super_admin') profileAvatar.className = 'w-7 h-7 rounded-xl bg-purple-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs';
-        else if (roleId === 'owner') profileAvatar.className = 'w-7 h-7 rounded-xl bg-emerald-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs';
-        else if (roleId === 'admin') profileAvatar.className = 'w-7 h-7 rounded-xl bg-sky-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs';
-        else if (roleId === 'developer') profileAvatar.className = 'w-7 h-7 rounded-xl bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs';
-        else profileAvatar.className = 'w-7 h-7 rounded-xl bg-amber-600 text-white font-bold text-xs flex items-center justify-center shadow-2xs';
-      }
-
-      // Header Profile Full Name
-      const profileName = document.getElementById('headerProfileName');
-      if (profileName) {
-        profileName.textContent = user.fullName || user.userId;
-      }
-
-      // Header Profile Role Badge
-      const profileBadge = document.getElementById('headerProfileBadge');
-      if (profileBadge) {
-        let badgeIcon = '👑';
-        if (roleId === 'owner') badgeIcon = '💼';
-        else if (roleId === 'admin') badgeIcon = '📊';
-        else if (roleId === 'developer') badgeIcon = '💻';
-        else if (roleId === 'employee') badgeIcon = '👷';
-        else if (roleId === 'stakeholder') badgeIcon = '📈';
-
-        profileBadge.textContent = `${badgeIcon} ${roleName}`;
-      }
+      // 2. Top Bar User Profile
+      const topAvatar = document.getElementById('headerProfileAvatar');
+      if (topAvatar) topAvatar.textContent = initials;
+      const topName = document.getElementById('headerProfileName');
+      if (topName) topName.textContent = user.fullName || user.userId;
+      const topBadge = document.getElementById('headerProfileBadge');
+      if (topBadge) topBadge.textContent = roleName;
     }
   }
-
-  // =========================================================================
-  // USER PROFILE & RIGHTS TO USE DRAWER / MODAL
-  // =========================================================================
 
   openUserProfileModal() {
     const modal = document.getElementById('userProfileModal');
