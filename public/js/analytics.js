@@ -205,9 +205,10 @@ class FinanceAnalytics {
         availableCashInHand,
         cashHealth
       },
-      incomeByMode,
-      expensesByMode,
-      transactionCount: transactions.length
+      incomeByMode: incomeByMode || {},
+      expensesByMode: expensesByMode || {},
+      expenseByMode: expensesByMode || {},
+      transactionCount: (transactions || []).length
     };
   }
 

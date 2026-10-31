@@ -9,6 +9,8 @@ const usersHandler = require('./api/users');
 const authHandler = require('./api/auth');
 const healthHandler = require('./api/health');
 const transferHandler = require('./api/transfer');
+const partiesHandler = require('./api/parties');
+const auditLogsHandler = require('./api/audit-logs');
 
 const PORT = process.env.PORT || 3000;
 
@@ -76,6 +78,12 @@ const server = http.createServer(async (req, res) => {
     }
     if (pathname === '/api/transfer') {
       return transferHandler(req, res);
+    }
+    if (pathname === '/api/parties') {
+      return partiesHandler(req, res);
+    }
+    if (pathname === '/api/audit-logs') {
+      return auditLogsHandler(req, res);
     }
 
     // Static Files (check public/ first, fallback to root)

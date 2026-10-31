@@ -117,34 +117,63 @@ const ROLES = {
 class RoleManager {
   constructor() {
     this.storageKey = 'dharshithan_active_role';
-    const saved = localStorage.getItem(this.storageKey);
-    this.activeRole = ROLES[saved] || ROLES.SUPER_ADMIN;
+    const saved = (localStorage.getItem(this.storageKey) || '').trim().toLowerCase();
+    this.activeRole = Object.values(ROLES).find(r => r.id.toLowerCase() === saved) || ROLES.SUPER_ADMIN;
     this.listeners = [];
   }
 
+  get currentRoleId() {
+    return this.activeRole ? this.activeRole.id : 'super_admin';
+  }
+
   getRole() {
-    return this.activeRole;
+    if (!this.activeRole) return { ...ROLES.SUPER_ADMIN, label: ROLES.SUPER_ADMIN.name };
+    return {
+      ...this.activeRole,
+      label: this.activeRole.name || this.activeRole.title
+    };
   }
 
   setRole(roleKey) {
-    const target = ROLES[roleKey] || Object.values(ROLES).find(r => r.id === roleKey);
+    if (!roleKey) return;
+    const cleanKey = String(roleKey).trim().toLowerCase();
+    const upperKey = cleanKey.toUpperCase();
+    const target = ROLES[upperKey] || Object.values(ROLES).find(r => r.id.toLowerCase() === cleanKey);
     if (!target) return;
 
     this.activeRole = target;
-    localStorage.setItem(this.storageKey, target.id.toUpperCase());
+    localStorage.setItem(this.storageKey, target.id);
     this.notify();
   }
 
+  isSuperAdmin() {
+    return !!(this.activeRole && (this.activeRole.id === 'super_admin' || this.activeRole.id === 'owner'));
+  }
+
+  isAdmin() {
+    return !!(this.activeRole && ['super_admin', 'owner', 'admin', 'developer'].includes(this.activeRole.id));
+  }
+
   can(action) {
+    if (!this.activeRole || !this.activeRole.permissions) return false;
     return !!this.activeRole.permissions[action];
   }
 
   onChange(fn) {
-    this.listeners.push(fn);
+    if (typeof fn === 'function') {
+      this.listeners.push(fn);
+    }
   }
 
   notify() {
-    this.listeners.forEach(fn => fn(this.activeRole));
+    const role = this.getRole();
+    this.listeners.forEach(fn => {
+      try {
+        fn(role);
+      } catch (e) {
+        console.error('Role listener error:', e);
+      }
+    });
   }
 
   getRightsMatrix(roleKey) {

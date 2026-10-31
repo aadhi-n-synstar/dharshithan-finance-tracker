@@ -192,6 +192,18 @@ function getPgPool(connectionString) {
   return pgPool;
 }
 
+async function executePgQuery(connStr, queryText, params = []) {
+  if (!connStr) return [];
+  const pool = getPgPool(connStr);
+  const client = await pool.connect();
+  try {
+    const res = await client.query(queryText, params);
+    return res.rows;
+  } finally {
+    client.release();
+  }
+}
+
 async function getMongoClient(uri) {
   if (!mongoClient) {
     mongoClient = new MongoClient(uri, {
@@ -703,6 +715,73 @@ class DatabaseAdapter {
     }
 
     return report;
+  }
+
+
+  // 4. PARTIES & VENDORS
+  async getParties() {
+    const tx = await this.getTransactions();
+    const map = {};
+    for (const t of tx) {
+      const name = (t.partyName || t.party_name || '').trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (!map[key]) {
+        map[key] = {
+          name: name,
+          totalReceived: 0,
+          totalPaid: 0,
+          transactionCount: 0,
+          lastTransactionDate: t.date,
+          categories: []
+        };
+      }
+      const amt = Number(t.amount) || 0;
+      const isIncome = (t.type || '').toLowerCase().includes('received') || (t.type || '').toLowerCase().includes('income');
+      if (isIncome) {
+        map[key].totalReceived += amt;
+      } else {
+        map[key].totalPaid += amt;
+      }
+      map[key].transactionCount++;
+      if (t.category && !map[key].categories.includes(t.category)) {
+        map[key].categories.push(t.category);
+      }
+      if (new Date(t.date) > new Date(map[key].lastTransactionDate)) {
+        map[key].lastTransactionDate = t.date;
+      }
+    }
+
+    return Object.values(map).map(p => ({
+      ...p,
+      runningBalance: p.totalReceived - p.totalPaid,
+      type: p.totalReceived >= p.totalPaid ? 'Customer / Client' : 'Vendor / Contractor'
+    })).sort((a, b) => b.transactionCount - a.transactionCount);
+  }
+
+  // 5. AUDIT LOGS
+  async getAuditLogs() {
+    if (localStore.audit_logs && localStore.audit_logs.length > 0) {
+      return localStore.audit_logs;
+    }
+    return DEFAULT_SEED.audit_logs || [];
+  }
+
+  async logAudit(entry) {
+    const newEntry = {
+      id: 'audit-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
+      userId: entry.userId || 'admin',
+      userEmail: entry.userEmail || 'admin@dharshithan.com',
+      action: entry.action || 'GENERAL_ACTION',
+      recordId: entry.recordId || null,
+      details: entry.details || {},
+      createdAt: new Date().toISOString()
+    };
+    if (!localStore.audit_logs) localStore.audit_logs = [];
+    localStore.audit_logs.unshift(newEntry);
+    if (localStore.audit_logs.length > 200) localStore.audit_logs.pop();
+    saveLocalStore();
+    return newEntry;
   }
 
   _syncLocalTransaction(tx) {

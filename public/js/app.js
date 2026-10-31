@@ -278,20 +278,32 @@ class FinanceApp {
   }
 
   renderCurrentView() {
-    if (this.activeTab === 'dashboard') {
-      this.renderDashboard();
-    } else if (this.activeTab === 'transactions') {
-      this.renderTransactionsTable();
-    } else if (this.activeTab === 'sales') {
-      this.renderSalesView();
-    } else if (this.activeTab === 'expenses') {
-      this.renderExpensesView();
-    } else if (this.activeTab === 'banking') {
-      this.renderBankingView();
-    } else if (this.activeTab === 'parties') {
-      this.renderParties();
-    } else if (this.activeTab === 'reports') {
-      this.renderReports();
+    try {
+      if (this.activeTab === 'dashboard') {
+        this.renderDashboard();
+      } else if (this.activeTab === 'transactions') {
+        this.renderTransactionsTable();
+      } else if (this.activeTab === 'sales') {
+        this.renderSalesView();
+      } else if (this.activeTab === 'expenses') {
+        this.renderExpensesView();
+      } else if (this.activeTab === 'banking') {
+        this.renderBankingView();
+      } else if (this.activeTab === 'parties') {
+        this.renderParties();
+      } else if (this.activeTab === 'reports') {
+        this.renderReports();
+      } else if (this.activeTab === 'users') {
+        this.renderUsersView();
+      } else if (this.activeTab === 'database') {
+        this.renderDatabaseView();
+      } else if (this.activeTab === 'audit') {
+        this.renderAuditView();
+      } else if (this.activeTab === 'settings') {
+        this.renderSettingsView();
+      }
+    } catch (err) {
+      console.error('Error rendering ' + this.activeTab + ' view:', err);
     }
 
     if (window.lucide) {
@@ -330,20 +342,24 @@ class FinanceApp {
     // Breadcrumb updates
     const breadcrumbEl = document.getElementById('topBarBreadcrumb');
     const titles = {
-      dashboard: 'Dashboard',
+      dashboard: 'Executive Dashboard',
       transactions: 'General Ledger',
       sales: 'Sales & Invoices',
       expenses: 'Purchases & Expenses',
       banking: 'Banking & Liquidity',
-      parties: 'Parties & Contacts',
-      reports: 'Financial Reports'
+      parties: 'Parties & Ledger',
+      reports: 'Financial Reports & Tax',
+      users: 'User Governance & RBAC',
+      database: 'Database & Cloud Hub',
+      audit: 'Security & Audit Trail',
+      settings: 'Company & GST Settings'
     };
     if (breadcrumbEl && titles[tabName]) {
       breadcrumbEl.textContent = titles[tabName];
     }
 
     // Sidebar active item styling
-    const tabs = ['dashboard', 'transactions', 'sales', 'expenses', 'banking', 'parties', 'reports'];
+    const tabs = ['dashboard', 'transactions', 'sales', 'expenses', 'banking', 'parties', 'reports', 'users', 'database', 'audit', 'settings'];
     tabs.forEach(t => {
       const sideItem = document.getElementById(`side-tab-${t}`);
       const isActive = t === tabName;
@@ -1051,8 +1067,8 @@ class FinanceApp {
     const grid = document.getElementById('bankingChannelGrid');
     if (grid) {
       grid.innerHTML = channels.map(ch => {
-        const inAmt = metrics.incomeByMode[ch.key] || 0;
-        const outAmt = metrics.expenseByMode[ch.key] || 0;
+        const inAmt = (metrics.incomeByMode && metrics.incomeByMode[ch.key]) || 0;
+        const outAmt = (metrics.expensesByMode && metrics.expensesByMode[ch.key]) || (metrics.expenseByMode && metrics.expenseByMode[ch.key]) || 0;
         const netAmt = inAmt - outAmt;
 
         return `
@@ -2587,6 +2603,233 @@ CREATE TABLE IF NOT EXISTS users (
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
+  }
+
+  
+  // =========================================================================
+  // VIEW 8: USER GOVERNANCE & ACCESS CONTROL
+  // =========================================================================
+
+  async renderUsersView() {
+    const tbody = document.getElementById('usersTableBody');
+    const countBadge = document.getElementById('usersTableCount');
+    if (!tbody) return;
+
+    let users = [];
+    if (window.authManager && typeof window.authManager.loadUsers === 'function') {
+      users = window.authManager.loadUsers();
+    }
+
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const body = await res.json();
+        if (body.success && Array.isArray(body.data) && body.data.length > 0) {
+          users = body.data;
+        }
+      }
+    } catch (e) {}
+
+    if (countBadge) countBadge.textContent = users.length + ' Users';
+
+    const roleBadges = {
+      super_admin: { label: 'Super Admin', class: 'bg-purple-50 text-purple-700 border-purple-200' },
+      owner: { label: 'Company Owner', class: 'bg-emerald-50 text-emerald-800 border-emerald-300' },
+      admin: { label: 'Finance Admin', class: 'bg-sky-50 text-sky-800 border-sky-300' },
+      developer: { label: 'Lead Developer', class: 'bg-indigo-50 text-indigo-800 border-indigo-300' },
+      employee: { label: 'Site Employee', class: 'bg-amber-50 text-amber-800 border-amber-300' },
+      stakeholder: { label: 'Stakeholder', class: 'bg-slate-100 text-slate-800 border-slate-300' }
+    };
+
+    tbody.innerHTML = users.map(u => {
+      const uId = u.userId || u.user_id;
+      const fName = u.fullName || u.full_name || 'Staff Member';
+      const roleId = (u.role || 'employee').toLowerCase();
+      const badge = roleBadges[roleId] || { label: u.role, class: 'bg-slate-50 text-slate-700 border-slate-200' };
+      const isActive = u.isActive !== false && u.is_active !== false && u.status !== 'inactive';
+      const initials = fName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+
+      return `
+        <tr class="hover:bg-slate-50/80 transition">
+          <td class="py-2.5 px-3">
+            <div class="flex items-center space-x-2.5">
+              <div class="w-7 h-7 rounded-lg bg-slate-800 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                ${initials}
+              </div>
+              <div class="min-w-0">
+                <div class="font-bold text-slate-900 truncate">${this.escapeHtml(fName)}</div>
+                <div class="text-[10px] text-slate-400 font-mono truncate">${this.escapeHtml(u.email || uId)}</div>
+              </div>
+            </div>
+          </td>
+          <td class="py-2.5 px-3">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${badge.class}">
+              ${badge.label}
+            </span>
+          </td>
+          <td class="py-2.5 px-3 font-medium text-slate-600">${this.escapeHtml(u.category || 'Operations')}</td>
+          <td class="py-2.5 px-3 font-mono text-slate-500">${this.escapeHtml(u.phone || '-')}</td>
+          <td class="py-2.5 px-3">
+            <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}">
+              <span class="w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}"></span>
+              <span>${isActive ? 'Active' : 'Suspended'}</span>
+            </span>
+          </td>
+          <td class="py-2.5 px-3 text-right">
+            <button onclick="app.toggleUserStatus('${uId}')" class="px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold cursor-pointer transition">
+              ${isActive ? 'Suspend' : 'Activate'}
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  toggleUserStatus(userId) {
+    if (userId === 'admin') {
+      this.showToast('Super Admin account cannot be deactivated.', 'error');
+      return;
+    }
+    if (window.authManager) {
+      const u = window.authManager.getUser(userId);
+      if (u) {
+        u.status = u.status === 'inactive' ? 'active' : 'inactive';
+        window.authManager.saveUsers();
+        this.showToast(`User ${u.fullName} status updated.`, 'info');
+        this.renderUsersView();
+      }
+    }
+  }
+
+  openAddUserModal() {
+    this.openUserManagementModal();
+  }
+
+  // =========================================================================
+  // VIEW 9: MULTI-CLOUD DATABASE HUB
+  // =========================================================================
+
+  async renderDatabaseView() {
+    this.refreshDatabaseTelemetry();
+  }
+
+  async refreshDatabaseTelemetry() {
+    try {
+      const res = await fetch('/api/health');
+      if (res.ok) {
+        const d = await res.json();
+        this.showToast(`Cloud Engine: ${(d.activeProvider || 'Supabase').toUpperCase()} (Status: ${d.status}, Latency: ${d.latencyMs}ms)`, 'success');
+      }
+    } catch (e) {
+      this.showToast('Database health check offline, using local store', 'info');
+    }
+  }
+
+  // =========================================================================
+  // VIEW 10: AUDIT TRAIL
+  // =========================================================================
+
+  async renderAuditView() {
+    const tbody = document.getElementById('auditTableBody');
+    if (!tbody) return;
+
+    let logs = [];
+    try {
+      const res = await fetch('/api/audit-logs');
+      if (res.ok) {
+        const body = await res.json();
+        if (body.success && Array.isArray(body.data)) {
+          logs = body.data;
+        }
+      }
+    } catch (e) {}
+
+    if (logs.length === 0) {
+      logs = [
+        {
+          createdAt: new Date().toISOString(),
+          userId: 'admin',
+          action: 'SYSTEM_INITIALIZE',
+          details: { message: 'Dharshithan Finance ERP Initialized on Free Tier Cloud Engine' }
+        }
+      ];
+    }
+
+    tbody.innerHTML = logs.map(l => {
+      const dateStr = new Date(l.createdAt).toLocaleString('en-IN');
+      const detailStr = typeof l.details === 'object' ? JSON.stringify(l.details) : String(l.details || '-');
+
+      return `
+        <tr class="hover:bg-slate-50/80 transition text-[11px]">
+          <td class="py-2.5 px-3 text-slate-500 whitespace-nowrap">${dateStr}</td>
+          <td class="py-2.5 px-3 font-bold text-slate-800">${this.escapeHtml(l.userId || 'admin')}</td>
+          <td class="py-2.5 px-3">
+            <span class="inline-flex px-1.5 py-0.5 rounded bg-sky-50 text-sky-700 border border-sky-200 text-[10px] font-bold">
+              ${this.escapeHtml(l.action)}
+            </span>
+          </td>
+          <td class="py-2.5 px-3 text-slate-600 truncate max-w-xs" title="${this.escapeHtml(detailStr)}">${this.escapeHtml(detailStr)}</td>
+          <td class="py-2.5 px-3 text-emerald-600 font-bold">SUCCESS</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  exportAuditCSV() {
+    let rows = [
+      ['Timestamp', 'User', 'Action', 'Details']
+    ];
+    const tbody = document.getElementById('auditTableBody');
+    if (tbody) {
+      const trs = tbody.querySelectorAll('tr');
+      trs.forEach(tr => {
+        const tds = Array.from(tr.querySelectorAll('td')).map(td => '"' + td.textContent.trim().replace(/"/g, '""') + '"');
+        if (tds.length >= 4) rows.push(tds);
+      });
+    }
+    const csvContent = 'data:text/csv;charset=utf-8,' + rows.map(e => Array.isArray(e) ? e.join(',') : e).join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Dharshithan_Audit_Trail_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  // =========================================================================
+  // VIEW 11: COMPANY SETTINGS
+  // =========================================================================
+
+  renderSettingsView() {
+    const saved = localStorage.getItem('dharshithan_company_settings');
+    if (saved) {
+      try {
+        const s = JSON.parse(saved);
+        if (document.getElementById('settingLegalName')) document.getElementById('settingLegalName').value = s.legalName || '';
+        if (document.getElementById('settingGSTIN')) document.getElementById('settingGSTIN').value = s.gstin || '';
+        if (document.getElementById('settingState')) document.getElementById('settingState').value = s.state || '';
+        if (document.getElementById('settingSAC')) document.getElementById('settingSAC').value = s.sac || '';
+        if (document.getElementById('settingBankName')) document.getElementById('settingBankName').value = s.bankName || '';
+        if (document.getElementById('settingBankAcc')) document.getElementById('settingBankAcc').value = s.bankAcc || '';
+        if (document.getElementById('settingBankIFSC')) document.getElementById('settingBankIFSC').value = s.bankIfsc || '';
+      } catch (e) {}
+    }
+  }
+
+  saveCompanySettings(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const settings = {
+      legalName: document.getElementById('settingLegalName')?.value || '',
+      gstin: document.getElementById('settingGSTIN')?.value || '',
+      state: document.getElementById('settingState')?.value || '',
+      sac: document.getElementById('settingSAC')?.value || '',
+      bankName: document.getElementById('settingBankName')?.value || '',
+      bankAcc: document.getElementById('settingBankAcc')?.value || '',
+      bankIfsc: document.getElementById('settingBankIFSC')?.value || ''
+    };
+    localStorage.setItem('dharshithan_company_settings', JSON.stringify(settings));
+    this.showToast('Company profile & GST settings successfully updated!', 'success');
   }
 }
 
