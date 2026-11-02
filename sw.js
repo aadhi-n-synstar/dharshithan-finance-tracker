@@ -1,17 +1,17 @@
 // Dharshithan Finance Tracker - Service Worker
-const CACHE_NAME = 'dharshithan-cache-v3';
+const CACHE_NAME = 'dharshithan-cache-v4';
 const ASSETS = [
   './',
   './index.html',
   './css/styles.css',
-  './js/db.js',
-  './js/analytics.js',
-  './js/charts.js',
-  './js/export-import.js',
-  './js/roles.js',
-  './js/auth.js',
-  './js/database-hub.js',
-  './js/app.js',
+  './js/db.js?v=2.5.0',
+  './js/analytics.js?v=2.5.0',
+  './js/charts.js?v=2.5.0',
+  './js/export-import.js?v=2.5.0',
+  './js/roles.js?v=2.5.0',
+  './js/auth.js?v=2.5.0',
+  './js/database-hub.js?v=2.5.0',
+  './js/app.js?v=2.5.0',
   './assets/logo.webp',
   './assets/favicon.webp',
   './manifest.json'
