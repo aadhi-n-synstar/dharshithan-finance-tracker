@@ -52,6 +52,8 @@ async function build() {
     'api/auth.js',
     'api/health.js',
     'api/transfer.js',
+    'api/parties.js',
+    'api/audit-logs.js',
     'js/app.js',
     'js/db.js',
     'js/auth.js',

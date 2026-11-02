@@ -21,8 +21,8 @@ if %ERRORLEVEL% EQU 0 (
     echo   SUCCESS! Your project has been pushed to GitHub.
     echo ======================================================================
     echo.
-    echo Your Vercel application is also live:
-    echo   https://agile-lute-g6r500e.tmp.now
+    echo Vercel will automatically build and deploy to:
+    echo   https://dharshithan-finance-tracker.vercel.app/
     echo.
 ) else (
     echo.
