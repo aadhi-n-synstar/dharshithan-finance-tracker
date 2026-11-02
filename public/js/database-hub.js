@@ -2,9 +2,9 @@
  * Dharshithan Waterproofing - Finance Tracker
  * Enterprise Database Hub & Multi-Cloud Migration Manager
  * Supported Free Tier Engines:
- *   1. Supabase (Free Tier PostgreSQL & PostgREST) - Recommended
- *   2. MongoDB Atlas (Free M0 Sandbox)
- *   3. Neon Cloud Database (PostgreSQL)
+ *   1. Supabase (Free Tier PostgreSQL & PostgREST) - 100% Free Forever
+ *   2. MongoDB Atlas (Free M0 Sandbox) - 512MB Document Store
+ *   3. High-Reliability Local Fallback Store
  */
 
 class DatabaseHub {

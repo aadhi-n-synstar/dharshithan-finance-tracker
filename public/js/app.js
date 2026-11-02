@@ -2,7 +2,7 @@
  * Dharshithan Waterproofing and Concrete Solutions
  * Enterprise Financial, Billing, Voucher & Tax Management Platform
  * Authentic Zoho ERP / Zoho Books Corporate Architecture
- * Powered by Neon Serverless PostgreSQL Native Engine
+ * Powered by Supabase & MongoDB Cloud Engine (100% Free Tier Architecture)
  */
 
 class FinanceApp {
@@ -145,7 +145,7 @@ class FinanceApp {
     this.applyFilters();
   }
 
-  async refreshFromNeon(options = {}) {
+  async refreshFromCloudDb(options = {}) {
     const isSilent = options.silent === true;
     const syncBtn = document.getElementById('headerSyncBtn');
     const syncIcon = document.getElementById('headerSyncIcon');
@@ -166,7 +166,7 @@ class FinanceApp {
         const healthRes = await fetch('/api/health');
         if (healthRes.ok) {
           const h = await healthRes.json();
-          const p = h.activeProvider === 'supabase' ? 'Supabase Cloud (Free Tier)' : (h.activeProvider === 'mongodb' ? 'MongoDB Atlas (Free M0)' : 'Neon PostgreSQL');
+          const p = h.activeProvider === 'supabase' ? 'Supabase Cloud (Free Tier)' : (h.activeProvider === 'mongodb' ? 'MongoDB Atlas (Free M0)' : 'Dual Cloud Engine');
           if (bannerText) bannerText.textContent = `${p} • Synced ${timeStr}`;
           if (provTitle) provTitle.textContent = `${p} Active`;
         } else if (bannerText) {
@@ -180,7 +180,7 @@ class FinanceApp {
         this.showToast('Synchronized with Cloud Database Engine', 'success');
       }
     } catch (err) {
-      console.error('Neon sync error:', err);
+      console.error('Cloud DB sync error:', err);
       if (!isSilent) {
         this.showToast('Sync error: ' + err.message, 'error');
       }
@@ -189,6 +189,10 @@ class FinanceApp {
         setTimeout(() => syncIcon.classList.remove('animate-spin'), 600);
       }
     }
+  }
+
+  async refreshFromNeon(options = {}) {
+    return this.refreshFromCloudDb(options);
   }
 
   updateFYDropdown() {
@@ -642,7 +646,7 @@ class FinanceApp {
     const count = this.selectedTxnIds.size;
     if (count === 0) return;
 
-    if (!confirm(`Are you sure you want to permanently delete ${count} selected transactions from Neon Cloud Database? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to permanently delete ${count} selected transactions from Cloud Database? This action cannot be undone.`)) {
       return;
     }
 
@@ -652,7 +656,7 @@ class FinanceApp {
         await window.financeDB.delete(id);
       }
       this.clearRowSelection();
-      this.showToast(`Successfully deleted ${count} transactions from Neon DB`, 'info');
+      this.showToast(`Successfully deleted ${count} transactions from Cloud DB`, 'info');
       await this.refreshData();
     } catch (err) {
       console.error(err);
@@ -1739,16 +1743,16 @@ class FinanceApp {
     try {
       if (id) {
         await window.financeDB.update(id, payload);
-        this.showToast('Financial document updated in Neon DB', 'success');
+        this.showToast('Financial document updated in Cloud DB', 'success');
       } else {
         await window.financeDB.add(payload);
-        this.showToast('Financial document successfully posted to Neon DB', 'success');
+        this.showToast('Financial document successfully posted to Cloud DB', 'success');
       }
       this.closeTransactionModal();
       await this.refreshData();
     } catch (err) {
       console.error(err);
-      this.showToast('Error saving to Neon DB: ' + err.message, 'error');
+      this.showToast('Error saving to Cloud DB: ' + err.message, 'error');
     }
   }
 
@@ -1761,10 +1765,10 @@ class FinanceApp {
     const item = this.transactions.find(t => t.id === id);
     if (!item) return;
 
-    if (confirm(`Delete Document #${item.slNo} "${item.partyName}" (${FinanceAnalytics.formatINR(item.amount)})? This will permanently erase it from Neon Database.`)) {
+    if (confirm(`Delete Document #${item.slNo} "${item.partyName}" (${FinanceAnalytics.formatINR(item.amount)})? This will permanently erase it from Cloud Database.`)) {
       try {
         await window.financeDB.delete(id);
-        this.showToast('Transaction permanently removed from Neon DB', 'info');
+        this.showToast('Transaction permanently removed from Cloud DB', 'info');
         await this.refreshData();
       } catch (err) {
         this.showToast('Failed to delete: ' + err.message, 'error');
@@ -2178,7 +2182,7 @@ class FinanceApp {
       document.getElementById('forgotOTPCode')?.focus();
       this.showToast(`6-Digit OTP code generated for ${res.email}`, 'success');
     } else {
-      this.showToast(res.error || 'User not found in Neon records', 'error');
+      this.showToast(res.error || 'User not found in Cloud Database records', 'error');
     }
   }
 
@@ -2344,7 +2348,7 @@ class FinanceApp {
       });
 
       if (res.ok) {
-        this.showToast(`Staff account for ${fullName} created in Neon DB`, 'success');
+        this.showToast(`Staff account for ${fullName} created in Cloud DB`, 'success');
         document.getElementById('addUserForm')?.reset();
         this.renderUsersTable();
       } else {
@@ -2381,7 +2385,7 @@ class FinanceApp {
           const recEl = document.getElementById('modalRecordCount');
 
           if (provEl) {
-            const pName = health.activeProvider === 'supabase' ? 'Supabase (Free Tier)' : (health.activeProvider === 'mongodb' ? 'MongoDB Atlas (Free M0)' : 'Neon PostgreSQL');
+            const pName = health.activeProvider === 'supabase' ? 'Supabase (Free Tier)' : (health.activeProvider === 'mongodb' ? 'MongoDB Atlas (Free M0)' : 'Dual Cloud Engine');
             provEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span>${pName}</span>`;
           }
           if (statEl) {
@@ -2489,7 +2493,7 @@ class FinanceApp {
 
   downloadMigrationSQL() {
     const sql = `-- Dharshithan Waterproofing and Concrete Solutions
--- Enterprise PostgreSQL Native DDL Migration for Supabase / Neon Cloud
+-- Enterprise PostgreSQL Native DDL Migration for Supabase (100% Free Forever Tier)
 
 CREATE TABLE IF NOT EXISTS transactions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -2529,12 +2533,12 @@ CREATE TABLE IF NOT EXISTS users (
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'dharshithan_neon_schema.sql';
+    link.download = 'dharshithan_supabase_schema.sql';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    this.showToast('Downloaded dharshithan_neon_schema.sql for Neon Database', 'success');
+    this.showToast('Downloaded dharshithan_supabase_schema.sql for Supabase PostgreSQL', 'success');
   }
 
   // =========================================================================

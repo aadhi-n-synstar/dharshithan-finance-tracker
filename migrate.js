@@ -4,8 +4,7 @@ const crypto = require('crypto');
 const { Client } = require('pg');
 require('dotenv').config({ path: '.env.local' });
 
-const dbUrl = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL ||
-  "postgresql://neondb_owner:npg_Lt1UVxrTkp2q@ep-late-art-b5308bnc-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require";
+const dbUrl = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
 
 function hashPassword(password) {
   const salt = 'dwcs_salt_2026_enterprise';
@@ -13,8 +12,12 @@ function hashPassword(password) {
 }
 
 async function migrate() {
-  console.log('--- Dharshithan Waterproofing: Neon PostgreSQL Enterprise Migration ---');
-  console.log('Connecting to Neon Database...');
+  console.log('--- Dharshithan Waterproofing: Supabase PostgreSQL Enterprise Migration ---');
+  if (!dbUrl) {
+    console.log('SUPABASE_DATABASE_URL is not set. Skipping remote migration; local schema is ready.');
+    return;
+  }
+  console.log('Connecting to Supabase Database...');
 
   const client = new Client({
     connectionString: dbUrl,
@@ -22,7 +25,7 @@ async function migrate() {
   });
 
   await client.connect();
-  console.log('Connected to Neon Database successfully.');
+  console.log('Connected to Supabase Database successfully.');
 
   const schemaPath = path.join(__dirname, 'schema.sql');
   const ddl = fs.readFileSync(schemaPath, 'utf8');
@@ -281,7 +284,7 @@ async function migrate() {
 
   await client.end();
   console.log('\n======================================================');
-  console.log('MIGRATION & SEEDING COMPLETED SUCCESSFULLY ON NEON DB!');
+  console.log('MIGRATION & SEEDING COMPLETED SUCCESSFULLY ON SUPABASE POSTGRESQL!');
   console.log('======================================================');
 }
 

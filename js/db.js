@@ -109,7 +109,7 @@ class FinanceDB {
   }
 
   async getAll() {
-    // 1. First try Neon Cloud Database via /api/transactions
+    // 1. First try Cloud Database via /api/transactions
     try {
       const res = await fetch('/api/transactions');
       if (res.ok) {
@@ -121,7 +121,7 @@ class FinanceDB {
         }
       }
     } catch (err) {
-      console.warn('Neon Cloud API offline or unreachable, serving from local cache:', err);
+      console.warn('Cloud API offline or unreachable, serving from local cache:', err);
     }
 
     // 2. Fallback to Local IndexedDB or LocalStorage
@@ -198,7 +198,7 @@ class FinanceDB {
       updatedAt: new Date().toISOString()
     };
 
-    // 1. Commit directly to Neon Cloud Database
+    // 1. Commit directly to Cloud Database (Supabase / MongoDB)
     try {
       const res = await fetch('/api/transactions', {
         method: 'POST',
@@ -213,7 +213,7 @@ class FinanceDB {
         }
       }
     } catch (err) {
-      console.warn('Neon Cloud API POST offline, committing locally:', err);
+      console.warn('Cloud API POST offline, committing locally:', err);
     }
 
     // 2. Commit to Local Storage / IndexedDB
@@ -259,7 +259,7 @@ class FinanceDB {
       updatedAt: new Date().toISOString()
     };
 
-    // 1. Commit update to Neon Cloud Database
+    // 1. Commit update to Cloud Database
     try {
       await fetch('/api/transactions', {
         method: 'PUT',
@@ -267,7 +267,7 @@ class FinanceDB {
         body: JSON.stringify(updated)
       });
     } catch (err) {
-      console.warn('Neon Cloud API PUT offline, updating locally:', err);
+      console.warn('Cloud API PUT offline, updating locally:', err);
     }
 
     // 2. Commit update to local storage
@@ -296,13 +296,13 @@ class FinanceDB {
   }
 
   async delete(id) {
-    // 1. Commit delete to Neon Cloud Database
+    // 1. Commit delete to Cloud Database
     try {
       await fetch(`/api/transactions?id=${encodeURIComponent(id)}`, {
         method: 'DELETE'
       });
     } catch (err) {
-      console.warn('Neon Cloud API DELETE offline, deleting locally:', err);
+      console.warn('Cloud API DELETE offline, deleting locally:', err);
     }
 
     // 2. Commit delete to local storage

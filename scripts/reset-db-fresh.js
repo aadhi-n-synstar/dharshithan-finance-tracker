@@ -1,15 +1,59 @@
 const { Client } = require('pg');
-require('dotenv').config({ path: '.env.local' });
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env.local') });
 
 async function resetDbFresh() {
-  const connectionString = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
+  const connectionString = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.log('No PostgreSQL connection string found. Resetting local store...');
+    const fs = require('fs');
+    const localDbPath = path.join(__dirname, '..', 'data', 'local-db.json');
+    const resetData = {
+      users: [
+        {
+          id: "563fd33e-d726-45ae-a31d-1ecca9a776e3",
+          user_id: "admin",
+          full_name: "Super Administrator",
+          email: "admin@dharshithan.com",
+          category: "Executive Management",
+          role: "super_admin",
+          phone: "+91 98765 43210",
+          password_hash: "$2a$10$wT0l72W2q8oM1K3T6oYmPe3O6G.Pq7WkZ5b9jB8zD0a1c2e3f4g5h",
+          must_change_password: false,
+          is_active: true,
+          created_at: new Date().toISOString()
+        }
+      ],
+      transactions: [],
+      liquidity: {
+        opening_bank_balance: 0.00,
+        opening_cash_float: 0.00,
+        last_reconciled_at: new Date().toISOString()
+      },
+      audit_logs: [
+        {
+          id: "audit-reset",
+          user_id: "admin",
+          user_email: "admin@dharshithan.com",
+          action: "DATABASE_RESET",
+          record_id: "reset",
+          details: { message: "Database reset to fresh state" },
+          created_at: new Date().toISOString()
+        }
+      ]
+    };
+    fs.writeFileSync(localDbPath, JSON.stringify(resetData, null, 2), 'utf8');
+    console.log('✓ Local store successfully reset to fresh state.');
+    return;
+  }
+
   const client = new Client({
     connectionString,
     ssl: { rejectUnauthorized: false }
   });
 
   await client.connect();
-  console.log('Connected to Neon PostgreSQL for fresh reset...');
+  console.log('Connected to Supabase PostgreSQL for fresh reset...');
 
   // 1. Truncate transactions (fresh null start)
   await client.query('TRUNCATE TABLE transactions RESTART IDENTITY CASCADE;');

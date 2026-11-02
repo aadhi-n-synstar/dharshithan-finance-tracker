@@ -11,7 +11,7 @@ const { db } = require(path.join(ROOT_DIR, 'api', 'db-adapter'));
 async function testServices() {
   console.log('====================================================');
   console.log('   Dharshithan Finance Tracker - Cloud Services Test');
-  console.log('   Active Engine: Supabase (Free Tier) / MongoDB / Neon');
+  console.log('   Active Engine: Supabase (Free Tier) / MongoDB Atlas (Free M0)');
   console.log('====================================================\n');
 
   let passed = 0;

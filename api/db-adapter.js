@@ -1,14 +1,14 @@
 /**
- * Dharshithan Waterproofing - Unified Database Engine
- * Supports:
- *  1. Supabase (Free Tier PostgreSQL & PostgREST) - Recommended
- *  2. MongoDB Atlas (Free M0 Sandbox)
- *  3. Neon Cloud PostgreSQL (Lakebase)
- *  4. High-Reliability Local/Offline Fallback (zero downtime)
+ * Dharshithan Waterproofing - Unified Cloud Database Engine
+ * Dedicated Dual Cloud Architecture:
+ *  1. Supabase (Free Tier PostgreSQL & PostgREST - 100% Free Forever) - Primary
+ *  2. MongoDB Atlas (Free M0 Sandbox - 512MB NoSQL Document Store) - Secondary
+ *  3. High-Reliability Local/Offline Fallback (Serverless /tmp resilient storage)
+ *
+ * Neon has been completely removed in accordance with corporate migration policy.
  */
 
 const { Pool } = require('pg');
-const { neon } = require('@neondatabase/serverless');
 const { MongoClient } = require('mongodb');
 const fs = require('fs');
 const path = require('path');
@@ -109,7 +109,7 @@ const DEFAULT_SEED = {
       user_email: "admin@dharshithan.com",
       action: "SYSTEM_INITIALIZE",
       record_id: "init",
-      details: { message: "Dharshithan Finance ERP Initialized on Free Tier Cloud Engine" },
+      details: { message: "Dharshithan Finance ERP Initialized on Supabase & MongoDB Cloud Engine" },
       created_at: new Date().toISOString()
     }
   ]
@@ -117,16 +117,19 @@ const DEFAULT_SEED = {
 
 // Check if backup exists to load initial data
 function loadInitialStore() {
-  const backupFile = path.join(DATA_DIR, 'neon-backup.json');
-  if (fs.existsSync(backupFile)) {
+  const cloudBackupFile = path.join(DATA_DIR, 'cloud-backup.json');
+  const legacyBackupFile = path.join(DATA_DIR, 'neon-backup.json');
+  const targetBackup = fs.existsSync(cloudBackupFile) ? cloudBackupFile : (fs.existsSync(legacyBackupFile) ? legacyBackupFile : null);
+
+  if (targetBackup) {
     try {
-      const b = JSON.parse(fs.readFileSync(backupFile, 'utf8'));
+      const b = JSON.parse(fs.readFileSync(targetBackup, 'utf8'));
       if (b.users && b.users.length) {
         return {
           users: b.users,
           transactions: b.transactions || [],
           liquidity: b.liquidity ? (b.liquidity[0] || b.liquidity) : DEFAULT_SEED.liquidity,
-          audit_logs: b.auditLogs || []
+          audit_logs: b.auditLogs || b.audit_logs || []
         };
       }
     } catch (e) {}
@@ -155,13 +158,12 @@ function saveLocalStore() {
 }
 
 // -------------------------------------------------------------
-// Active Provider Resolver
+// Active Provider Resolver (Supabase or MongoDB Atlas)
 // -------------------------------------------------------------
 function resolveProvider() {
   const p = (process.env.DB_PROVIDER || '').toLowerCase().trim();
   if (p === 'supabase') return 'supabase';
   if (p === 'mongodb' || p === 'mongo') return 'mongodb';
-  if (p === 'neon') return 'neon';
 
   // Auto-detect based on env variables
   if (process.env.SUPABASE_DATABASE_URL || (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY)) {
@@ -169,9 +171,6 @@ function resolveProvider() {
   }
   if (process.env.MONGODB_URI) {
     return 'mongodb';
-  }
-  if (process.env.DATABASE_URL) {
-    return 'neon';
   }
   return 'supabase'; // Default recommendation for free tier
 }
@@ -234,16 +233,12 @@ class DatabaseAdapter {
   async getTransactions() {
     const provider = this.getProvider();
 
-    // Supabase / Neon via PostgreSQL
-    if (provider === 'supabase' || provider === 'neon') {
-      const connStr = provider === 'supabase'
-        ? (process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL)
-        : process.env.DATABASE_URL;
-
-      if (connStr) {
+    // 1. Supabase via PostgreSQL
+    if (provider === 'supabase') {
+      const connStr = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+      if (connStr && !connStr.includes('neon.tech')) {
         try {
-          const sql = neon(connStr);
-          const rows = await sql`
+          const sql = `
             SELECT 
               id,
               sl_no as "slNo",
@@ -262,14 +257,15 @@ class DatabaseAdapter {
             FROM transactions
             ORDER BY sl_no ASC, date ASC
           `;
+          const rows = await executePgQuery(connStr, sql);
           return rows.map(r => ({ ...r, amount: parseFloat(r.amount), profitValue: parseFloat(r.profitValue) }));
         } catch (e) {
-          console.warn(`[${provider}] Postgres query failed, falling back to cached store:`, e.message);
+          console.warn(`[Supabase] Postgres query failed, falling back to cached store:`, e.message);
         }
       }
     }
 
-    // MongoDB
+    // 2. MongoDB Atlas
     if (provider === 'mongodb' && process.env.MONGODB_URI) {
       try {
         const client = await getMongoClient(process.env.MONGODB_URI);
@@ -296,7 +292,7 @@ class DatabaseAdapter {
       }
     }
 
-    // Local / Fallback Store
+    // 3. Local / Fallback Store
     return (localStore.transactions || []).map(t => ({
       id: t.id,
       slNo: t.sl_no || t.slNo,
@@ -317,30 +313,24 @@ class DatabaseAdapter {
 
   async createTransaction(data) {
     const provider = this.getProvider();
-    const numAmount = parseFloat(data.amount);
+    const numAmount = parseFloat(data.amount) || 0;
     const isIncome = (data.type || '').toLowerCase().includes('received') || (data.type || '').toLowerCase().includes('income');
     const calcProfit = data.profitValue !== undefined ? parseFloat(data.profitValue) : (isIncome ? numAmount : -numAmount);
 
-    // Postgres (Supabase / Neon)
-    if (provider === 'supabase' || provider === 'neon') {
-      const connStr = provider === 'supabase'
-        ? (process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL)
-        : process.env.DATABASE_URL;
-
-      if (connStr) {
+    // 1. Supabase PostgreSQL
+    if (provider === 'supabase') {
+      const connStr = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+      if (connStr && !connStr.includes('neon.tech')) {
         try {
-          const sql = neon(connStr);
-          const maxRes = await sql`SELECT COALESCE(MAX(sl_no), 0) + 1 as "nextSl" FROM transactions`;
-          const nextSl = maxRes[0].nextSl;
+          const maxRes = await executePgQuery(connStr, 'SELECT COALESCE(MAX(sl_no), 0) + 1 as "nextSl" FROM transactions');
+          const nextSl = (maxRes[0] && maxRes[0].nextSl) ? parseInt(maxRes[0].nextSl, 10) : 1;
 
-          const rows = await sql`
+          const insertSql = `
             INSERT INTO transactions (
               sl_no, date, type, party_name, category, description,
               amount, mode, ref_number, quarter, financial_year, profit_value
             ) VALUES (
-              ${nextSl}, ${data.date}, ${data.type}, ${data.partyName}, ${data.category || 'General'}, ${data.description || ''},
-              ${numAmount}, ${data.mode || 'CASH'}, ${data.refNumber || ''}, ${data.quarter || 'Q1'}, 
-              ${data.financialYear || 'F.Y. 2026-27'}, ${calcProfit}
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
             )
             RETURNING 
               id,
@@ -357,16 +347,54 @@ class DatabaseAdapter {
               financial_year as "financialYear",
               profit_value::numeric as "profitValue"
           `;
-          const res = { ...rows[0], amount: parseFloat(rows[0].amount), profitValue: parseFloat(rows[0].profitValue) };
-          this._syncLocalTransaction(res);
-          return res;
+          const rows = await executePgQuery(connStr, insertSql, [
+            nextSl, data.date, data.type, data.partyName, data.category || 'General', data.description || '',
+            numAmount, data.mode || 'CASH', data.refNumber || '', data.quarter || 'Q1', 
+            data.financialYear || 'F.Y. 2026-27', calcProfit
+          ]);
+          if (rows && rows.length > 0) {
+            const res = { ...rows[0], amount: parseFloat(rows[0].amount), profitValue: parseFloat(rows[0].profitValue) };
+            this._syncLocalTransaction(res);
+            return res;
+          }
         } catch (e) {
-          console.warn(`[${provider}] Insert failed, writing to fallback store:`, e.message);
+          console.warn(`[Supabase] Insert failed, writing to fallback store:`, e.message);
         }
       }
     }
 
-    // Local / In-Memory Fallback
+    // 2. MongoDB Atlas
+    if (provider === 'mongodb' && process.env.MONGODB_URI) {
+      try {
+        const client = await getMongoClient(process.env.MONGODB_URI);
+        const db = client.db(process.env.MONGODB_DB_NAME || 'dharshithan_finance');
+        const count = await db.collection('transactions').countDocuments();
+        const nextSl = count + 1;
+        const doc = {
+          slNo: nextSl,
+          date: data.date,
+          type: data.type,
+          partyName: data.partyName,
+          category: data.category || 'General',
+          description: data.description || '',
+          amount: numAmount,
+          mode: data.mode || 'CASH',
+          refNumber: data.refNumber || '',
+          quarter: data.quarter || 'Q1',
+          financialYear: data.financialYear || 'F.Y. 2026-27',
+          profitValue: calcProfit,
+          createdAt: new Date().toISOString()
+        };
+        const insertRes = await db.collection('transactions').insertOne(doc);
+        const created = { id: insertRes.insertedId.toString(), ...doc };
+        this._syncLocalTransaction(created);
+        return created;
+      } catch (e) {
+        console.warn(`[MongoDB] Insert failed:`, e.message);
+      }
+    }
+
+    // 3. Local / In-Memory Fallback
     const nextSl = (localStore.transactions.reduce((max, t) => Math.max(max, t.sl_no || t.slNo || 0), 0)) + 1;
     const newTx = {
       id: 'tx-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
@@ -396,65 +424,74 @@ class DatabaseAdapter {
 
   async updateTransaction(id, data) {
     const provider = this.getProvider();
-    const numAmount = parseFloat(data.amount);
+    const numAmount = parseFloat(data.amount) || 0;
     const isIncome = (data.type || '').toLowerCase().includes('received') || (data.type || '').toLowerCase().includes('income');
     const calcProfit = data.profitValue !== undefined ? parseFloat(data.profitValue) : (isIncome ? numAmount : -numAmount);
 
-    if (provider === 'supabase' || provider === 'neon') {
-      const connStr = provider === 'supabase'
-        ? (process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL)
-        : process.env.DATABASE_URL;
-
-      if (connStr) {
+    // 1. Supabase PostgreSQL
+    if (provider === 'supabase') {
+      const connStr = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+      if (connStr && !connStr.includes('neon.tech')) {
         try {
-          const sql = neon(connStr);
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
-          let rows;
+          let updateSql, params;
           if (isUuid) {
-            rows = await sql`
+            updateSql = `
               UPDATE transactions SET
-                date = ${data.date},
-                type = ${data.type},
-                party_name = ${data.partyName},
-                category = ${data.category},
-                description = ${data.description},
-                amount = ${numAmount},
-                mode = ${data.mode},
-                ref_number = ${data.refNumber},
-                quarter = ${data.quarter},
-                financial_year = ${data.financialYear},
-                profit_value = ${calcProfit},
-                updated_at = NOW()
-              WHERE id = ${id}
+                date = $1, type = $2, party_name = $3, category = $4,
+                description = $5, amount = $6, mode = $7, ref_number = $8,
+                quarter = $9, financial_year = $10, profit_value = $11, updated_at = NOW()
+              WHERE id = $12
               RETURNING id, sl_no as "slNo", to_char(date, 'YYYY-MM-DD') as "date", type, party_name as "partyName", amount::numeric as amount
             `;
+            params = [data.date, data.type, data.partyName, data.category, data.description, numAmount, data.mode, data.refNumber, data.quarter, data.financialYear, calcProfit, id];
           } else {
-            rows = await sql`
+            updateSql = `
               UPDATE transactions SET
-                date = ${data.date},
-                type = ${data.type},
-                party_name = ${data.partyName},
-                category = ${data.category},
-                description = ${data.description},
-                amount = ${numAmount},
-                mode = ${data.mode},
-                ref_number = ${data.refNumber},
-                quarter = ${data.quarter},
-                financial_year = ${data.financialYear},
-                profit_value = ${calcProfit},
-                updated_at = NOW()
-              WHERE sl_no = ${Number(id)}
+                date = $1, type = $2, party_name = $3, category = $4,
+                description = $5, amount = $6, mode = $7, ref_number = $8,
+                quarter = $9, financial_year = $10, profit_value = $11, updated_at = NOW()
+              WHERE sl_no = $12
               RETURNING id, sl_no as "slNo", to_char(date, 'YYYY-MM-DD') as "date", type, party_name as "partyName", amount::numeric as amount
             `;
+            params = [data.date, data.type, data.partyName, data.category, data.description, numAmount, data.mode, data.refNumber, data.quarter, data.financialYear, calcProfit, Number(id)];
           }
-          if (rows && rows.length) return rows[0];
+          const rows = await executePgQuery(connStr, updateSql, params);
+          if (rows && rows.length > 0) return rows[0];
         } catch (e) {
-          console.warn(`[${provider}] Update failed:`, e.message);
+          console.warn(`[Supabase] Update failed:`, e.message);
         }
       }
     }
 
-    // Local Store update
+    // 2. MongoDB Atlas
+    if (provider === 'mongodb' && process.env.MONGODB_URI) {
+      try {
+        const client = await getMongoClient(process.env.MONGODB_URI);
+        const db = client.db(process.env.MONGODB_DB_NAME || 'dharshithan_finance');
+        const filter = { $or: [{ id: String(id) }, { slNo: Number(id) }] };
+        await db.collection('transactions').updateOne(filter, {
+          $set: {
+            date: data.date,
+            type: data.type,
+            partyName: data.partyName,
+            category: data.category,
+            description: data.description,
+            amount: numAmount,
+            mode: data.mode,
+            refNumber: data.refNumber,
+            quarter: data.quarter,
+            financialYear: data.financialYear,
+            profitValue: calcProfit,
+            updatedAt: new Date().toISOString()
+          }
+        });
+      } catch (e) {
+        console.warn(`[MongoDB] Update failed:`, e.message);
+      }
+    }
+
+    // 3. Local Store update
     const idx = localStore.transactions.findIndex(t => t.id === id || String(t.sl_no || t.slNo) === String(id));
     if (idx !== -1) {
       localStore.transactions[idx] = {
@@ -472,23 +509,31 @@ class DatabaseAdapter {
 
   async deleteTransaction(id) {
     const provider = this.getProvider();
-    if (provider === 'supabase' || provider === 'neon') {
-      const connStr = provider === 'supabase'
-        ? (process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL)
-        : process.env.DATABASE_URL;
-
-      if (connStr) {
+    // 1. Supabase PostgreSQL
+    if (provider === 'supabase') {
+      const connStr = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+      if (connStr && !connStr.includes('neon.tech')) {
         try {
-          const sql = neon(connStr);
           const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id));
           if (isUuid) {
-            await sql`DELETE FROM transactions WHERE id = ${id}`;
+            await executePgQuery(connStr, 'DELETE FROM transactions WHERE id = $1', [id]);
           } else {
-            await sql`DELETE FROM transactions WHERE sl_no = ${Number(id)}`;
+            await executePgQuery(connStr, 'DELETE FROM transactions WHERE sl_no = $1', [Number(id)]);
           }
         } catch (e) {
-          console.warn(`[${provider}] Delete failed:`, e.message);
+          console.warn(`[Supabase] Delete failed:`, e.message);
         }
+      }
+    }
+
+    // 2. MongoDB Atlas
+    if (provider === 'mongodb' && process.env.MONGODB_URI) {
+      try {
+        const client = await getMongoClient(process.env.MONGODB_URI);
+        const db = client.db(process.env.MONGODB_DB_NAME || 'dharshithan_finance');
+        await db.collection('transactions').deleteOne({ $or: [{ id: String(id) }, { slNo: Number(id) }] });
+      } catch (e) {
+        console.warn(`[MongoDB] Delete failed:`, e.message);
       }
     }
 
@@ -500,15 +545,12 @@ class DatabaseAdapter {
   // 2. USERS & RBAC
   async getUsers() {
     const provider = this.getProvider();
-    if (provider === 'supabase' || provider === 'neon') {
-      const connStr = provider === 'supabase'
-        ? (process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL)
-        : process.env.DATABASE_URL;
-
-      if (connStr) {
+    // 1. Supabase PostgreSQL
+    if (provider === 'supabase') {
+      const connStr = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+      if (connStr && !connStr.includes('neon.tech')) {
         try {
-          const sql = neon(connStr);
-          const rows = await sql`
+          const sql = `
             SELECT 
               user_id as "userId",
               full_name as "fullName",
@@ -523,10 +565,35 @@ class DatabaseAdapter {
             FROM users
             ORDER BY created_at ASC
           `;
+          const rows = await executePgQuery(connStr, sql);
           if (rows && rows.length > 0) return rows;
         } catch (e) {
-          console.warn(`[${provider}] Get users failed:`, e.message);
+          console.warn(`[Supabase] Get users failed:`, e.message);
         }
+      }
+    }
+
+    // 2. MongoDB Atlas
+    if (provider === 'mongodb' && process.env.MONGODB_URI) {
+      try {
+        const client = await getMongoClient(process.env.MONGODB_URI);
+        const db = client.db(process.env.MONGODB_DB_NAME || 'dharshithan_finance');
+        const docs = await db.collection('users').find({}).toArray();
+        if (docs && docs.length > 0) {
+          return docs.map(u => ({
+            userId: u.userId || u.user_id,
+            fullName: u.fullName || u.full_name,
+            email: u.email,
+            category: u.category,
+            role: u.role,
+            phone: u.phone,
+            mustChangePassword: !!u.mustChangePassword,
+            isActive: u.isActive !== false,
+            createdAt: u.createdAt || u.created_at
+          }));
+        }
+      } catch (e) {
+        console.warn(`[MongoDB] Get users failed:`, e.message);
       }
     }
 
@@ -550,27 +617,52 @@ class DatabaseAdapter {
     const clean = (usernameOrEmail || '').toLowerCase().trim();
     const provider = this.getProvider();
 
-    if (provider === 'supabase' || provider === 'neon') {
-      const connStr = provider === 'supabase'
-        ? (process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL)
-        : process.env.DATABASE_URL;
-
-      if (connStr) {
+    // 1. Supabase PostgreSQL
+    if (provider === 'supabase') {
+      const connStr = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+      if (connStr && !connStr.includes('neon.tech')) {
         try {
-          const sql = neon(connStr);
-          const rows = await sql`
+          const sql = `
             SELECT 
               id, user_id as "userId", full_name as "fullName", email,
               category, role, phone, must_change_password as "mustChangePassword",
               is_active as "isActive", password_hash as "passwordHash"
             FROM users 
-            WHERE LOWER(user_id) = ${clean} OR LOWER(email) = ${clean}
+            WHERE LOWER(user_id) = $1 OR LOWER(email) = $1
             LIMIT 1
           `;
+          const rows = await executePgQuery(connStr, sql, [clean]);
           if (rows && rows.length > 0) return rows[0];
         } catch (e) {
-          console.warn(`[${provider}] Get login user failed:`, e.message);
+          console.warn(`[Supabase] Get login user failed:`, e.message);
         }
+      }
+    }
+
+    // 2. MongoDB Atlas
+    if (provider === 'mongodb' && process.env.MONGODB_URI) {
+      try {
+        const client = await getMongoClient(process.env.MONGODB_URI);
+        const db = client.db(process.env.MONGODB_DB_NAME || 'dharshithan_finance');
+        const doc = await db.collection('users').findOne({
+          $or: [{ userId: clean }, { user_id: clean }, { email: clean }]
+        });
+        if (doc) {
+          return {
+            id: doc._id.toString(),
+            userId: doc.userId || doc.user_id,
+            fullName: doc.fullName || doc.full_name,
+            email: doc.email,
+            category: doc.category,
+            role: doc.role,
+            phone: doc.phone,
+            mustChangePassword: !!doc.mustChangePassword,
+            isActive: doc.isActive !== false,
+            passwordHash: doc.passwordHash || doc.password_hash
+          };
+        }
+      } catch (e) {
+        console.warn(`[MongoDB] Get login user failed:`, e.message);
       }
     }
 
@@ -618,29 +710,54 @@ class DatabaseAdapter {
     const email = (userData.email || '').toLowerCase().trim();
     const tempPass = userData.password || 'Dhar@2026';
 
-    if (provider === 'supabase' || provider === 'neon') {
-      const connStr = provider === 'supabase'
-        ? (process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL)
-        : process.env.DATABASE_URL;
-
-      if (connStr) {
+    // 1. Supabase PostgreSQL
+    if (provider === 'supabase') {
+      const connStr = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+      if (connStr && !connStr.includes('neon.tech')) {
         try {
-          const sql = neon(connStr);
-          const rows = await sql`
+          const sql = `
             INSERT INTO users (
               user_id, full_name, email, category, role, phone, 
               password_hash, must_change_password
             ) VALUES (
-              ${userId}, ${fullName}, ${email},
-              ${userData.category || 'Site Operations'}, ${userData.role || 'employee'}, ${userData.phone || ''},
-              crypt(${tempPass}, gen_salt('bf')), TRUE
+              $1, $2, $3, $4, $5, $6,
+              crypt($7, gen_salt('bf')), TRUE
             )
             RETURNING user_id as "userId", full_name as "fullName", email, role, category
           `;
-          return rows[0];
+          const rows = await executePgQuery(connStr, sql, [
+            userId, fullName, email,
+            userData.category || 'Site Operations', userData.role || 'employee', userData.phone || '',
+            tempPass
+          ]);
+          if (rows && rows.length > 0) return rows[0];
         } catch (e) {
-          console.warn(`[${provider}] Create user failed:`, e.message);
+          console.warn(`[Supabase] Create user failed:`, e.message);
         }
+      }
+    }
+
+    // 2. MongoDB Atlas
+    if (provider === 'mongodb' && process.env.MONGODB_URI) {
+      try {
+        const client = await getMongoClient(process.env.MONGODB_URI);
+        const db = client.db(process.env.MONGODB_DB_NAME || 'dharshithan_finance');
+        const doc = {
+          userId,
+          fullName,
+          email,
+          category: userData.category || 'Site Operations',
+          role: userData.role || 'employee',
+          phone: userData.phone || '',
+          passwordHash: tempPass,
+          mustChangePassword: true,
+          isActive: true,
+          createdAt: new Date().toISOString()
+        };
+        await db.collection('users').insertOne(doc);
+        return { userId, fullName, email, role: doc.role, category: doc.category };
+      } catch (e) {
+        console.warn(`[MongoDB] Create user failed:`, e.message);
       }
     }
 
@@ -670,7 +787,7 @@ class DatabaseAdapter {
     const start = Date.now();
     const report = {
       activeProvider: provider,
-      isFreeTier: provider === 'supabase' || provider === 'mongodb',
+      isFreeTier: true,
       status: 'healthy',
       timestamp: new Date().toISOString(),
       latencyMs: 0,
@@ -690,21 +807,21 @@ class DatabaseAdapter {
 
       if (provider === 'supabase') {
         report.details = {
-          databaseType: 'Supabase PostgreSQL (Free Tier M0)',
+          databaseType: 'Supabase PostgreSQL (100% Free Forever Tier)',
           cloudHost: process.env.SUPABASE_DATABASE_URL ? 'supabase.co' : 'supabase-cloud',
-          features: ['Row Level Security (RLS)', 'Instant REST API', '50,000 Free MAU', 'Realtime Sync']
+          features: ['Row Level Security (RLS)', 'Instant PostgREST API', '50,000 Free MAU', 'Realtime Sync']
         };
       } else if (provider === 'mongodb') {
         report.details = {
           databaseType: 'MongoDB Atlas (Free M0 Sandbox)',
           cloudHost: 'mongodb.net',
-          features: ['512MB Free Storage', 'Shared RAM', 'Document Model', 'Auto Sharding']
+          features: ['512MB Free Storage', 'Shared RAM', 'Document Model', 'NoSQL Queries']
         };
       } else {
         report.details = {
-          databaseType: 'Neon Cloud Database',
-          cloudHost: 'neon.tech',
-          features: ['Serverless Postgres', 'Scale-to-Zero', 'Point-in-Time Restore']
+          databaseType: 'High-Reliability Local Fallback Store',
+          cloudHost: isServerless ? 'vercel-tmp' : 'local-data',
+          features: ['Zero Downtime', 'Instant In-Memory Cache', 'Atomic JSON Persist']
         };
       }
     } catch (e) {
@@ -716,7 +833,6 @@ class DatabaseAdapter {
 
     return report;
   }
-
 
   // 4. PARTIES & VENDORS
   async getParties() {

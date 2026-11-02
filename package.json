@@ -1,7 +1,7 @@
 {
   "name": "dharshithan-finance-tracker",
   "version": "2.0.0",
-  "description": "Enterprise Role-Based Financial Governance & Tracking Software powered by Supabase (Free Tier), MongoDB Atlas, and Neon Cloud",
+  "description": "Enterprise Role-Based Financial Governance & Tracking Software powered by Supabase (Free Tier PostgreSQL) and MongoDB Atlas (Free M0)",
   "main": "server.js",
   "scripts": {
     "build": "node scripts/build.js",
@@ -9,14 +9,11 @@
     "test": "node test-services.js",
     "test:e2e": "node scripts/test-full-erp-workflow.js",
     "transfer": "node scripts/transfer-data.js",
-    "export:neon": "node scripts/export-neon-data.js",
+    "export": "node scripts/export-data.js",
     "migrate": "node migrate.js",
-    "seed": "node seed-neon-transactions.js"
+    "seed": "node scripts/seed-cloud-db.js"
   },
   "dependencies": {
-    "@neon/config": "^1.9.5",
-    "@neon/env": "^1.6.6",
-    "@neondatabase/serverless": "^1.2.0",
     "@supabase/supabase-js": "^2.118.0",
     "dotenv": "^18.0.9",
     "mongodb": "^7.8.0",

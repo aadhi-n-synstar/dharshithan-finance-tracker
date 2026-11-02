@@ -129,7 +129,7 @@ class AuthManager {
       return { success: false, error: 'Please enter User ID and Password.' };
     }
 
-    // 1. First attempt direct Neon PostgreSQL server authentication
+    // 1. First attempt direct Cloud Database server authentication (Supabase / MongoDB)
     try {
       const res = await fetch('/api/auth', {
         method: 'POST',
@@ -165,7 +165,7 @@ class AuthManager {
         }
       }
     } catch (err) {
-      console.warn('Neon server auth unreachable, using local fallback:', err);
+      console.warn('Cloud server auth unreachable, using local fallback:', err);
     }
 
     // 2. Fallback to Local users DB if offline
@@ -250,7 +250,7 @@ class AuthManager {
       return { success: false, error: 'New password must be at least 6 characters long.' };
     }
 
-    // 1. Commit to Neon DB server
+    // 1. Commit to Cloud DB server
     try {
       await fetch('/api/auth', {
         method: 'POST',
@@ -258,7 +258,7 @@ class AuthManager {
         body: JSON.stringify({ action: 'change-password', userId: cleanId, newPassword: cleanNewPass })
       });
     } catch (e) {
-      console.warn('Neon DB password update warning:', e);
+      console.warn('Cloud DB password update warning:', e);
     }
 
     // 2. Update local storage
@@ -433,13 +433,13 @@ class AuthManager {
     this.users.push(newUser);
     this.saveUsers();
 
-    // Async sync to Neon PostgreSQL
+    // Async sync to Cloud Database (Supabase / MongoDB)
     try {
       fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newUser)
-      }).catch(e => console.warn('Neon user POST failed:', e));
+      }).catch(e => console.warn('Cloud user POST failed:', e));
     } catch (e) {}
 
     this.logAudit(this.getCurrentUser()?.userId || 'admin', 'USER_CREATED', {
@@ -486,13 +486,13 @@ class AuthManager {
     user.updatedAt = new Date().toISOString();
     this.saveUsers();
 
-    // Async sync update to Neon PostgreSQL
+    // Async sync update to Cloud Database
     try {
       fetch('/api/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.userId, ...updates })
-      }).catch(e => console.warn('Neon user PUT failed:', e));
+      }).catch(e => console.warn('Cloud user PUT failed:', e));
     } catch (e) {}
 
     // If edited user is the active user, refresh session
@@ -536,11 +536,11 @@ class AuthManager {
     const removed = this.users.splice(idx, 1)[0];
     this.saveUsers();
 
-    // Async sync delete to Neon PostgreSQL
+    // Async sync delete to Cloud Database
     try {
       fetch(`/api/users?userId=${encodeURIComponent(cleanId)}`, {
         method: 'DELETE'
-      }).catch(e => console.warn('Neon user DELETE failed:', e));
+      }).catch(e => console.warn('Cloud user DELETE failed:', e));
     } catch (e) {}
 
     this.logAudit(this.getCurrentUser()?.userId || 'admin', 'USER_DELETED', {

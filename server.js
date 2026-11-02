@@ -116,7 +116,7 @@ const server = http.createServer(async (req, res) => {
 if (require.main === module) {
   server.listen(PORT, () => {
     console.log(`Dharshithan Finance Tracker is running at http://localhost:${PORT}`);
-    console.log(`Multi-Database Cloud Engine: Supabase (Free Tier), MongoDB Atlas, Neon PostgreSQL`);
+    console.log(`Dual-Cloud Database Engine: Supabase (Free Tier PostgreSQL) & MongoDB Atlas (Free M0 Sandbox)`);
   });
 }
 

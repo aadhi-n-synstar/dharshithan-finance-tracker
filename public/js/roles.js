@@ -182,7 +182,7 @@ class RoleManager {
       {
         action: 'canAdd',
         title: 'Record & Add Financial Transactions',
-        desc: 'Post new client revenue, receipts, vendor bills, and operational expenses to Neon DB.',
+        desc: 'Post new client revenue, receipts, vendor bills, and operational expenses to Cloud DB.',
         granted: !!role.permissions.canAdd
       },
       {
@@ -194,7 +194,7 @@ class RoleManager {
       {
         action: 'canDelete',
         title: 'Permanent Database Deletion',
-        desc: 'Permanently remove transactions from Neon PostgreSQL Database.',
+        desc: 'Permanently remove transactions from Cloud Database.',
         granted: !!role.permissions.canDelete
       },
       {
@@ -212,7 +212,7 @@ class RoleManager {
       {
         action: 'canManageDatabase',
         title: 'Cloud Database Console & Backups',
-        desc: 'Super Admin direct access to Neon PostgreSQL telemetry and .SQL backup exports.',
+        desc: 'Super Admin direct access to Supabase & MongoDB cloud telemetry and backup exports.',
         granted: !!role.permissions.canManageDatabase
       },
       {

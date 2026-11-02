@@ -1,6 +1,6 @@
 -- ======================================================================
 -- Dharshithan Waterproofing - Enterprise PostgreSQL Database Schema
--- Ready for Free Vercel-supported PostgreSQL (Supabase / Neon / Vercel Postgres)
+-- Ready for Free Vercel-supported PostgreSQL (Supabase 100% Free Forever Tier)
 -- Multi-Role RBAC & User Governance with Password First-Change Policy
 -- ======================================================================
 
