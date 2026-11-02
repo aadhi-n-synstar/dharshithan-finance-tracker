@@ -519,8 +519,8 @@ class AuthManager {
    */
   deleteUser(userId) {
     const roleId = window.roleManager ? window.roleManager.getRole().id : (this.session ? this.session.role : null);
-    if (!roleId || (roleId !== 'super_admin' && roleId !== 'developer')) {
-      return { success: false, error: 'Unauthorized: Only Super Admin and Developer can delete users.' };
+    if (!roleId || !['super_admin', 'owner', 'developer', 'admin'].includes(roleId)) {
+      return { success: false, error: 'Unauthorized: Only Administrator roles can delete users.' };
     }
 
     const cleanId = (userId || '').trim().toLowerCase();

@@ -45,6 +45,62 @@ module.exports = async function handler(req, res) {
       });
     }
 
+    // 3. PUT - Update / Alter User Details & Role
+    if (req.method === 'PUT') {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { userId, fullName, email, category, role, phone, password, isActive, status } = body;
+
+      if (!userId) {
+        return res.status(400).json({ success: false, error: 'User ID is required to update details' });
+      }
+
+      const updated = await db.updateUser(userId, {
+        fullName,
+        email,
+        category,
+        role,
+        phone,
+        password,
+        isActive,
+        status
+      });
+
+      if (!updated) {
+        return res.status(404).json({ success: false, error: `User "${userId}" not found` });
+      }
+
+      return res.status(200).json({
+        success: true,
+        provider: db.getProvider(),
+        message: `User "${userId}" details updated successfully`,
+        data: updated
+      });
+    }
+
+    // 4. DELETE - Delete User Account
+    if (req.method === 'DELETE') {
+      let userId = req.query ? req.query.userId : null;
+      if (!userId && req.body) {
+        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        userId = body.userId;
+      }
+
+      if (!userId) {
+        return res.status(400).json({ success: false, error: 'User ID is required to delete account' });
+      }
+
+      if (userId.toLowerCase().trim() === 'admin') {
+        return res.status(403).json({ success: false, error: 'The primary Super Administrator account ("admin") cannot be deleted' });
+      }
+
+      await db.deleteUser(userId);
+      return res.status(200).json({
+        success: true,
+        provider: db.getProvider(),
+        message: `User "${userId}" deleted successfully`
+      });
+    }
+
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
     console.error('API Users Error:', err);

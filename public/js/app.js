@@ -369,8 +369,10 @@ class FinanceApp {
       const isActive = t === tabName;
       if (sideItem) {
         if (isActive) {
+          sideItem.classList.add('active');
           sideItem.classList.add('erp-sidebar-item-active');
         } else {
+          sideItem.classList.remove('active');
           sideItem.classList.remove('erp-sidebar-item-active');
         }
       }
@@ -463,10 +465,17 @@ class FinanceApp {
     const elTotLiq = document.getElementById('cardTotalLiquidity');
     if (elTotLiq) elTotLiq.textContent = FinanceAnalytics.formatINR(metrics.totalLiquidity);
 
-    // Cashflow Chart
-    if (window.FinanceCharts) {
-      const summary = FinanceAnalytics.getFYQuarterSummary(this.transactions);
-      window.FinanceCharts.renderCashflowChart('cashflowChart', summary);
+    // Cashflow Chart (Inflow vs Outflow)
+    try {
+      if (window.financeCharts && typeof window.financeCharts.renderCashflowChart === 'function') {
+        const summary = FinanceAnalytics.getFYQuarterSummary(this.transactions);
+        window.financeCharts.renderCashflowChart('cashflowChart', summary);
+      } else if (window.FinanceCharts && typeof window.FinanceCharts.renderCashflowChart === 'function') {
+        const summary = FinanceAnalytics.getFYQuarterSummary(this.transactions);
+        window.FinanceCharts.renderCashflowChart('cashflowChart', summary);
+      }
+    } catch (chartErr) {
+      console.warn('Cashflow chart render warning:', chartErr);
     }
 
     // Recent Transactions Table (Latest 8 entries)
@@ -2268,9 +2277,39 @@ class FinanceApp {
   // STAFF DIRECTORY & USER PROVISIONING MODAL
   // =========================================================================
 
+  // =========================================================================
+  // RBAC USER MANAGEMENT & GOVERNANCE METHODS
+  // =========================================================================
+
+  async fetchAllUsers() {
+    let users = [];
+    if (window.authManager && typeof window.authManager.loadUsers === 'function') {
+      users = window.authManager.loadUsers();
+    }
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const body = await res.json();
+        if (body.success && Array.isArray(body.data) && body.data.length > 0) {
+          const map = new Map();
+          users.forEach(u => map.set((u.userId || u.user_id).toLowerCase(), u));
+          body.data.forEach(cu => {
+            const id = (cu.userId || cu.user_id).toLowerCase();
+            const existing = map.get(id) || {};
+            map.set(id, { ...existing, ...cu });
+          });
+          users = Array.from(map.values());
+        }
+      }
+    } catch (e) {
+      console.warn('API users fetch warning:', e);
+    }
+    return users;
+  }
+
   openUserManagementModal() {
-    if (!window.roleManager.isSuperAdmin()) {
-      this.showToast('Only Super Administrator has access to Staff Directory', 'error');
+    if (window.roleManager && !window.roleManager.can('canManageUsers') && !window.roleManager.isSuperAdmin() && !window.roleManager.isAdmin()) {
+      this.showToast('Only Administrator roles have access to Staff Directory', 'error');
       return;
     }
     const modal = document.getElementById('userManagementModal');
@@ -2287,77 +2326,271 @@ class FinanceApp {
   }
 
   async renderUsersTable() {
-    const tbody = document.getElementById('usersTableBody');
+    const tbody = document.getElementById('modalUsersTableBody') || document.getElementById('usersTableBody');
     if (!tbody) return;
 
     try {
-      const res = await fetch('/api/users');
-      let users = [];
-      if (res.ok) {
-        const body = await res.json();
-        if (body.success && Array.isArray(body.data)) users = body.data;
-      }
-
-      if (users.length === 0 && window.authManager) {
-        users = window.authManager.getAllUsers();
-      }
+      const users = await this.fetchAllUsers();
+      const roleBadges = {
+        super_admin: { label: 'Super Admin', class: 'bg-purple-50 text-purple-700 border-purple-200' },
+        owner: { label: 'Company Owner', class: 'bg-emerald-50 text-emerald-800 border-emerald-300' },
+        admin: { label: 'Finance Admin', class: 'bg-sky-50 text-sky-800 border-sky-300' },
+        developer: { label: 'Lead Developer', class: 'bg-indigo-50 text-indigo-800 border-indigo-300' },
+        employee: { label: 'Site Employee', class: 'bg-amber-50 text-amber-800 border-amber-300' },
+        stakeholder: { label: 'Stakeholder', class: 'bg-slate-100 text-slate-800 border-slate-300' }
+      };
 
       tbody.innerHTML = users.map(u => {
-        const isSuper = (u.role || '').toLowerCase().includes('super');
+        const uId = u.userId || u.user_id;
+        const fName = u.fullName || u.full_name || 'Staff Member';
+        const roleId = (u.role || 'employee').toLowerCase();
+        const badge = roleBadges[roleId] || { label: u.role, class: 'bg-slate-50 text-slate-700 border-slate-200' };
+        const isActive = u.isActive !== false && u.is_active !== false && u.status !== 'inactive';
+        const isPrimaryAdmin = uId.toLowerCase() === 'admin';
+
         return `
           <tr class="hover:bg-slate-50 transition border-b border-slate-100 text-xs">
-            <td class="p-2.5 font-bold text-slate-900">${this.escapeHtml(u.fullName || u.full_name)}</td>
-            <td class="p-2.5 font-mono text-slate-600">${this.escapeHtml(u.userId || u.user_id)}</td>
-            <td class="p-2.5 text-slate-600">${this.escapeHtml(u.email)}</td>
+            <td class="p-2.5 font-mono font-bold text-slate-700">${this.escapeHtml(uId)}</td>
             <td class="p-2.5">
-              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${isSuper ? 'bg-purple-50 text-purple-700 border border-purple-200' : 'bg-sky-50 text-sky-700 border border-sky-200'}">
-                ${u.role}
+              <div class="font-bold text-slate-900">${this.escapeHtml(fName)}</div>
+              <div class="text-[10px] text-slate-400 font-mono">${this.escapeHtml(u.email || '-')}</div>
+            </td>
+            <td class="p-2.5">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badge.class}">
+                ${badge.label}
               </span>
             </td>
+            <td class="p-2.5 text-slate-600">${this.escapeHtml(u.category || u.department || 'Operations')}</td>
             <td class="p-2.5 text-center">
-              <span class="inline-block w-2 h-2 rounded-full ${u.isActive !== false ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+              <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}">
+                <span class="w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}"></span>
+                <span>${isActive ? 'Active' : 'Suspended'}</span>
+              </span>
+            </td>
+            <td class="p-2.5 text-right">
+              <div class="inline-flex items-center space-x-1.5 justify-end">
+                <button type="button" onclick="app.openEditUserModal('${uId}')" title="Edit Staff Details & Role" class="px-2 py-0.5 rounded border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-700 text-[11px] font-semibold cursor-pointer transition">
+                  Edit
+                </button>
+                <button type="button" onclick="app.toggleUserStatus('${uId}')" ${isPrimaryAdmin ? 'disabled title="Primary Admin cannot be suspended"' : ''} class="px-2 py-0.5 rounded border ${isActive ? 'border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700' : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700'} text-[11px] font-semibold cursor-pointer transition ${isPrimaryAdmin ? 'opacity-40 cursor-not-allowed' : ''}">
+                  ${isActive ? 'Suspend' : 'Activate'}
+                </button>
+                <button type="button" onclick="app.handleDeleteUser('${uId}')" ${isPrimaryAdmin ? 'disabled title="Primary Admin cannot be deleted"' : ''} class="px-2 py-0.5 rounded border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-semibold cursor-pointer transition ${isPrimaryAdmin ? 'opacity-40 cursor-not-allowed' : ''}">
+                  Delete
+                </button>
+              </div>
             </td>
           </tr>
         `;
       }).join('');
     } catch (err) {
       console.error(err);
-      tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-rose-500">Failed to load staff list</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-rose-500">Failed to load staff list</td></tr>';
     }
   }
 
   async handleAddUser(e) {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     const fullName = document.getElementById('newFullName')?.value.trim();
     const userId = document.getElementById('newUserId')?.value.trim();
     const email = document.getElementById('newEmail')?.value.trim();
     const role = document.getElementById('newRole')?.value;
-    const phone = document.getElementById('newCategory')?.value.trim();
-    const password = document.getElementById('newPassword')?.value;
+    const category = document.getElementById('newCategory')?.value.trim() || 'Operations';
+    const password = document.getElementById('newPassword')?.value.trim() || 'Dhar@2026';
 
-    if (!fullName || !userId || !email || !password) {
-      this.showToast('Please fill all required staff account fields', 'error');
+    if (!fullName || !userId || !email) {
+      this.showToast('Please fill all required staff account fields (Name, User ID, Email)', 'error');
       return;
+    }
+
+    if (window.authManager) {
+      const created = window.authManager.createUser({
+        fullName,
+        userId,
+        email,
+        role,
+        category,
+        password,
+        phone: ''
+      });
+      if (!created.success) {
+        this.showToast(created.error || 'Failed to create user', 'error');
+        return;
+      }
     }
 
     try {
       const res = await fetch('/api/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fullName, userId, email, role, phone, password, category: 'Internal' })
+        body: JSON.stringify({ fullName, userId, email, role, phone: '', password, category })
       });
-
-      if (res.ok) {
-        this.showToast(`Staff account for ${fullName} created in Cloud DB`, 'success');
-        document.getElementById('addUserForm')?.reset();
-        this.renderUsersTable();
-      } else {
-        const body = await res.json();
-        this.showToast(body.error || 'Failed to create staff account', 'error');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.warn('Cloud user provision notice:', body.error);
       }
     } catch (err) {
-      this.showToast('User provisioning error: ' + err.message, 'error');
+      console.warn('Cloud user provision warning:', err);
     }
+
+    this.showToast(`Staff account for ${fullName} (${userId}) provisioned successfully!`, 'success');
+    document.getElementById('addUserForm')?.reset();
+    this.renderUsersTable();
+    this.renderUsersView();
+  }
+
+  async openEditUserModal(userId) {
+    if (window.roleManager && !window.roleManager.can('canManageUsers') && !window.roleManager.isSuperAdmin() && !window.roleManager.isAdmin()) {
+      this.showToast('Unauthorized: Only Administrator roles can edit staff details', 'error');
+      return;
+    }
+
+    const modal = document.getElementById('editUserModal');
+    if (!modal) return;
+
+    let user = null;
+    if (window.authManager) {
+      user = window.authManager.getUser(userId);
+    }
+    if (!user) {
+      const users = await this.fetchAllUsers();
+      user = users.find(u => (u.userId || u.user_id || '').toLowerCase() === (userId || '').toLowerCase());
+    }
+
+    if (!user) {
+      this.showToast(`User "${userId}" not found`, 'error');
+      return;
+    }
+
+    const uId = user.userId || user.user_id;
+    const fName = user.fullName || user.full_name || '';
+    const email = user.email || '';
+    const role = (user.role || 'employee').toLowerCase();
+    const category = user.category || user.department || 'Operations';
+    const phone = user.phone || '';
+    const isActive = user.isActive !== false && user.is_active !== false && user.status !== 'inactive';
+
+    if (document.getElementById('editUserId')) document.getElementById('editUserId').value = uId;
+    if (document.getElementById('editFullName')) document.getElementById('editFullName').value = fName;
+    if (document.getElementById('editEmail')) document.getElementById('editEmail').value = email;
+    if (document.getElementById('editRole')) document.getElementById('editRole').value = role;
+    if (document.getElementById('editCategory')) document.getElementById('editCategory').value = category;
+    if (document.getElementById('editPhone')) document.getElementById('editPhone').value = phone;
+    if (document.getElementById('editStatus')) document.getElementById('editStatus').value = isActive ? 'active' : 'inactive';
+    if (document.getElementById('editNewPassword')) document.getElementById('editNewPassword').value = '';
+
+    modal.classList.remove('hidden');
+    if (window.lucide) window.lucide.createIcons();
+  }
+
+  closeEditUserModal() {
+    const modal = document.getElementById('editUserModal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  async handleSaveEditUser(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const userId = document.getElementById('editUserId')?.value;
+    const fullName = document.getElementById('editFullName')?.value.trim();
+    const email = document.getElementById('editEmail')?.value.trim();
+    const role = document.getElementById('editRole')?.value;
+    const category = document.getElementById('editCategory')?.value.trim();
+    const phone = document.getElementById('editPhone')?.value.trim();
+    const status = document.getElementById('editStatus')?.value;
+    const newPassword = document.getElementById('editNewPassword')?.value.trim();
+
+    if (!userId || !fullName || !email) {
+      this.showToast('Please fill all required fields (Name and Email)', 'error');
+      return;
+    }
+
+    if (userId.toLowerCase() === 'admin' && (role !== 'super_admin' && role !== 'admin')) {
+      this.showToast('Primary Super Administrator role cannot be demoted.', 'error');
+      return;
+    }
+
+    if (userId.toLowerCase() === 'admin' && status === 'inactive') {
+      this.showToast('Primary Super Administrator cannot be suspended.', 'error');
+      return;
+    }
+
+    // 1. Update in local AuthManager
+    if (window.authManager) {
+      const res = window.authManager.updateUser(userId, {
+        fullName,
+        email,
+        role,
+        category,
+        phone,
+        status,
+        isActive: status === 'active'
+      });
+      if (newPassword) {
+        window.authManager.adminResetPassword(userId, newPassword);
+      }
+      if (res && !res.success) {
+        this.showToast(res.error || 'Update failed', 'error');
+        return;
+      }
+    }
+
+    // 2. Sync to Cloud API
+    try {
+      await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId,
+          fullName,
+          email,
+          role,
+          category,
+          phone,
+          status,
+          isActive: status === 'active',
+          password: newPassword || undefined
+        })
+      });
+    } catch (apiErr) {
+      console.warn('API user update note:', apiErr);
+    }
+
+    this.showToast(`Staff account for "${fullName}" updated successfully!`, 'success');
+    this.closeEditUserModal();
+    this.renderUsersView();
+    this.renderUsersTable();
+  }
+
+  async handleDeleteUser(userId) {
+    const cleanId = (userId || '').trim().toLowerCase();
+    if (cleanId === 'admin') {
+      this.showToast('The primary Super Administrator account cannot be deleted.', 'error');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to permanently delete user account "${userId}"?\nThis action will revoke their login access across all cloud databases.`)) {
+      return;
+    }
+
+    if (window.authManager) {
+      const res = window.authManager.deleteUser(userId);
+      if (!res.success) {
+        this.showToast(res.error || 'Failed to delete user', 'error');
+        return;
+      }
+    }
+
+    try {
+      await fetch(`/api/users?userId=${encodeURIComponent(cleanId)}`, {
+        method: 'DELETE'
+      });
+    } catch (e) {
+      console.warn('Cloud user delete warning:', e);
+    }
+
+    this.showToast(`User account "${userId}" deleted successfully.`, 'success');
+    this.renderUsersView();
+    this.renderUsersTable();
   }
 
   // =========================================================================
@@ -2555,6 +2788,7 @@ CREATE TABLE IF NOT EXISTS users (
       'partyModal',
       'floatModal',
       'userManagementModal',
+      'editUserModal',
       'databaseHubModal',
       'forgotPasswordModal',
       'selfPasswordChangeModal'
@@ -2619,90 +2853,114 @@ CREATE TABLE IF NOT EXISTS users (
     const countBadge = document.getElementById('usersTableCount');
     if (!tbody) return;
 
-    let users = [];
-    if (window.authManager && typeof window.authManager.loadUsers === 'function') {
-      users = window.authManager.loadUsers();
-    }
-
     try {
-      const res = await fetch('/api/users');
-      if (res.ok) {
-        const body = await res.json();
-        if (body.success && Array.isArray(body.data) && body.data.length > 0) {
-          users = body.data;
-        }
-      }
-    } catch (e) {}
+      const users = await this.fetchAllUsers();
+      if (countBadge) countBadge.textContent = users.length + ' Users';
 
-    if (countBadge) countBadge.textContent = users.length + ' Users';
+      const roleBadges = {
+        super_admin: { label: 'Super Admin', class: 'bg-purple-50 text-purple-700 border-purple-200' },
+        owner: { label: 'Company Owner', class: 'bg-emerald-50 text-emerald-800 border-emerald-300' },
+        admin: { label: 'Finance Admin', class: 'bg-sky-50 text-sky-800 border-sky-300' },
+        developer: { label: 'Lead Developer', class: 'bg-indigo-50 text-indigo-800 border-indigo-300' },
+        employee: { label: 'Site Employee', class: 'bg-amber-50 text-amber-800 border-amber-300' },
+        stakeholder: { label: 'Stakeholder', class: 'bg-slate-100 text-slate-800 border-slate-300' }
+      };
 
-    const roleBadges = {
-      super_admin: { label: 'Super Admin', class: 'bg-purple-50 text-purple-700 border-purple-200' },
-      owner: { label: 'Company Owner', class: 'bg-emerald-50 text-emerald-800 border-emerald-300' },
-      admin: { label: 'Finance Admin', class: 'bg-sky-50 text-sky-800 border-sky-300' },
-      developer: { label: 'Lead Developer', class: 'bg-indigo-50 text-indigo-800 border-indigo-300' },
-      employee: { label: 'Site Employee', class: 'bg-amber-50 text-amber-800 border-amber-300' },
-      stakeholder: { label: 'Stakeholder', class: 'bg-slate-100 text-slate-800 border-slate-300' }
-    };
+      tbody.innerHTML = users.map(u => {
+        const uId = u.userId || u.user_id;
+        const fName = u.fullName || u.full_name || 'Staff Member';
+        const roleId = (u.role || 'employee').toLowerCase();
+        const badge = roleBadges[roleId] || { label: u.role, class: 'bg-slate-50 text-slate-700 border-slate-200' };
+        const isActive = u.isActive !== false && u.is_active !== false && u.status !== 'inactive';
+        const isPrimaryAdmin = uId.toLowerCase() === 'admin';
+        const initials = fName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-    tbody.innerHTML = users.map(u => {
-      const uId = u.userId || u.user_id;
-      const fName = u.fullName || u.full_name || 'Staff Member';
-      const roleId = (u.role || 'employee').toLowerCase();
-      const badge = roleBadges[roleId] || { label: u.role, class: 'bg-slate-50 text-slate-700 border-slate-200' };
-      const isActive = u.isActive !== false && u.is_active !== false && u.status !== 'inactive';
-      const initials = fName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
-
-      return `
-        <tr class="hover:bg-slate-50/80 transition">
-          <td class="py-2.5 px-3">
-            <div class="flex items-center space-x-2.5">
-              <div class="w-7 h-7 rounded-lg bg-slate-800 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
-                ${initials}
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="py-2.5 px-3">
+              <div class="flex items-center space-x-2.5">
+                <div class="w-7 h-7 rounded-lg bg-slate-800 text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0">
+                  ${initials}
+                </div>
+                <div class="min-w-0">
+                  <div class="font-bold text-slate-900 truncate">${this.escapeHtml(fName)}</div>
+                  <div class="text-[10px] text-slate-400 font-mono truncate">${this.escapeHtml(u.email || uId)}</div>
+                </div>
               </div>
-              <div class="min-w-0">
-                <div class="font-bold text-slate-900 truncate">${this.escapeHtml(fName)}</div>
-                <div class="text-[10px] text-slate-400 font-mono truncate">${this.escapeHtml(u.email || uId)}</div>
+            </td>
+            <td class="py-2.5 px-3">
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${badge.class}">
+                ${badge.label}
+              </span>
+            </td>
+            <td class="py-2.5 px-3 font-medium text-slate-600">${this.escapeHtml(u.category || u.department || 'Operations')}</td>
+            <td class="py-2.5 px-3 font-mono text-slate-500">${this.escapeHtml(u.phone || '-')}</td>
+            <td class="py-2.5 px-3">
+              <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}">
+                <span class="w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}"></span>
+                <span>${isActive ? 'Active' : 'Suspended'}</span>
+              </span>
+            </td>
+            <td class="py-2.5 px-3 text-right">
+              <div class="inline-flex items-center space-x-1.5 justify-end">
+                <button type="button" onclick="app.openEditUserModal('${uId}')" title="Edit Staff Details & Role" class="px-2.5 py-1 rounded-md border border-sky-200 bg-sky-50 hover:bg-sky-100 text-sky-700 text-[11px] font-semibold flex items-center space-x-1 cursor-pointer transition shadow-2xs">
+                  <i data-lucide="edit-2" class="w-3 h-3"></i>
+                  <span>Edit</span>
+                </button>
+                <button type="button" onclick="app.toggleUserStatus('${uId}')" ${isPrimaryAdmin ? 'disabled title="Primary Admin cannot be suspended"' : ''} class="px-2.5 py-1 rounded-md border ${isActive ? 'border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700' : 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-700'} text-[11px] font-semibold flex items-center space-x-1 cursor-pointer transition shadow-2xs ${isPrimaryAdmin ? 'opacity-40 cursor-not-allowed' : ''}">
+                  <i data-lucide="${isActive ? 'slash' : 'check'}" class="w-3 h-3"></i>
+                  <span>${isActive ? 'Suspend' : 'Activate'}</span>
+                </button>
+                <button type="button" onclick="app.handleDeleteUser('${uId}')" ${isPrimaryAdmin ? 'disabled title="Primary Admin cannot be deleted"' : ''} class="px-2.5 py-1 rounded-md border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-semibold flex items-center space-x-1 cursor-pointer transition shadow-2xs ${isPrimaryAdmin ? 'opacity-40 cursor-not-allowed' : ''}">
+                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                  <span>Delete</span>
+                </button>
               </div>
-            </div>
-          </td>
-          <td class="py-2.5 px-3">
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border ${badge.class}">
-              ${badge.label}
-            </span>
-          </td>
-          <td class="py-2.5 px-3 font-medium text-slate-600">${this.escapeHtml(u.category || 'Operations')}</td>
-          <td class="py-2.5 px-3 font-mono text-slate-500">${this.escapeHtml(u.phone || '-')}</td>
-          <td class="py-2.5 px-3">
-            <span class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}">
-              <span class="w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500' : 'bg-slate-400'}"></span>
-              <span>${isActive ? 'Active' : 'Suspended'}</span>
-            </span>
-          </td>
-          <td class="py-2.5 px-3 text-right">
-            <button onclick="app.toggleUserStatus('${uId}')" class="px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-[11px] font-semibold cursor-pointer transition">
-              ${isActive ? 'Suspend' : 'Activate'}
-            </button>
-          </td>
-        </tr>
-      `;
-    }).join('');
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      if (window.lucide) window.lucide.createIcons();
+    } catch (err) {
+      console.error('Error rendering users view:', err);
+      tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-rose-500">Failed to render staff directory</td></tr>';
+    }
   }
 
-  toggleUserStatus(userId) {
-    if (userId === 'admin') {
+  async toggleUserStatus(userId) {
+    const cleanId = (userId || '').trim().toLowerCase();
+    if (cleanId === 'admin') {
       this.showToast('Super Admin account cannot be deactivated.', 'error');
       return;
     }
+
+    let newStatus = 'active';
+    let targetName = userId;
     if (window.authManager) {
       const u = window.authManager.getUser(userId);
       if (u) {
-        u.status = u.status === 'inactive' ? 'active' : 'inactive';
+        newStatus = (u.status === 'inactive' || u.isActive === false) ? 'active' : 'inactive';
+        u.status = newStatus;
+        u.isActive = (newStatus === 'active');
+        targetName = u.fullName || userId;
         window.authManager.saveUsers();
-        this.showToast(`User ${u.fullName} status updated.`, 'info');
-        this.renderUsersView();
       }
     }
+
+    try {
+      await fetch('/api/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, status: newStatus, isActive: newStatus === 'active' })
+      });
+    } catch (e) {
+      console.warn('Cloud status sync note:', e);
+    }
+
+    this.showToast(`User account "${targetName}" is now ${newStatus.toUpperCase()}`, 'info');
+    this.renderUsersView();
+    this.renderUsersTable();
   }
 
   openAddUserModal() {
@@ -2839,6 +3097,14 @@ CREATE TABLE IF NOT EXISTS users (
 
 // Global Instantiation
 window.app = new FinanceApp();
+window.openEditUserModal = (id) => window.app.openEditUserModal(id);
+window.closeEditUserModal = () => window.app.closeEditUserModal();
+window.handleDeleteUser = (id) => window.app.handleDeleteUser(id);
+window.toggleUserStatus = (id) => window.app.toggleUserStatus(id);
+window.openAddUserModal = () => window.app.openAddUserModal();
+window.openUserManagementModal = () => window.app.openUserManagementModal();
+window.closeUserManagementModal = () => window.app.closeUserManagementModal();
+
 document.addEventListener('DOMContentLoaded', () => {
   window.app.init();
 });

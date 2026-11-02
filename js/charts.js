@@ -8,20 +8,25 @@ class FinanceCharts {
     this.trendChart = null;
     this.modeChart = null;
     this.partyChart = null;
+    this.cashflowChart = null;
   }
 
   destroyCharts() {
     if (this.trendChart) {
-      this.trendChart.destroy();
+      try { this.trendChart.destroy(); } catch (e) {}
       this.trendChart = null;
     }
     if (this.modeChart) {
-      this.modeChart.destroy();
+      try { this.modeChart.destroy(); } catch (e) {}
       this.modeChart = null;
     }
     if (this.partyChart) {
-      this.partyChart.destroy();
+      try { this.partyChart.destroy(); } catch (e) {}
       this.partyChart = null;
+    }
+    if (this.cashflowChart) {
+      try { this.cashflowChart.destroy(); } catch (e) {}
+      this.cashflowChart = null;
     }
   }
 
@@ -273,6 +278,130 @@ class FinanceCharts {
       `;
     }
   }
+
+  renderCashflowChart(canvasId, summary) {
+    const canvas = typeof canvasId === 'string' ? document.getElementById(canvasId) : canvasId;
+    if (!canvas) return;
+
+    if (this.cashflowChart) {
+      try { this.cashflowChart.destroy(); } catch (e) {}
+      this.cashflowChart = null;
+    }
+
+    if (typeof Chart === 'undefined') {
+      const container = canvas.parentElement;
+      if (container) {
+        container.innerHTML = `
+          <div class="h-full flex flex-col items-center justify-center text-slate-500 text-xs p-4 text-center">
+            <span class="font-bold text-slate-700">Cash Flow Dynamics</span>
+            <span class="text-slate-400 mt-1">Quarterly Inflow vs Outflow comparisons ready.</span>
+          </div>
+        `;
+      }
+      return;
+    }
+
+    const labels = summary && summary.labels && summary.labels.length > 0
+      ? summary.labels
+      : ['Q1', 'Q2', 'Q3', 'Q4'];
+    const incomeData = summary && summary.incomes && summary.incomes.length > 0
+      ? summary.incomes
+      : [0, 0, 0, 0];
+    const expenseData = summary && summary.expenses && summary.expenses.length > 0
+      ? summary.expenses
+      : [0, 0, 0, 0];
+    const profitData = summary && summary.profits && summary.profits.length > 0
+      ? summary.profits
+      : [0, 0, 0, 0];
+
+    try {
+      this.cashflowChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Inflow / Turnover (₹)',
+              data: incomeData,
+              backgroundColor: 'rgba(16, 185, 129, 0.85)',
+              borderColor: '#059669',
+              borderWidth: 1.5,
+              borderRadius: 6,
+              order: 2
+            },
+            {
+              label: 'Outflow / Expenses (₹)',
+              data: expenseData,
+              backgroundColor: 'rgba(239, 68, 68, 0.85)',
+              borderColor: '#dc2626',
+              borderWidth: 1.5,
+              borderRadius: 6,
+              order: 2
+            },
+            {
+              label: 'Net Cashflow (₹)',
+              data: profitData,
+              type: 'line',
+              borderColor: '#0284c7',
+              backgroundColor: 'rgba(2, 132, 199, 0.12)',
+              borderWidth: 2.5,
+              fill: true,
+              tension: 0.3,
+              pointRadius: 4,
+              pointHoverRadius: 6,
+              pointBackgroundColor: '#0284c7',
+              order: 1
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: {
+                boxWidth: 12,
+                font: { family: "'Inter', sans-serif", size: 11, weight: '500' },
+                color: '#334155'
+              }
+            },
+            tooltip: {
+              backgroundColor: '#0f172a',
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                label: (item) => `${item.dataset.label}: ₹${Number(item.raw || 0).toLocaleString('en-IN')}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(0, 0, 0, 0.05)' },
+              ticks: { color: '#64748b', font: { family: "'Inter', sans-serif" } }
+            },
+            y: {
+              grid: { color: 'rgba(0, 0, 0, 0.05)' },
+              ticks: {
+                color: '#64748b',
+                font: { family: "'Inter', sans-serif" },
+                callback: (val) => '₹' + Number(val).toLocaleString('en-IN')
+              }
+            }
+          }
+        }
+      });
+    } catch (e) {
+      console.warn('Failed to initialize Cashflow Chart:', e);
+    }
+  }
 }
 
+FinanceCharts.renderCashflowChart = function(canvasId, summary) {
+  if (window.financeCharts && typeof window.financeCharts.renderCashflowChart === 'function') {
+    return window.financeCharts.renderCashflowChart(canvasId, summary);
+  }
+};
+
 window.financeCharts = new FinanceCharts();
+window.FinanceCharts = FinanceCharts;

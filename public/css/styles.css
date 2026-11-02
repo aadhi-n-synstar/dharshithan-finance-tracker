@@ -68,16 +68,24 @@ body {
   background-color: rgba(30, 41, 59, 0.7);
 }
 
-.erp-sidebar-item.active {
-  color: #ffffff;
-  background-color: #1e293b;
-  border-left-color: #0284c7;
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+.erp-sidebar-item.active,
+.erp-sidebar-item.erp-sidebar-item-active,
+.erp-sidebar-item-active {
+  color: #ffffff !important;
+  background-color: #1e293b !important;
+  border-left: 4px solid #38bdf8 !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25) !important;
 }
 
-.erp-sidebar-item.active i {
-  color: #38bdf8;
+.erp-sidebar-item.active i,
+.erp-sidebar-item.active svg,
+.erp-sidebar-item.erp-sidebar-item-active i,
+.erp-sidebar-item.erp-sidebar-item-active svg,
+.erp-sidebar-item-active i,
+.erp-sidebar-item-active svg {
+  color: #38bdf8 !important;
+  stroke: #38bdf8 !important;
 }
 
 /* Zoho Table Styles */

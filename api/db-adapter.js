@@ -781,6 +781,171 @@ class DatabaseAdapter {
     return { userId, fullName, email, role: newUser.role, category: newUser.category };
   }
 
+  async updateUser(userId, updates) {
+    const cleanId = (userId || '').toLowerCase().trim();
+    const provider = this.getProvider();
+
+    // 1. Supabase PostgreSQL
+    if (provider === 'supabase') {
+      const connStr = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+      if (connStr && !connStr.includes('neon.tech')) {
+        try {
+          const sets = [];
+          const params = [];
+          let paramIdx = 1;
+
+          if (updates.fullName) {
+            sets.push(`full_name = $${paramIdx++}`);
+            params.push(updates.fullName.trim());
+          }
+          if (updates.email) {
+            sets.push(`email = $${paramIdx++}`);
+            params.push(updates.email.toLowerCase().trim());
+          }
+          if (updates.role) {
+            sets.push(`role = $${paramIdx++}::user_role`);
+            params.push(updates.role.toLowerCase().trim());
+          }
+          if (updates.category) {
+            sets.push(`category = $${paramIdx++}`);
+            params.push(updates.category.trim());
+          }
+          if (updates.phone !== undefined) {
+            sets.push(`phone = $${paramIdx++}`);
+            params.push(updates.phone.trim());
+          }
+          if (updates.isActive !== undefined || updates.status !== undefined) {
+            const active = updates.isActive !== undefined ? !!updates.isActive : updates.status !== 'inactive';
+            sets.push(`is_active = $${paramIdx++}`);
+            params.push(active);
+          }
+          if (updates.password) {
+            sets.push(`password_hash = crypt($${paramIdx++}, gen_salt('bf'))`);
+            params.push(updates.password.trim());
+            sets.push(`must_change_password = FALSE`);
+          }
+          sets.push(`updated_at = NOW()`);
+          params.push(cleanId);
+
+          const sql = `
+            UPDATE users SET ${sets.join(', ')}
+            WHERE LOWER(user_id) = $${paramIdx}
+            RETURNING user_id as "userId", full_name as "fullName", email, role, category, phone, is_active as "isActive"
+          `;
+          const rows = await executePgQuery(connStr, sql, params);
+          if (rows && rows.length > 0) {
+            this._syncLocalUser(rows[0]);
+            return rows[0];
+          }
+        } catch (e) {
+          console.warn(`[Supabase] Update user failed:`, e.message);
+        }
+      }
+    }
+
+    // 2. MongoDB Atlas
+    if (provider === 'mongodb' && process.env.MONGODB_URI) {
+      try {
+        const client = await getMongoClient(process.env.MONGODB_URI);
+        const db = client.db(process.env.MONGODB_DB_NAME || 'dharshithan_finance');
+        const updateFields = { updatedAt: new Date().toISOString() };
+        if (updates.fullName) updateFields.fullName = updates.fullName.trim();
+        if (updates.email) updateFields.email = updates.email.toLowerCase().trim();
+        if (updates.role) updateFields.role = updates.role.toLowerCase().trim();
+        if (updates.category) updateFields.category = updates.category.trim();
+        if (updates.phone !== undefined) updateFields.phone = updates.phone.trim();
+        if (updates.isActive !== undefined || updates.status !== undefined) {
+          updateFields.isActive = updates.isActive !== undefined ? !!updates.isActive : updates.status !== 'inactive';
+        }
+        if (updates.password) {
+          updateFields.passwordHash = updates.password.trim();
+          updateFields.mustChangePassword = false;
+        }
+
+        await db.collection('users').updateOne(
+          { $or: [{ userId: cleanId }, { user_id: cleanId }] },
+          { $set: updateFields }
+        );
+      } catch (e) {
+        console.warn(`[MongoDB] Update user failed:`, e.message);
+      }
+    }
+
+    // 3. Local store
+    const idx = (localStore.users || []).findIndex(u => (u.userId || u.user_id || '').toLowerCase() === cleanId);
+    if (idx !== -1) {
+      const activeState = updates.isActive !== undefined ? !!updates.isActive : (updates.status !== undefined ? updates.status !== 'inactive' : localStore.users[idx].is_active);
+      localStore.users[idx] = {
+        ...localStore.users[idx],
+        ...updates,
+        fullName: updates.fullName || localStore.users[idx].fullName || localStore.users[idx].full_name,
+        full_name: updates.fullName || localStore.users[idx].fullName || localStore.users[idx].full_name,
+        email: updates.email || localStore.users[idx].email,
+        role: updates.role || localStore.users[idx].role,
+        category: updates.category || localStore.users[idx].category,
+        phone: updates.phone !== undefined ? updates.phone : localStore.users[idx].phone,
+        is_active: activeState,
+        isActive: activeState
+      };
+      if (updates.password) {
+        localStore.users[idx].password_hash = updates.password;
+        localStore.users[idx].must_change_password = false;
+      }
+      saveLocalStore();
+      return localStore.users[idx];
+    }
+    return null;
+  }
+
+  async deleteUser(userId) {
+    const cleanId = (userId || '').toLowerCase().trim();
+    if (cleanId === 'admin') {
+      throw new Error('Primary Super Administrator account cannot be deleted');
+    }
+    const provider = this.getProvider();
+
+    // 1. Supabase PostgreSQL
+    if (provider === 'supabase') {
+      const connStr = process.env.SUPABASE_DATABASE_URL || process.env.DATABASE_URL;
+      if (connStr && !connStr.includes('neon.tech')) {
+        try {
+          await executePgQuery(connStr, 'DELETE FROM users WHERE LOWER(user_id) = $1', [cleanId]);
+        } catch (e) {
+          console.warn(`[Supabase] Delete user failed:`, e.message);
+        }
+      }
+    }
+
+    // 2. MongoDB Atlas
+    if (provider === 'mongodb' && process.env.MONGODB_URI) {
+      try {
+        const client = await getMongoClient(process.env.MONGODB_URI);
+        const db = client.db(process.env.MONGODB_DB_NAME || 'dharshithan_finance');
+        await db.collection('users').deleteOne({
+          $or: [{ userId: cleanId }, { user_id: cleanId }]
+        });
+      } catch (e) {
+        console.warn(`[MongoDB] Delete user failed:`, e.message);
+      }
+    }
+
+    // 3. Local store
+    localStore.users = (localStore.users || []).filter(u => (u.userId || u.user_id || '').toLowerCase() !== cleanId);
+    saveLocalStore();
+    return true;
+  }
+
+  _syncLocalUser(user) {
+    const uId = (user.userId || user.user_id || '').toLowerCase();
+    const idx = (localStore.users || []).findIndex(u => (u.userId || u.user_id || '').toLowerCase() === uId);
+    if (idx !== -1) {
+      localStore.users[idx] = { ...localStore.users[idx], ...user };
+    } else {
+      localStore.users.push(user);
+    }
+    saveLocalStore();
+  }
+
   // 3. HEALTH & METRICS
   async getHealth() {
     const provider = this.getProvider();
